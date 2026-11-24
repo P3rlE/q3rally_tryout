@@ -2577,7 +2577,7 @@ static struct {
 	int				fastest;			/* the client with the fastest lap, -1 */
 	char			sub[96], pos[8], of[8], doneTime[16], doneNote[48];
 	char			stat[MH_END_STATS][16], lap[MH_END_LAPS][12], lapName[MH_END_LAPS][8];
-	char			podName[3][40], podTime[3][16], podGap[3][16];
+	char			podName[3][40], podTime[3][32], podGap[3][16];
 	char			awardName[MH_END_AWARDS][64], awardValue[MH_END_AWARDS][16];
 	const float		*awardColor[MH_END_AWARDS];
 	qhandle_t		awardIcon[MH_END_AWARDS];
@@ -2602,6 +2602,7 @@ static struct {
 	char			slipName[2][40], slipValue[2][MH_END_SLIP_ROWS][16], slipTitle[32];
 	qboolean		slipBetter[2][MH_END_SLIP_ROWS];
 	const float		*rowBestColor[MH_END_ROWS];
+	qboolean		tourney;			/* the drag tournament over */
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
@@ -2935,7 +2936,10 @@ static void MH_EndDrag( void ) {
 	}
 	e->chartTitle = "YOUR HEATS";
 	e->chartNote = "LOST TO YOUR QUICKEST";
-	if ( e->lapCount < 2 ) e->lapCount = 0;	/* one heat: nothing to compare */
+	if ( e->lapCount < 2 ) {	/* one heat: nothing to compare, no chart, no heading */
+		e->lapCount = 0;
+		e->chartTitle = e->chartNote = "";
+	}
 
 	/* the left: the match, your quickest run */
 	if ( drivers == 2 ) {
@@ -3121,11 +3125,502 @@ static void MH_EndDrag( void ) {
 	}
 }
 
+/* the keys; who is ready (bots do not count) */
+static void MH_EndReady( mhEndLayout_t *e, const char *fire, const char *tab ) {
+	static char fireOk[48];
+	int i, humans = 0, ready = 0;
+	qboolean mine = ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << cg.snap->ps.clientNum ) ) != 0;
+	Com_sprintf( fireOk, sizeof( fireOk ), "%s \xb7 OK", fire );
+	e->keyName[0] = "FIRE";
+	e->keyAction[0] = mine ? fireOk : fire;
+	e->keyName[1] = "TAB";
+	e->keyAction[1] = tab;
+	e->keyName[2] = "ESC";
+	e->keyAction[2] = "MENU";
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !cgs.clientinfo[i].infoValid || cgs.clientinfo[i].botSkill ) continue;
+		humans++;
+		if ( i < 32 && ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << i ) ) ) ready++;
+	}
+	if ( humans < 1 ) humans = 1;
+	if ( ready >= humans ) Q_strncpyz( mhEnd.readyLabel, "EVERYBODY READY", sizeof( mhEnd.readyLabel ) );
+	else Com_sprintf( mhEnd.readyLabel, sizeof( mhEnd.readyLabel ), "WAITING FOR %d DRIVER%s", humans - ready, humans - ready == 1 ? "" : "S" );
+	Com_sprintf( mhEnd.readyValue, sizeof( mhEnd.readyValue ), "%d / %d READY", ready, humans );
+	mhEnd.readyFrac = (float)ready / humans;
+	e->readyLabel = mhEnd.readyLabel;
+	e->readyValue = mhEnd.readyValue;
+}
+
+/* -------------------------------------------------------------------------
+   the drag tournament (gen.py Tourney, Tourney16, TourneyEnd): the bracket
+   between the matches, the podium after the final; both after the match's
+   own result had its five seconds
+   ------------------------------------------------------------------------- */
+
+static mhBracketLayout_t mhBracket;
+static struct {
+	char	sub[96], upName[24], hintText[80];
+	char	wins[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS][4], thirdWins[2][4];
+	char	pathRound[MH_PATH_ROWS][24], pathWhat[MH_PATH_ROWS][48];
+	const float	*pathColor[MH_PATH_ROWS], *pathTagColor[MH_PATH_ROWS];
+	int		self;
+} mhTourney;
+
+static const vec4_t mhBracketLine = { 58 / 255.0f, 58 / 255.0f, 58 / 255.0f, 1.0f };	/* #3a3a3a */
+static const vec4_t mhBracketNone = { 85 / 255.0f, 85 / 255.0f, 85 / 255.0f, 1.0f };	/* #555 */
+static const vec4_t mhBracketBot  = { 102 / 255.0f, 102 / 255.0f, 102 / 255.0f, 1.0f };	/* #666 */
+
+static void MH_TourneyBracket( cgDragBracket_t *br ) {
+	CG_BracketBuild( br, cgs.dragTourney.size, cgs.dragTourney.played, cgs.dragTourney.winner );
+}
+
+/* the own entrant: a human of the field with this client's name */
+static int MH_TourneySelf( void ) {
+	char self[MAX_QPATH];
+	int i;
+	MH_Plain( cgs.clientinfo[cg.snap->ps.clientNum].name, self, sizeof( self ) );
+	for ( i = 0; i < cgs.dragTourney.size && i < CG_BRACKET_MAX; i++ ) {
+		if ( cgs.dragTourney.human[i] && !Q_stricmp( cgs.dragTourney.name[i], self ) ) return i;
+	}
+	return -1;
+}
+
+/* the client still in the game under an entrant's name (its car), -1 */
+static int MH_TourneyClient( int entrant ) {
+	char name[MAX_QPATH];
+	int i;
+	if ( entrant < 0 ) return -1;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !cgs.clientinfo[i].infoValid ) continue;
+		MH_Plain( cgs.clientinfo[i].name, name, sizeof( name ) );
+		if ( !Q_stricmp( name, cgs.dragTourney.name[entrant] ) ) return i;
+	}
+	return -1;
+}
+
+/* "SEMI-FINAL" as the big type has it: "Semi-final" */
+static void MH_TourneyTitle( const char *in, char *out, int size ) {
+	Q_strncpyz( out, in, size );
+	if ( out[0] ) Q_strlwr( out + 1 );
+}
+
+/* an entrant's matches: the side it rode, the heats either way */
+static void MH_TourneyScore( const cgDragBracket_t *br, int match, int entrant, int *mine, int *theirs, int *opponent ) {
+	int a, c, side;
+	CG_BracketEntrants( br, match, &a, &c );
+	side = c == entrant ? 1 : 0;
+	*opponent = side ? a : c;
+	*mine = cgs.dragTourney.wins[match][side];
+	*theirs = cgs.dragTourney.wins[match][!side];
+}
+
+/* your way: a line a round, the ones still to come empty */
+static int MH_TourneyPath( const cgDragBracket_t *br, int self, const char **round, const char **what, const char **tag ) {
+	int path[CG_BRACKET_ROUNDS + 1], n, i, count = 0, last = -1, r;
+	qboolean alive = qtrue;
+	if ( self < 0 ) return 0;
+	n = CG_BracketPath( br, self, path, CG_BRACKET_ROUNDS + 1 );
+	for ( i = 0; i < n && count < MH_PATH_ROWS; i++ ) {
+		int m = path[i], mine, theirs, opp;
+		const char *oppName;
+		MH_TourneyScore( br, m, self, &mine, &theirs, &opp );
+		oppName = opp >= 0 ? cgs.dragTourney.name[opp] : "?";
+		MH_TourneyTitle( CG_BracketMatchName( br, m ), mhTourney.pathRound[count], sizeof( mhTourney.pathRound[count] ) );
+		Q_strupr( mhTourney.pathRound[count] );
+		if ( m < br->played ) {
+			qboolean won;
+			int a, c;
+			CG_BracketEntrants( br, m, &a, &c );
+			won = ( br->winner[m] ? c : a ) == self;
+			Com_sprintf( mhTourney.pathWhat[count], sizeof( mhTourney.pathWhat[count] ), won ? "beat %s %d-%d" : "lost to %s %d-%d",
+			             oppName, mine, theirs );
+			tag[count] = won ? "WON" : m == br->size - 4 + 0 || m == br->size - 3 ? "LOST" : "OUT";
+			mhTourney.pathColor[count] = won ? mhWhite : mhDim;
+			mhTourney.pathTagColor[count] = won ? mhFast : mhAccent;
+			if ( !won && tag[count][0] == 'O' ) alive = qfalse;
+		} else if ( m == br->played ) {
+			Com_sprintf( mhTourney.pathWhat[count], sizeof( mhTourney.pathWhat[count] ), "against %s", oppName );
+			tag[count] = "UP NEXT";
+			mhTourney.pathColor[count] = mhAccent;
+			mhTourney.pathTagColor[count] = mhAccent;
+		} else {	/* later on: the rival, once known */
+			if ( opp >= 0 ) Com_sprintf( mhTourney.pathWhat[count], sizeof( mhTourney.pathWhat[count] ), "against %s", oppName );
+			else mhTourney.pathWhat[count][0] = '\0';
+			tag[count] = "";
+			mhTourney.pathColor[count] = mhMuted;
+			mhTourney.pathTagColor[count] = mhBracketNone;
+		}
+		round[count] = mhTourney.pathRound[count];
+		what[count] = mhTourney.pathWhat[count];
+		last = m;
+		count++;
+	}
+	/* the rounds still to come, while it is in */
+	if ( alive && last >= 0 && last < br->size - 2 ) {
+		for ( r = CG_BracketRound( br, last ) + 1; r < br->rounds && count < MH_PATH_ROWS; r++ ) {
+			Q_strncpyz( mhTourney.pathRound[count], CG_BracketMatchName( br, CG_BracketMatch( br, r, 0 ) ), sizeof( mhTourney.pathRound[count] ) );
+			mhTourney.pathWhat[count][0] = '\0';
+			round[count] = mhTourney.pathRound[count];
+			what[count] = mhTourney.pathWhat[count];
+			tag[count] = "";
+			mhTourney.pathColor[count] = mhBracketNone;
+			mhTourney.pathTagColor[count] = mhBracketNone;
+			count++;
+		}
+	}
+	return count;
+}
+
+/* the end screen's frame on a narrow screen, as MH_EndPrepare has it */
+static void MH_TourneyFrame( mhEndLayout_t *e ) {
+	float viewWidth = cgs.glconfig.vidWidth / mhScale;
+	mhEnd.scale = viewWidth < 1600.0f ? viewWidth / 1600.0f : 1.0f;
+	e->viewWidth = viewWidth / mhEnd.scale;
+	e->top = ( MH_DESIGN_HEIGHT / mhEnd.scale - MH_DESIGN_HEIGHT ) * 0.5f;
+}
+
+static void MH_TourneyEntrant( mhBracketEntrant_t *out, const cgDragBracket_t *br, int entrant, int match, int side, char *wins, int size ) {
+	memset( out, 0, sizeof( *out ) );
+	out->wins = "";
+	if ( entrant < 0 ) return;
+	out->name = cgs.dragTourney.name[entrant];
+	out->bot = !cgs.dragTourney.human[entrant];
+	out->me = entrant == mhTourney.self;
+	if ( match >= 0 && match < br->played ) {
+		Com_sprintf( wins, size, "%d", cgs.dragTourney.wins[match][side] );
+		out->wins = wins;
+		out->out = br->winner[match] != side;
+	}
+}
+
+/* between the matches: the bracket */
+static void MH_BracketPrepare( const cgDragBracket_t *br ) {
+	mhBracketLayout_t *b = &mhBracket;
+	mhEndLayout_t *e = &b->frame;
+	int r, j, a, c, m = br->played;
+
+	memset( b, 0, sizeof( *b ) );
+	MH_TourneyFrame( e );
+	mhTourney.self = MH_TourneySelf();
+	e->title = "DRAG TOURNAMENT";
+	Com_sprintf( mhTourney.sub, sizeof( mhTourney.sub ), "%d DRIVERS \xb7 BEST OF %d \xb7 MATCH %d OF %d",
+	             br->size, cgs.dragTourney.bestOf, m + 1, br->size );
+	e->subtitle = mhTourney.sub;
+
+	/* the match up next, who rides it */
+	b->upLabel = "UP NEXT";
+	MH_TourneyTitle( CG_BracketMatchName( br, m ), mhTourney.upName, sizeof( mhTourney.upName ) );
+	b->upName = mhTourney.upName;
+	CG_BracketEntrants( br, m, &a, &c );
+	b->vsName[0] = a >= 0 ? cgs.dragTourney.name[a] : NULL;
+	b->vsName[1] = c >= 0 ? cgs.dragTourney.name[c] : NULL;
+	b->vsTag[0] = a < 0 ? "" : a == mhTourney.self ? "YOU" : !cgs.dragTourney.human[a] ? "BOT" : "";
+	b->vsTag[1] = c < 0 ? "" : c == mhTourney.self ? "YOU" : !cgs.dragTourney.human[c] ? "BOT" : "";
+	if ( a >= 0 && c >= 0 && !cgs.dragTourney.human[a] && !cgs.dragTourney.human[c] ) {
+		b->hintLabel = "A BOT MATCH";
+		b->hintText = "/dragskip skips it, /dragskip all skips to your next match.";
+	}
+	b->pathCount = MH_TourneyPath( br, mhTourney.self, b->pathRound, b->pathWhat, b->pathTag );
+
+	/* the bracket */
+	b->size = br->size;
+	for ( r = 0; r < br->rounds && r < MH_BRACKET_ROUNDS; r++ ) {
+		for ( j = 0; j < br->size >> r; j++ ) {
+			MH_TourneyEntrant( &b->slot[r][j], br, br->slot[r][j], CG_BracketMatch( br, r, j / 2 ), j & 1,
+			                   mhTourney.wins[r][j], sizeof( mhTourney.wins[r][j] ) );
+		}
+		b->head[r] = CG_BracketRoundHead( br, r );
+	}
+	b->head[br->rounds] = "WINNER";
+	for ( j = 0; j < 2; j++ ) {
+		MH_TourneyEntrant( &b->third[j], br, br->third[j], br->size - 2, j, mhTourney.thirdWins[j], sizeof( mhTourney.thirdWins[j] ) );
+	}
+	b->nextRound = b->nextPair = -1;
+	if ( m == br->size - 2 ) b->nextThird = qtrue;
+	else if ( m < br->size ) {
+		b->nextRound = CG_BracketRound( br, m );
+		b->nextPair = m == br->size - 1 ? 0 : m - br->start[b->nextRound];
+	}
+	MH_EndReady( e, "CONTINUE", "HEAT RESULTS" );
+	MH_BracketLayout( b );
+}
+
+static void MH_BracketDrawCard( const wsRect_t *card, const wsRect_t *divider, const mhBracketEntrant_t *in,
+                                const mhText_t *names, const mhText_t *bots, const mhText_t *wins, const wsRect_t *rows, qboolean next ) {
+	int k;
+	MH_FillRect( card, mhPanel, 1.0f );
+	MH_Border( card, next ? mhAccent : mhLine, 1.0f, next ? mhAccent : mhLine, 1.0f );
+	MH_FillRect( divider, mhLine, 1.0f );
+	for ( k = 0; k < 2; k++ ) {
+		const float *color = !in[k].name ? mhBracketNone : in[k].out ? mhDim : in[k].bot ? mhLabel : mhWhite;
+		if ( in[k].me ) MH_FillRect( &rows[k], mhMe, 1.0f );
+		MH_Str( &names[k], color, 1.0f );
+		MH_Str( &bots[k], mhBracketBot, 1.0f );
+		MH_Str( &wins[k], in[k].out ? mhDim : mhWhite, 1.0f );
+	}
+}
+
+static void MH_BracketDraw( void ) {
+	mhBracketLayout_t *b = &mhBracket;
+	mhEndLayout_t *e = &b->frame;
+	float base = mhScale;
+	int r, j, i;
+
+	WS_FillRect( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight, mhVeil );
+	mhScale = base * mhEnd.scale;
+	MH_Str( &e->titleT, mhAccent, 1.0f );
+	MH_Str( &e->subtitleT, mhMuted, 1.0f );
+
+	MH_Str( &b->upLabelT, mhAccent, 1.0f );
+	MH_Str( &b->upNameT, mhWhite, 1.0f );
+	for ( i = 0; i < 2; i++ ) {
+		MH_Str( &b->vsNameT[i], !Q_stricmp( b->vsTag[i], "YOU" ) ? mhAccent : mhWhite, 1.0f );
+		MH_Str( &b->vsTagT[i], !Q_stricmp( b->vsTag[i], "YOU" ) ? mhAccent : mhDim, 1.0f );
+	}
+	MH_Str( &b->againstT, mhDim, 1.0f );
+	MH_FillRect( &b->sep[0], mhLine, 1.0f );
+	if ( b->pathCount ) MH_Str( &b->pathTitleT, mhLabel, 1.0f );
+	for ( i = 0; i < b->pathCount; i++ ) {
+		MH_Str( &b->pathRoundT[i], mhMuted, 1.0f );
+		MH_Str( &b->pathWhatT[i], mhTourney.pathColor[i], 1.0f );
+		MH_Str( &b->pathTagT[i], mhTourney.pathTagColor[i], 1.0f );
+	}
+	if ( b->hintText ) {
+		MH_FillRect( &b->sep[1], mhLine, 1.0f );
+		MH_Str( &b->hintLabelT, mhLabel, 1.0f );
+		MH_Str( &b->hintTextT, mhMuted, 1.0f );
+	}
+
+	for ( i = 0; i < b->lineCount; i++ ) MH_FillRect( &b->line[i], mhBracketLine, 1.0f );
+	for ( r = 0; r <= b->rounds; r++ ) MH_Str( &b->headT[r], mhMuted, 1.0f );
+	for ( r = 0; r < b->rounds; r++ ) {
+		for ( j = 0; j < b->size >> ( r + 1 ); j++ ) {
+			MH_BracketDrawCard( &b->card[r][j], &b->divider[r][j], &b->slot[r][2 * j], &b->nameT[r][2 * j], &b->botT[r][2 * j],
+			                    &b->winsT[r][2 * j], &b->row[r][2 * j], r == b->nextRound && j == b->nextPair && !b->nextThird );
+		}
+	}
+	MH_Str( &b->upNextT, mhAccent, 1.0f );
+	MH_FillRect( &b->winnerCard, mhPanel, 1.0f );
+	MH_Border( &b->winnerCard, mhLine, 2.0f, b->champion ? mhAccent : mhLine, 1.0f );
+	MH_Pic( &b->trophy, 0.0f, mh.trophy, b->champion ? mhAccent : mhBracketNone, 1.0f );
+	MH_Str( &b->winnerT, b->champion ? mhWhite : mhBracketNone, 1.0f );
+	MH_Str( &b->thirdLabelT, b->nextThird ? mhAccent : mhMuted, 1.0f );
+	MH_BracketDrawCard( &b->thirdCard, &b->thirdDivider, b->third, b->thirdNameT, b->thirdBotT, b->thirdWinsT, b->thirdRow,
+	                    b->nextThird );
+
+	for ( i = 0; i < 3; i++ ) {
+		MH_Str( &e->keyNameT[i], mhWhite, 1.0f );
+		MH_Str( &e->keyActionT[i], i == 0 && strstr( e->keyAction[0], "OK" ) ? mhAccent : mhDim, 1.0f );
+	}
+	MH_Str( &e->readyLabelT, mhLabel, 1.0f );
+	MH_Str( &e->readyValueT, mhWhite, 1.0f );
+	MH_Bar( &e->readyBar, mhEnd.readyFrac, mhAccent, mhTrack, 1.0f );
+	mhScale = base;
+}
+
+/* after the final: the end screen's page for the whole tournament */
+static void MH_EndTourney( void ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	cgDragBracket_t br;
+	int place[3], i, k, self, final, third, a, c, mine, theirs, opp, path[CG_BRACKET_ROUNDS + 1], n;
+	int matchesWon = 0, matchesLost = 0, heatsWon = 0, heatsLost = 0, view, last;
+	int bestHeats = -1, bestHeatsWho = -1, bestHeatsMatches = 0;
+
+	MH_TourneyBracket( &br );
+	final = br.size - 1;
+	third = br.size - 2;
+	self = mhTourney.self = MH_TourneySelf();
+	CG_BracketEntrants( &br, final, &a, &c );
+	place[0] = cgs.dragTourney.winner[final] ? c : a;
+	place[1] = cgs.dragTourney.winner[final] ? a : c;
+	CG_BracketEntrants( &br, third, &a, &c );
+	place[2] = br.rounds >= 2 ? ( cgs.dragTourney.winner[third] ? c : a ) : -1;
+	view = self >= 0 ? self : place[0];
+
+	/* clear what the match's own page put up */
+	e->slipCount = 0;
+	e->lapCount = 0;
+	e->spreadCount = 0;
+	e->teamPodium = qfalse;
+	mhEnd.drag = qfalse;
+
+	e->title = "DRAG TOURNAMENT";
+	Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%d DRIVERS \xb7 BEST OF %d \xb7 %s WINS", br.size, cgs.dragTourney.bestOf,
+	             place[0] >= 0 ? cgs.dragTourney.name[place[0]] : "NOBODY" );
+	Q_strupr( mhEnd.sub );
+	e->subtitle = mhEnd.sub;
+
+	/* the left: where you ended, your last match, your figures, your way */
+	k = CG_BracketPlace( &br, view );
+	Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "P%d", k > 0 ? k : 1 );
+	Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", br.size );
+	n = CG_BracketPath( &br, view, path, CG_BRACKET_ROUNDS + 1 );
+	for ( i = 0; i < n; i++ ) {
+		if ( path[i] >= br.played ) continue;
+		MH_TourneyScore( &br, path[i], view, &mine, &theirs, &opp );
+		heatsWon += mine;
+		heatsLost += theirs;
+		CG_BracketEntrants( &br, path[i], &a, &c );
+		if ( ( br.winner[path[i]] ? c : a ) == view ) matchesWon++;
+		else matchesLost++;
+	}
+	last = n > 0 ? path[n - 1] : final;
+	MH_TourneyScore( &br, last, view, &mine, &theirs, &opp );
+	Com_sprintf( mhEnd.doneTime, sizeof( mhEnd.doneTime ), "%d-%d", mine, theirs );
+	if ( self < 0 ) Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "%s WINS", cgs.dragTourney.name[view] );
+	else if ( k == 1 ) Q_strncpyz( mhEnd.doneLabel, "YOU WIN THE TOURNAMENT", sizeof( mhEnd.doneLabel ) );
+	else if ( k == 2 ) Q_strncpyz( mhEnd.doneLabel, "YOU FINISH SECOND", sizeof( mhEnd.doneLabel ) );
+	else if ( k == 3 ) Q_strncpyz( mhEnd.doneLabel, "YOU FINISH THIRD", sizeof( mhEnd.doneLabel ) );
+	else if ( k == 4 ) Q_strncpyz( mhEnd.doneLabel, "YOU FINISH FOURTH", sizeof( mhEnd.doneLabel ) );
+	else Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "YOU WENT OUT IN THE %s", CG_BracketMatchName( &br, last ) );
+	Q_strupr( mhEnd.doneLabel );
+	e->doneLabel = mhEnd.doneLabel;
+	{
+		qboolean won = mine > theirs;
+		const char *what = last == final ? "THE FINAL" : last == third ? "THIRD PLACE" : CG_BracketMatchName( &br, last );
+		Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), won ? "WON %s%s AGAINST %s" : "LOST %s%s TO %s",
+		             last == final || last == third ? "" : "THE ", what, opp >= 0 ? cgs.dragTourney.name[opp] : "?" );
+		Q_strupr( mhEnd.doneNote );
+		mhEnd.doneNoteColor = won ? mhFast : mhAccent;
+	}
+	e->statCount = 4;
+	e->statLabel[0] = "MATCHES WON";
+	e->statLabel[1] = "MATCHES LOST";
+	e->statLabel[2] = "HEATS WON";
+	e->statLabel[3] = "HEATS LOST";
+	Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "%d", matchesWon );
+	Com_sprintf( mhEnd.stat[1], sizeof( mhEnd.stat[1] ), "%d", matchesLost );
+	Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d", heatsWon );
+	Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d", heatsLost );
+	for ( i = 0; i < 4; i++ ) {
+		e->statUnit[i] = NULL;
+		mhEnd.statColor[i] = mhWhite;
+	}
+	e->pathCount = MH_TourneyPath( &br, view, e->pathRound, e->pathWhat, e->pathTag );
+
+	/* the podium: the champion, the finalist, third place, each with the way there */
+	e->podiumCount = 0;
+	for ( i = 0; i < 3; i++ ) {
+		static const char *tags[3] = { "CHAMPION", "FINALIST", "THIRD" };
+		int pn, q;
+		if ( place[i] < 0 ) break;
+		mhEnd.client[i] = MH_TourneyClient( place[i] );
+		Q_strncpyz( mhEnd.podName[i], cgs.dragTourney.name[place[i]], sizeof( mhEnd.podName[i] ) );
+		mhEnd.podTime[i][0] = '\0';
+		pn = CG_BracketPath( &br, place[i], path, CG_BRACKET_ROUNDS + 1 );
+		for ( q = 0; q < pn; q++ ) {
+			if ( i == 2 && path[q] != third ) continue;
+			MH_TourneyScore( &br, path[q], place[i], &mine, &theirs, &opp );
+			if ( mhEnd.podTime[i][0] ) Q_strcat( mhEnd.podTime[i], sizeof( mhEnd.podTime[i] ), " \xb7 " );
+			Q_strcat( mhEnd.podTime[i], sizeof( mhEnd.podTime[i] ), va( i == 2 ? "THIRD PLACE %d-%d" : "%d-%d", mine, theirs ) );
+		}
+		mhEnd.podGap[i][0] = '\0';
+		e->podiumName[i] = mhEnd.podName[i];
+		e->podiumTime[i] = mhEnd.podTime[i];
+		e->podiumGap[i] = mhEnd.podGap[i];
+		e->podiumTag[i] = tags[i];
+		e->podiumMe[i] = place[i] == self;
+		e->podiumCount = i + 1;
+	}
+
+	/* the highlights: a clean sweep, the most heats won */
+	e->awardCount = 0;
+	if ( place[0] >= 0 ) {
+		int won = 0, lost = 0;
+		n = CG_BracketPath( &br, place[0], path, CG_BRACKET_ROUNDS + 1 );
+		for ( i = 0; i < n; i++ ) {
+			MH_TourneyScore( &br, path[i], place[0], &mine, &theirs, &opp );
+			won += mine;
+			lost += theirs;
+		}
+		if ( !lost && won > 0 ) {
+			k = e->awardCount++;
+			e->awardLabel[k] = "CLEAN SWEEP";
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 no heat lost", cgs.dragTourney.name[place[0]] );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d-0", won );
+			mhEnd.awardColor[k] = mhFast;
+			mhEnd.awardIcon[k] = mh.flag;
+		}
+	}
+	for ( i = 0; i < br.size; i++ ) {
+		int won = 0, q;
+		n = CG_BracketPath( &br, i, path, CG_BRACKET_ROUNDS + 1 );
+		for ( q = 0; q < n; q++ ) {
+			MH_TourneyScore( &br, path[q], i, &mine, &theirs, &opp );
+			won += mine;
+		}
+		if ( won > bestHeats ) {
+			bestHeats = won;
+			bestHeatsWho = i;
+			bestHeatsMatches = n;
+		}
+	}
+	if ( bestHeatsWho >= 0 && bestHeats > 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "MOST HEATS WON";
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d matches", cgs.dragTourney.name[bestHeatsWho], bestHeatsMatches );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", bestHeats );
+		mhEnd.awardColor[k] = mhPurple;
+		mhEnd.awardIcon[k] = mh.trophy;
+	}
+	for ( i = 0; i < e->awardCount; i++ ) {
+		e->awardName[i] = mhEnd.awardName[i];
+		e->awardValue[i] = mhEnd.awardValue[i];
+	}
+
+	/* the right: every match in the order they were raced */
+	e->listTitle = "EVERY MATCH";
+	Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "%d DRIVERS", br.size );
+	e->listRight = mhEnd.listRight;
+	e->listHead[0] = "RND";
+	e->listHead[1] = "WINNER";
+	e->listHead[2] = "HEATS";
+	e->listHead[3] = "BEATEN";
+	e->listMatches = qtrue;
+	e->rowSwatch = qfalse;
+	e->rowCount = 0;
+	e->compact = br.size > 12;
+	for ( i = 0; i < br.size && e->rowCount < MH_END_ROWS; i++ ) {
+		int w;
+		CG_BracketEntrants( &br, i, &a, &c );
+		if ( a < 0 || c < 0 ) continue;
+		k = e->rowCount++;
+		w = cgs.dragTourney.winner[i];
+		Q_strncpyz( mhEnd.rowPos[k], CG_BracketMatchShort( &br, i ), sizeof( mhEnd.rowPos[k] ) );
+		Q_strncpyz( mhEnd.rowName[k], cgs.dragTourney.name[w ? c : a], sizeof( mhEnd.rowName[k] ) );
+		Com_sprintf( mhEnd.rowTime[k], sizeof( mhEnd.rowTime[k] ), "%d-%d", cgs.dragTourney.wins[i][w], cgs.dragTourney.wins[i][!w] );
+		Q_strncpyz( mhEnd.rowBest[k], cgs.dragTourney.name[w ? a : c], sizeof( mhEnd.rowBest[k] ) );
+		mhEnd.rowMe[k] = self >= 0 && ( w ? c : a ) == self;
+		mhEnd.rowClient[k] = -1;
+		e->rowPos[k] = mhEnd.rowPos[k];
+		e->rowName[k] = mhEnd.rowName[k];
+		e->rowTime[k] = mhEnd.rowTime[k];
+		e->rowBest[k] = mhEnd.rowBest[k];
+	}
+	MH_EndReady( e, "NEXT TOURNAMENT", "HEAT RESULTS" );
+}
+
+void CG_ModernHUD_DrawTourney( void ) {
+	cgDragBracket_t br;
+	if ( !cg.snap || !cgs.dragTourney.size ) return;
+	MH_Register();
+	MH_TourneyBracket( &br );
+	if ( br.played >= br.size ) {
+		mhEnd.tourney = qtrue;
+		CG_ModernHUD_DrawEnd();
+		mhEnd.tourney = qfalse;
+		return;
+	}
+	mhScale = cgs.glconfig.vidHeight / MH_DESIGN_HEIGHT;
+	MH_BracketPrepare( &br );
+	MH_BracketDraw();
+}
+
 static void MH_EndPrepare( void ) {
 	mhEndLayout_t *e = &mhEnd.e;
 	const cgRaceResult_t *all = CG_RaceResult( 0 ), *mine, *winner;
 	int order[MAX_CLIENTS], count, n = 0, i, k, me, place = 0, best, bestSector = 0, sectorClient = -1, gainClient = -1, gain = 0;
-	int fastest = 0, humans = 0, ready = 0, first;
+	int fastest = 0, first;
 	const char *map;
 	char name[40];
 	float viewWidth;
@@ -3324,26 +3819,8 @@ static void MH_EndPrepare( void ) {
 		e->awardValue[i] = mhEnd.awardValue[i];
 	}
 
-	/* the keys; who is ready (bots do not count) */
-	e->keyName[0] = "FIRE";
-	e->keyAction[0] = ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << cg.snap->ps.clientNum ) ) ? "READY \xb7 OK" : "READY";
-	e->keyName[1] = "TAB";
-	e->keyAction[1] = "DETAILS";
-	e->keyName[2] = "ESC";
-	e->keyAction[2] = "MENU";
-	for ( i = 0; i < MAX_CLIENTS; i++ ) {
-		if ( !cgs.clientinfo[i].infoValid || cgs.clientinfo[i].botSkill ) continue;
-		humans++;
-		if ( i < 32 && ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << i ) ) ) ready++;
-	}
-	if ( humans < 1 ) humans = 1;
-	if ( ready >= humans ) Q_strncpyz( mhEnd.readyLabel, "EVERYBODY READY", sizeof( mhEnd.readyLabel ) );
-	else Com_sprintf( mhEnd.readyLabel, sizeof( mhEnd.readyLabel ), "WAITING FOR %d DRIVER%s", humans - ready, humans - ready == 1 ? "" : "S" );
-	Com_sprintf( mhEnd.readyValue, sizeof( mhEnd.readyValue ), "%d / %d READY", ready, humans );
-	mhEnd.readyFrac = (float)ready / humans;
-	e->readyLabel = mhEnd.readyLabel;
-	e->readyValue = mhEnd.readyValue;
-
+	MH_EndReady( e, "READY", "DETAILS" );
+	if ( mhEnd.tourney ) MH_EndTourney();
 	MH_EndLayout( e );
 }
 
@@ -3373,6 +3850,12 @@ void CG_ModernHUD_DrawEnd( void ) {
 	}
 	MH_Str( &e->lapsTitleT, mhLabel, 1.0f );
 	MH_Str( &e->lapsNoteT, mhDim, 1.0f );
+	if ( e->pathCount ) MH_Str( &e->pathTitleT, mhLabel, 1.0f );
+	for ( i = 0; i < e->pathCount; i++ ) {
+		MH_Str( &e->pathRoundT[i], mhMuted, 1.0f );
+		MH_Str( &e->pathWhatT[i], mhTourney.pathColor[i], 1.0f );
+		MH_Str( &e->pathTagT[i], mhTourney.pathTagColor[i], 1.0f );
+	}
 	for ( i = 0; i < e->lapCount; i++ ) {
 		qboolean isBest = !Q_stricmp( e->lapValue[i], "best" );
 		qboolean foul = !Q_stricmp( e->lapValue[i], "foul" ) || !Q_stricmp( e->lapValue[i], "dnf" );
@@ -3473,7 +3956,9 @@ void CG_ModernHUD_DrawEnd( void ) {
 	}
 	for ( i = 0; i < 4; i++ ) {
 		mhText_t head = e->headT[i];
-		if ( i >= 2 ) head.box.x += head.box.w - WS_TextWidth( &head.style, head.text, strlen( head.text ) );
+		float tw = WS_TextWidth( &head.style, head.text, strlen( head.text ) );
+		if ( e->listMatches ) { if ( i == 2 ) head.box.x += ( head.box.w - tw ) * 0.5f; }	/* the heats centred, the beaten left */
+		else if ( i >= 2 ) head.box.x += head.box.w - tw;
 		MH_Str( &head, mhMuted, 1.0f );
 	}
 	for ( i = 0; i < e->rowCount; i++ ) {
@@ -3482,6 +3967,12 @@ void CG_ModernHUD_DrawEnd( void ) {
 		MH_Str( &e->rowPosT[i], !mhEnd.drag && !Q_stricmp( e->rowPos[i], "01" ) ? mhAccent : mhMuted, 1.0f );
 		MH_Str( &e->rowNameT[i], mhWhite, 1.0f );
 		if ( e->rowSwatch ) MH_FillRect( &e->rowSwatchR[i], MH_TeamColor( mhEnd.rowTeam[i] ), 1.0f );
+		if ( e->listMatches ) {	/* a match: the heats centred, the one beaten in grey */
+			time.box.x += ( time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) ) ) * 0.5f;
+			MH_Str( &time, mhValue, 1.0f );
+			MH_Str( &best, mhDim, 1.0f );
+			continue;
+		}
 		time.box.x += time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) );
 		best.box.x += best.box.w - WS_TextWidth( &best.style, best.text, strlen( best.text ) );
 		MH_Str( &time, mhValue, 1.0f );

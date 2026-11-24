@@ -839,3 +839,138 @@ def test_native_drag_end_screen_matches_the_design():
         pairs += [(f'row{i}', r), (f'rowName{i}', r + '/div:1'), (f'rowTime{i}', r + '/div:2'), (f'rowBest{i}', r + '/div:3')]
     problems = check_all(mine, END_DRAG, pairs)
     assert not problems, problems
+
+
+
+# the drag tournament ---------------------------------------------------------
+TOURNEY = {name: json.loads((ROOT / f'tests/fixtures/hud_{name}_layout.json').read_text())['els']
+           for name in ('tourney', 'tourney16', 'tourney_end')}
+TOURNEY_KEYS = 'FIRE~CONTINUE;TAB~HEAT RESULTS;ESC~MENU'
+
+
+def _e(name, wins='', bot=False, me=False, out=False):
+    return f"{name or '-'}~{wins}~{int(bot)}~{int(me)}~{int(out)}"
+
+
+def bracket_command(sub, up, vs, path, hint, size, rounds, third, nxt, heads, width=1600):
+    fields = ['DRAG TOURNAMENT', sub, 'UP NEXT', up, '~'.join(vs), ';'.join('~'.join(x) for x in path), hint, size,
+              '/'.join(';'.join(r) for r in rounds), ';'.join(third), '~'.join(str(v) for v in nxt), '', '~'.join(heads),
+              TOURNEY_KEYS, 'WAITING FOR 1 DRIVER', '0 / 1 READY']
+    return [f'hudbracket {width}', latin('|'.join(str(f) for f in fields))]
+
+
+def _bracket_pairs(size, rounds, nxt, has_hint):
+    """The board's elements in the order gen.py bracket() writes them."""
+    pairs = [('title', '/div:2/div:0'), ('sub', '/div:2/div:1'), ('upLabel', '/div:3/div:0/div:0'), ('upName', '/div:3/div:0/div:1'),
+             ('vsName0', '/div:3/div:1/div:0/div:0'), ('vsTag0', '/div:3/div:1/div:0/div:1'), ('against', '/div:3/div:1/div:1'),
+             ('vsName1', '/div:3/div:1/div:2/div:0'), ('vsTag1', '/div:3/div:1/div:2/div:1'), ('sep0', '/div:3/div:2'),
+             ('pathTitle', '/div:3/div:3/div:0')]
+    for i in range(3):
+        row = f'/div:3/div:3/div:{i + 1}'
+        pairs.append((f'pathRound{i}', row + '/div:0'))
+        if i < 2:  # the third round still to come: an empty match, no height in the design
+            pairs.append((f'pathWhat{i}', row + '/div:1'))
+    if has_hint:
+        pairs += [('sep1', '/div:3/div:4'), ('hintLabel', '/div:3/div:5/div:0'), ('hintText', '/div:3/div:5/div:1')]
+    el, line = 4, 0
+    for r, matches in enumerate(rounds):
+        for j in range(len(matches) // 2):
+            if (r, j) == nxt:
+                pairs.append(('upNext', f'/div:{el}'))
+                el += 1
+            card = f'/div:{el}'
+            pairs += [(f'card{r}_{j}', card), (f'divider{r}_{j}', card + '/div:0/div:1')]
+            for k in range(2):
+                slot = 2 * j + k
+                e = matches[slot].split('~')
+                row = card + f'/div:0/div:{2 * k}'
+                pairs += [(f'row{r}_{slot}', row), (f'name{r}_{slot}', row + '/div:0')]
+                if e[1]:
+                    pairs.append((f'wins{r}_{slot}', row + f"/div:{2 if e[2] == '1' and e[0] != '-' else 1}"))
+            el += 1
+            if r > 0:
+                pairs += [(f'line{line + i}', f'/div:{el + i}') for i in range(4)]
+                line += 4
+                el += 4
+    pairs += [(f'head{r}', f'/div:{el + r}') for r in range(len(rounds) + 1)]
+    el += len(rounds) + 1
+    pairs.append((f'line{line}', f'/div:{el}'))
+    pairs += [('winnerCard', f'/div:{el + 1}'), ('trophy', f'/div:{el + 1}/svg:0'), ('thirdLabel', f'/div:{el + 2}'),
+              ('thirdCard', f'/div:{el + 3}'), ('thirdName0', f'/div:{el + 3}/div:0/div:0/div:0')]
+    pairs += [(f'keyName{i}', f'/div:{el + 4}/div:0/div:{i}/div:0') for i in range(3)]
+    return pairs
+
+
+QF = [_e('Player', 2, me=True), _e('Tony', 1, bot=True, out=True), _e('Vlad', 2, bot=True), _e('Ivan', 0, out=True),
+      _e('Sam', 2), _e('Bee', 0, bot=True, out=True), _e('Carla', 1, bot=True, out=True), _e('Janine', 2)]
+SF = [_e('Player', me=True), _e('Vlad', bot=True), _e('Sam'), _e('Janine')]
+FIN = [_e(None), _e(None)]
+
+
+def test_native_drag_bracket_matches_the_design():
+    rounds = [QF, SF, FIN]
+    mine, = layouts(bracket_command('8 DRIVERS · BEST OF 3 · QUARTER-FINALS DONE', 'SEMI-FINAL', ['Player', 'YOU', 'Vlad', 'BOT'],
+                                    [('QUARTER-FINAL', 'beat Tony 2-1', 'WON'), ('SEMI-FINAL', 'against Vlad', 'UP NEXT'), ('FINAL', '', '')],
+                                    '', 8, rounds, [_e(None), _e(None)], (1, 0, 0),
+                                    ['QUARTER-FINALS', 'SEMI-FINALS', 'FINAL', 'WINNER']))
+    problems = check_all(mine, TOURNEY['tourney'], _bracket_pairs(8, rounds, (1, 0), False))
+    assert not problems, problems
+    assert mine['lines'] == 13
+
+
+def test_native_drag_bracket_for_sixteen_matches_the_design():
+    names = ['Player', 'Tony', 'Vlad', 'Ivan', 'Sam', 'Bee', 'Carla', 'Janine', 'Minori', 'Josh', 'Tanya', 'Emma',
+             'Bobby', 'Samuel', 'Paul', 'Kai']
+    bots = {'Tony', 'Vlad', 'Bee', 'Carla', 'Minori', 'Josh', 'Tanya', 'Emma', 'Bobby', 'Samuel', 'Paul', 'Kai'}
+    r16 = []
+    for j in range(8):
+        played, wa = j < 5, j % 3 != 1
+        for k, n in enumerate(names[2 * j:2 * j + 2]):
+            won = wa if k == 0 else not wa
+            r16.append(_e(n, (2 if won else 1) if played else '', n in bots, n == 'Player', played and not won))
+    q16 = [_e('Player', me=True), _e('Ivan'), _e('Sam'), _e('Janine'), _e('Josh', bot=True), _e(None), _e(None), _e(None)]
+    rounds = [r16, q16, [_e(None)] * 4, [_e(None)] * 2]
+    mine, = layouts(bracket_command('16 DRIVERS · BEST OF 3 · ROUND OF 16', 'ROUND OF 16', ['Tanya', 'BOT', 'Emma', 'BOT'],
+                                    [('ROUND OF 16', 'beat Tony 2-1', 'WON'), ('QUARTER-FINAL', 'against Ivan', ''),
+                                     ('SEMI-FINAL', '', ''), ('FINAL', '', '')],
+                                    'A BOT MATCH~/dragskip skips it, /dragskip all skips to your next match.', 16, rounds,
+                                    [_e(None), _e(None)], (0, 5, 0),
+                                    ['ROUND OF 16', 'QUARTER-FINALS', 'SEMI-FINALS', 'FINAL', 'WINNER']))
+    problems = check_all(mine, TOURNEY['tourney16'], _bracket_pairs(16, rounds, (0, 5), True))
+    assert not problems, problems
+
+
+END_TOURNEY_MODEL = ['DRAG TOURNAMENT', '8 DRIVERS · BEST OF 3 · SAM WINS', 'P2', '/ 8',
+                     'YOU FINISH SECOND', '1-2', 'LOST THE FINAL TO SAM',
+                     'MATCHES WON~2~;MATCHES LOST~1~;HEATS WON~5~;HEATS LOST~3~',
+                     '',
+                     'Player~2-1 · 2-0~~FINALIST~1;Sam~2-0 · 2-1 · 2-1~~CHAMPION~0;Vlad~third place 2-1~~THIRD~0',
+                     'CLEAN SWEEP~Sam · no heat lost~6-0;MOST HEATS WON~Sam · three matches~6',
+                     'EVERY MATCH', '8 DRIVERS', 0,
+                     ';'.join(f'{a}~{b}~{c}~{d}' for a, b, c, d in [
+                         ('QF', 'Player', '2-1', 'Tony'), ('QF', 'Vlad', '2-0', 'Ivan'), ('QF', 'Sam', '2-0', 'Bee'),
+                         ('QF', 'Janine', '2-1', 'Carla'), ('SF', 'Player', '2-0', 'Vlad'), ('SF', 'Sam', '2-1', 'Janine'),
+                         ('3RD', 'Vlad', '2-1', 'Janine'), ('F', 'Sam', '2-1', 'Player')]),
+                     'FIRE~NEXT TOURNAMENT;TAB~HEAT RESULTS;ESC~MENU', 'WAITING FOR 1 DRIVER', '0 / 1 READY',
+                     '', '', '', '', '', 0, 'RND~WINNER~HEATS~BEATEN', '', '', '', '',
+                     'QUARTER-FINAL~beat Tony 2-1~WON;SEMI-FINAL~beat Vlad 2-0~WON;FINAL~lost to Sam 1-2~OUT', 1]
+
+
+def test_native_tournament_end_matches_the_design():
+    mine, = layouts(end_command(END_TOURNEY_MODEL))
+    left, pod, aw, lst = '/div:3', '/div:4', '/div:5', '/div:6/div:0'
+    pairs = [('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'), ('doneLabel', left + '/div:1/div:0'),
+             ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'), ('pathTitle', left + '/div:5/div:0'),
+             ('list', lst), ('listTitle', lst + '/div:0/div:0'), ('listRight', lst + '/div:0/div:1')]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    for i in range(3):
+        row = f'{left}/div:5/div:{i + 1}'
+        pairs += [(f'pathRound{i}', row + '/div:0'), (f'pathWhat{i}', row + '/div:1'), (f'pathTag{i}', row + '/div:2')]
+    for place, div in ((0, 1), (1, 0), (2, 2)):
+        pairs += [(f'podium{place}', f'{pod}/div:{div}'), (f'podiumName{place}', f'{pod}/div:{div}/div:1/div:1')]
+    pairs += [(f'head{c}', f'{lst}/div:1/div:{c}') for c in range(4)]
+    for i in range(8):
+        r = f'{lst}/div:2/div:{i}'
+        pairs += [(f'row{i}', r), (f'rowName{i}', r + '/div:1'), (f'rowTime{i}', r + '/div:2'), (f'rowBest{i}', r + '/div:3')]
+    problems = check_all(mine, TOURNEY['tourney_end'], pairs)
+    assert not problems, problems

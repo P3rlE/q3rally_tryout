@@ -462,54 +462,17 @@ static void CG_DragTourneyBox( int x, int y, int w, int h, int entrant, int wins
 	}
 }
 
-/* Bracket bookkeeping shared by the bracket and the podium. Matches come in
- * play order: the rounds up to the semi-finals, third place (size - 2), the
- * final (size - 1). */
-typedef struct {
-	int		size, rounds, played;
-	int		start[5];			/* first match of each round */
-	int		slot[5][16];		/* entrant in each slot, -1 not yet known */
-	int		third[2];			/* the semi-final losers */
-} cgDragBracket_t;
-
+/* The bracket's bookkeeping lives in cg_drag_bracket.c, shared with the v0.9 one. */
 static int CG_DragTourneyMatch( const cgDragBracket_t *bracket, int round, int pair ) {
-	return round == bracket->rounds - 1 ? bracket->size - 1 : bracket->start[round] + pair;
+	return CG_BracketMatch( bracket, round, pair );
 }
 
 static void CG_DragTourneyBracket( cgDragBracket_t *bracket ) {
-	int r, j, m, semi;
-	memset( bracket, 0, sizeof( *bracket ) );
-	bracket->size = cgs.dragTourney.size;
-	bracket->played = cgs.dragTourney.played;
-	for ( bracket->rounds = 0; ( 1 << bracket->rounds ) < bracket->size; bracket->rounds++ ) {
-	}
-	for ( j = 0; j < bracket->size; j++ ) bracket->slot[0][j] = j;
-	for ( r = 1; r <= bracket->rounds; r++ ) {
-		bracket->start[r] = bracket->start[r - 1] + ( bracket->size >> r );
-		for ( j = 0; j < bracket->size >> r; j++ ) {
-			m = CG_DragTourneyMatch( bracket, r - 1, j );
-			bracket->slot[r][j] = m < bracket->played && bracket->slot[r - 1][2 * j] >= 0
-				&& bracket->slot[r - 1][2 * j + 1] >= 0
-				? bracket->slot[r - 1][2 * j + cgs.dragTourney.winner[m]] : -1;
-		}
-	}
-	for ( j = 0; j < 2; j++ ) {
-		semi = bracket->size - 4 + j;
-		bracket->third[j] = semi < bracket->played && bracket->slot[bracket->rounds - 2][2 * j] >= 0
-			? bracket->slot[bracket->rounds - 2][2 * j + !cgs.dragTourney.winner[semi]] : -1;
-	}
+	CG_BracketBuild( bracket, cgs.dragTourney.size, cgs.dragTourney.played, cgs.dragTourney.winner );
 }
 
 static const char *CG_DragTourneyMatchName( const cgDragBracket_t *bracket, int match ) {
-	int r, left;
-	if ( match >= bracket->size - 1 ) return "FINAL";
-	if ( match == bracket->size - 2 ) return "THIRD PLACE";
-	for ( r = 0; r < bracket->rounds - 1 && match >= bracket->start[r] + ( bracket->size >> ( r + 1 ) ); r++ ) {
-	}
-	left = bracket->size >> r;
-	if ( left == 4 ) return "SEMI-FINAL";
-	if ( left == 8 ) return "QUARTER-FINAL";
-	return "ROUND OF 16";
+	return CG_BracketMatchName( bracket, match );
 }
 
 static void CG_DragTourneyHeader( const char *title, const char *action, const float *accent, const float *muted ) {
@@ -602,20 +565,26 @@ static void CG_DrawDragTourneyPodium( const cgDragBracket_t *bracket, int self )
 	CG_DrawIngameString( 24, 448, "HOLD SCOREBOARD FOR THE HEAT RESULTS", UI_SMALLFONT, 0.5f, muted );
 }
 
+/* A drag tournament's bracket is due: the match's result had its five
+ * seconds, and TAB is not held. */
+qboolean CG_DragTourneyDue( void ) {
+	static int since, lastSeen;
+	if ( cgs.gametype != GT_DRAG || !cgs.dragTourney.size || !cg.snap ) return qfalse;
+	if ( cg.time - lastSeen > 1000 || cg.time < lastSeen ) since = cg.time;
+	lastSeen = cg.time;
+	return cg.time - since >= 5000 && !cg.showScores;
+}
+
 qboolean CG_DrawDragTourney( void ) {
 	static const vec4_t line = { 0.300f, 0.390f, 0.430f, 0.64f };
 	static const vec4_t muted = { 0.560f, 0.680f, 0.710f, 1.0f };
 	static const vec4_t accent = Q3RALLY_ACCENT_COLOR;
-	static int since, lastSeen;
 	cgDragBracket_t bracket;
 	int size, played, r, j, m, column, boxW, boxH, x, y, pairY, self, current;
 	char selfName[MAX_QPATH];
 
 	size = cgs.dragTourney.size;
-	if ( cgs.gametype != GT_DRAG || !size || !cg.snap ) return qfalse;
-	if ( cg.time - lastSeen > 1000 || cg.time < lastSeen ) since = cg.time;
-	lastSeen = cg.time;
-	if ( cg.time - since < 5000 || cg.showScores ) return qfalse;
+	if ( !CG_DragTourneyDue() ) return qfalse;
 
 	CG_DragTourneyBracket( &bracket );
 	played = bracket.played;

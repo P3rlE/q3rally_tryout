@@ -225,6 +225,7 @@ typedef struct {
 #define MH_END_DOTS			16		/* a team's drivers on the time axis */
 #define MH_END_MEMBERS		4		/* a team's drivers listed on its podium card */
 #define MH_END_SLIP_ROWS	6		/* a drag time slip: reaction, 60 ft .. trap */
+#define MH_PATH_ROWS		6		/* a tournament driver's way: a round a line */
 
 typedef struct {
 	/* inputs */
@@ -252,6 +253,9 @@ typedef struct {
 	const char	*teamCellName[MH_END_TEAMS], *teamCellValue[MH_END_TEAMS];
 	qboolean	rowSwatch;			/* a square in the team's colour before each name */
 	const char	*listHead[4];		/* NULL: POS DRIVER TIME BEST */
+	qboolean	listMatches;		/* a tournament's matches: round, winner, heats (centred), beaten */
+	int			pathCount;			/* in place of the lap chart: your way through a tournament */
+	const char	*pathRound[MH_PATH_ROWS], *pathWhat[MH_PATH_ROWS], *pathTag[MH_PATH_ROWS];
 	int			slipCount;			/* a drag duel, in place of the podium: a time slip a lane */
 	const char	*slipTitle, *slipNote;
 	const char	*slipLane[2], *slipName[2];
@@ -277,6 +281,7 @@ typedef struct {
 	mhText_t	lapsTitleT, lapsNoteT, lapValueT[MH_END_LAPS], lapNameT[MH_END_LAPS];
 	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS];
 	wsRect_t	podium[3], podiumCar[3], podiumRule[3];
+	mhText_t	pathTitleT, pathRoundT[MH_PATH_ROWS], pathWhatT[MH_PATH_ROWS], pathTagT[MH_PATH_ROWS];
 	mhText_t	slipTitleT, slipNoteT, slipLaneT[2], slipYouT[2], slipTagT[2], slipNameT[2];
 	mhText_t	slipLabelT[2][MH_END_SLIP_ROWS], slipValueT[2][MH_END_SLIP_ROWS];
 	wsRect_t	slip[2], slipCar[2], slipRule[2][MH_END_SLIP_ROWS];
@@ -352,6 +357,59 @@ typedef struct {
 } mhTabLayout_t;
 
 void	MH_TabLayout( mhTabLayout_t *t );
+
+/* ---------------------------------------------------------------------------
+   the drag tournament's bracket (gen.py Tourney, Tourney16): the end
+   screen's frame (its header and footer), the match up next and your way at
+   the left, the bracket at the right: a column a round, a card a match, two
+   lines a card, the winner and third place after the final.
+   --------------------------------------------------------------------------- */
+#define MH_BRACKET_ROUNDS	4		/* columns of matches: 16 drivers */
+#define MH_BRACKET_SLOTS	16
+
+typedef struct {
+	const char	*name;				/* NULL: not known yet ("-") */
+	const char	*wins;				/* "" before the match */
+	qboolean	bot, me, out;
+} mhBracketEntrant_t;
+
+typedef struct {
+	mhEndLayout_t	frame;			/* title, subtitle, keys, ready: as the end screen */
+
+	/* inputs ------------------------------------------------------------- */
+	const char	*upLabel, *upName;	/* "UP NEXT" "SEMI-FINAL" */
+	const char	*vsName[2], *vsTag[2];	/* the two of it, "YOU" / "BOT" */
+	int			pathCount;
+	const char	*pathRound[MH_PATH_ROWS], *pathWhat[MH_PATH_ROWS], *pathTag[MH_PATH_ROWS];
+	const char	*hintLabel, *hintText;	/* NULL: none */
+	int			size;				/* 4, 8 or 16 */
+	mhBracketEntrant_t	slot[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS], third[2];
+	int			nextRound, nextPair;	/* the card up next (-1: none) */
+	qboolean	nextThird;
+	const char	*champion;			/* NULL: "?" */
+	const char	*head[MH_BRACKET_ROUNDS + 1];
+
+	/* outputs ------------------------------------------------------------ */
+	int			rounds;				/* columns of matches */
+	mhText_t	upLabelT, upNameT, vsNameT[2], vsTagT[2], againstT, pathTitleT;
+	mhText_t	pathRoundT[MH_PATH_ROWS], pathWhatT[MH_PATH_ROWS], pathTagT[MH_PATH_ROWS];
+	mhText_t	hintLabelT, hintTextT;
+	wsRect_t	sep[2];
+	mhText_t	headT[MH_BRACKET_ROUNDS + 1];
+	wsRect_t	card[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS / 2], divider[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS / 2];
+	mhText_t	nameT[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS], botT[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS];
+	mhText_t	winsT[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS];
+	wsRect_t	row[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS];
+	mhText_t	upNextT;
+	wsRect_t	line[48];
+	int			lineCount;
+	wsRect_t	winnerCard, trophy;
+	mhText_t	winnerT, thirdLabelT;
+	wsRect_t	thirdCard, thirdDivider, thirdRow[2];
+	mhText_t	thirdNameT[2], thirdBotT[2], thirdWinsT[2];
+} mhBracketLayout_t;
+
+void	MH_BracketLayout( mhBracketLayout_t *b );
 void	MH_EndLayout( mhEndLayout_t *e );
 void	MH_ZoneMarkerLayout( mhZoneMarker_t *m );
 void	MH_RaceLayout( mhRaceLayout_t *l );

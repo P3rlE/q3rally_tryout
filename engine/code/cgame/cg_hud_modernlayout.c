@@ -1150,6 +1150,38 @@ static float MH_EndStat( mhText_t *label, mhText_t *value, mhText_t *unit, float
 }
 
 /* the left column: the place, the time, four figures, your laps */
+/* a tournament driver's way (gen.py path_line): YOUR WAY over a line a
+ * round, 26 high and 4 apart: the round in 112, the match 12 after it, the
+ * tag at the right, on one baseline (a round still to come: at the top) */
+static float MH_PathRows( mhText_t *title, mhText_t *round, mhText_t *what, mhText_t *tag,
+                          const char **rounds, const char **whats, const char **tags, int count, float x, float y, float w ) {
+	wsTextStyle_t label12, label11, text15;
+	int i;
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Text( &text15, 15.0f );
+	MH_Set( title, &label12, "YOUR WAY" );
+	MH_Place( title, x, y );
+	title->box.w = w;
+	y += title->box.h + 4.0f;
+	for ( i = 0; i < count && i < MH_PATH_ROWS; i++ ) {
+		float base;
+		MH_Set( &round[i], &label11, rounds[i] ? rounds[i] : "" );
+		MH_Set( &what[i], &text15, whats[i] ? whats[i] : "" );
+		MH_Set( &tag[i], &label11, tags[i] ? tags[i] : "" );
+		/* the line's baseline: the match's, the labels on it */
+		base = MH_Base( &what[i] ) > MH_Base( &round[i] ) ? MH_Base( &what[i] ) : MH_Base( &round[i] );
+		if ( !what[i].text[0] ) base = MH_Base( &round[i] );
+		MH_Place( &what[i], x + 112.0f + 12.0f, y + base - MH_Base( &what[i] ) );
+		MH_Place( &round[i], x, y + base - MH_Base( &round[i] ) );
+		round[i].box.w = 112.0f;
+		MH_Place( &tag[i], x + w - tag[i].box.w, y + base - MH_Base( &tag[i] ) );
+		MH_Fit( &what[i], tag[i].box.x - 12.0f - what[i].box.x );
+		y += 26.0f + ( i < count - 1 ? 4.0f : 0.0f );
+	}
+	return y;
+}
+
 static void MH_EndLeft( mhEndLayout_t *e ) {
 	wsTextStyle_t big168, big48, big44, big30, label12, label11, label10, mono11;
 	float x = MH_END_MARGIN, y = e->top + MH_END_TOP, w = MH_END_LEFT_W, h, slot;
@@ -1210,6 +1242,11 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 
 	/* your laps: the row, 12px, the chart: slots 8px apart, a 56px bar
 	 * area, 6px, the value, 6px, the lap */
+	if ( e->pathCount > 0 ) {
+		MH_PathRows( &e->pathTitleT, e->pathRoundT, e->pathWhatT, e->pathTagT, e->pathRound, e->pathWhat, e->pathTag,
+		             e->pathCount, x, y, w );
+		return;
+	}
 	MH_Set( &e->lapsTitleT, &label12, e->chartTitle ? e->chartTitle : "YOUR LAPS" );
 	MH_Set( &e->lapsNoteT, &label11, e->chartNote ? e->chartNote : "LOST TO YOUR BEST" );
 	y += MH_BaselineRow( &e->lapsTitleT, &e->lapsNoteT, x, y, w ) + 12.0f;
@@ -1446,7 +1483,7 @@ static void MH_EndMiddle( mhEndLayout_t *e ) {
  * rows (34 high, 24 compact; 2px apart) 8px wider than the panel's inside */
 static void MH_EndList( mhEndLayout_t *e ) {
 	static const char *heads[4] = { "POS", "DRIVER", "TIME", "BEST" };
-	wsTextStyle_t label12, label11, mono14, text16, mono12, text14;
+	wsTextStyle_t label12, label11, mono14, text16, mono12, text14, mono13, text15;
 	float x = e->viewWidth - MH_END_MARGIN - MH_END_LIST_W, inX, inW, y, colX[4], colW[4], rowH;
 	int i, c;
 
@@ -1456,6 +1493,8 @@ static void MH_EndList( mhEndLayout_t *e ) {
 	MH_Text( &text16, 16.0f );
 	MH_Mono( &mono12, 12.0f );
 	MH_Text( &text14, 14.0f );
+	MH_Mono( &mono13, 13.0f );
+	MH_Text( &text15, 15.0f );
 	e->list.x = x;
 	e->list.y = e->top + MH_END_TOP;
 	e->list.w = MH_END_LIST_W;
@@ -1491,6 +1530,10 @@ static void MH_EndList( mhEndLayout_t *e ) {
 	colW[2] = 82.0f;
 	colW[3] = 70.0f;
 	colW[1] = inW - colW[0] - colW[2] - colW[3] - 30.0f - ( e->rowSwatch ? 20.0f : 0.0f );
+	if ( e->listMatches ) {	/* a tournament's matches: 34, the winner, 44, the one beaten */
+		colW[2] = 44.0f;
+		colW[1] = colW[3] = ( inW - colW[0] - colW[2] - 30.0f ) * 0.5f;
+	}
 	colX[0] = 0.0f;
 	colX[1] = colX[0] + colW[0] + 10.0f + ( e->rowSwatch ? 20.0f : 0.0f );
 	for ( c = 2; c < 4; c++ ) colX[c] = colX[c - 1] + colW[c - 1] + 10.0f;
@@ -1512,6 +1555,12 @@ static void MH_EndList( mhEndLayout_t *e ) {
 		MH_Set( &e->rowNameT[i], e->compact ? &text14 : &text16, e->rowName[i] );
 		MH_Set( &e->rowTimeT[i], e->compact ? &mono12 : &mono14, e->rowTime[i] );
 		MH_Set( &e->rowBestT[i], e->compact ? &mono12 : &mono14, e->rowBest[i] );
+		if ( e->listMatches ) {	/* the round smaller, both names as names */
+			MH_Set( &e->rowPosT[i], e->compact ? &mono12 : &mono13, e->rowPos[i] );
+			MH_Set( &e->rowNameT[i], e->compact ? &text14 : &text15, e->rowName[i] );
+			MH_Set( &e->rowBestT[i], e->compact ? &text14 : &text15, e->rowBest[i] );
+			MH_Fit( &e->rowBestT[i], colW[3] );
+		}
 		MH_Fit( &e->rowNameT[i], colW[1] );
 		MH_Place( &e->rowPosT[i], inX + colX[0], y + ( rowH - e->rowPosT[i].box.h ) * 0.5f );
 		MH_Place( &e->rowNameT[i], inX + colX[1], y + ( rowH - e->rowNameT[i].box.h ) * 0.5f );
@@ -1792,4 +1841,208 @@ void MH_TabLayout( mhTabLayout_t *t ) {
 	MH_Place( &t->specLabelT, x + 2.0f, y + MH_Base( &t->specT ) - MH_Base( &t->specLabelT ) );
 	MH_Place( &t->serverT, x + MH_TAB_W - 2.0f - t->serverT.box.w, y + MH_Base( &t->specT ) - MH_Base( &t->serverT ) );
 	MH_Fit( &t->specT, t->serverT.box.x - 24.0f - t->specT.box.x );
+}
+
+/* -------------------------------------------------------------------------
+   the drag tournament's bracket (gen.py tourney_left, bracket)
+   ------------------------------------------------------------------------- */
+
+/* the frame only: the header and the footer of the end screen */
+static void MH_EndFrame( mhEndLayout_t *e ) {
+	wsTextStyle_t label13, label12;
+	MH_Label( &label13, 13.0f );
+	MH_Label( &label12, 12.0f );
+	MH_Set( &e->titleT, &label13, e->title );
+	MH_Set( &e->subtitleT, &label12, e->subtitle ? e->subtitle : "" );
+	MH_Place( &e->titleT, MH_END_MARGIN, e->top + 48.0f );
+	MH_Place( &e->subtitleT, MH_END_MARGIN + e->titleT.box.w + 16.0f,
+	          e->titleT.box.y + MH_Base( &e->titleT ) - MH_Base( &e->subtitleT ) );
+	MH_EndFooter( e );
+}
+
+/* a line of a card: the name (flexible), BOT, the heats won, 8 apart inside 10 */
+static void MH_BracketLine( const mhBracketEntrant_t *in, mhText_t *name, mhText_t *bot, mhText_t *wins,
+                            wsRect_t *row, float x, float y, float w, float rowH ) {
+	wsTextStyle_t text15, text13, label9, mono14;
+	float right = x + w - 10.0f;
+	MH_Text( &text15, 15.0f );
+	MH_Text( &text13, 13.0f );
+	MH_Label( &label9, 9.0f );
+	MH_Mono( &mono14, 14.0f );
+	row->x = x;
+	row->y = y;
+	row->w = w;
+	row->h = rowH;
+	MH_Set( wins, &mono14, in->name && in->wins ? in->wins : "" );
+	MH_Set( bot, &label9, in->name && in->bot ? "BOT" : "" );
+	MH_Set( name, rowH >= 26.0f ? &text15 : &text13, in->name ? in->name : "-" );
+	if ( wins->text[0] ) {
+		MH_Place( wins, right - wins->box.w, y + ( rowH - wins->box.h ) * 0.5f );
+		right = wins->box.x - 8.0f;
+	}
+	if ( bot->text[0] ) {
+		MH_Place( bot, right - bot->box.w, y + ( rowH - bot->box.h ) * 0.5f );
+		right = bot->box.x - 8.0f;
+	}
+	MH_Place( name, x + 10.0f, y + ( rowH - name->box.h ) * 0.5f );
+	MH_Fit( name, right - name->box.x );
+	name->box.w = right - name->box.x;
+}
+
+/* a card: 1px around, two lines, a rule between */
+static void MH_BracketCard( mhBracketLayout_t *b, wsRect_t *card, wsRect_t *divider, const mhBracketEntrant_t *e2,
+                            mhText_t *names, mhText_t *bots, mhText_t *wins, wsRect_t *rows, float x, float cy, float w, float rowH ) {
+	float h = 2.0f * rowH + 1.0f, top = cy - h * 0.5f;
+	card->x = x;
+	card->y = top;
+	card->w = w;
+	card->h = h + 2.0f;
+	MH_BracketLine( &e2[0], &names[0], &bots[0], &wins[0], &rows[0], x + 1.0f, top + 1.0f, w - 2.0f, rowH );
+	divider->x = x + 1.0f;
+	divider->y = top + 1.0f + rowH;
+	divider->w = w - 2.0f;
+	divider->h = 1.0f;
+	MH_BracketLine( &e2[1], &names[1], &bots[1], &wins[1], &rows[1], x + 1.0f, top + 2.0f + rowH, w - 2.0f, rowH );
+	(void)b;
+}
+
+static void MH_BracketLineRect( mhBracketLayout_t *b, float x, float y, float w, float h ) {
+	if ( b->lineCount >= (int)( sizeof( b->line ) / sizeof( b->line[0] ) ) ) return;
+	b->line[b->lineCount].x = x;
+	b->line[b->lineCount].y = y;
+	b->line[b->lineCount].w = w;
+	b->line[b->lineCount].h = h;
+	b->lineCount++;
+}
+
+void MH_BracketLayout( mhBracketLayout_t *b ) {
+	mhEndLayout_t *e = &b->frame;
+	wsTextStyle_t label12, label11, label10, big64, text22, text14, text16;
+	float x = MH_END_MARGIN, y = e->top + MH_END_TOP, w = MH_END_LEFT_W;
+	float x0 = MH_END_MARGIN + MH_END_LEFT_W + 40.0f, total, top = e->top + 172.0f, bottom = e->top + 760.0f;
+	float cardW, rowH, gap, pitch, centre[MH_BRACKET_ROUNDS][MH_BRACKET_SLOTS / 2], cx, cy;
+	int r, j, k, cols, first;
+
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Label( &label10, 10.0f );
+	MH_Big( &big64, 64.0f );
+	MH_Text( &text22, 22.0f );
+	MH_Text( &text14, 14.0f );
+	MH_Text( &text16, 16.0f );
+	MH_EndFrame( e );
+
+	/* the left: the match up next, big; who rides it; your way; a hint */
+	MH_Set( &b->upLabelT, &label12, b->upLabel ? b->upLabel : "" );
+	MH_Set( &b->upNameT, &big64, b->upName ? b->upName : "" );
+	MH_Place( &b->upLabelT, x, y );
+	b->upLabelT.box.w = w;
+	MH_Place( &b->upNameT, x, y + b->upLabelT.box.h + 8.0f );
+	MH_Fit( &b->upNameT, w );
+	b->upNameT.box.w = w;
+	y = b->upNameT.box.y + b->upNameT.box.h + 22.0f;
+	for ( k = 0; k < 2; k++ ) {
+		MH_Set( &b->vsNameT[k], &text22, b->vsName[k] ? b->vsName[k] : "-" );
+		MH_Set( &b->vsTagT[k], &label11, b->vsTag[k] ? b->vsTag[k] : "" );
+		MH_Place( &b->vsNameT[k], x, y );
+		MH_Fit( &b->vsNameT[k], w - 60.0f );
+		MH_Place( &b->vsTagT[k], x + b->vsNameT[k].box.w + 10.0f, y + MH_Base( &b->vsNameT[k] ) - MH_Base( &b->vsTagT[k] ) );
+		y += b->vsNameT[k].box.h + 6.0f;
+		if ( k == 0 ) {
+			MH_Set( &b->againstT, &label11, "AGAINST" );
+			MH_Place( &b->againstT, x, y );
+			b->againstT.box.w = w;
+			y += b->againstT.box.h + 6.0f;
+		}
+	}
+	y += 22.0f - 6.0f;
+	b->sep[0].x = x;
+	b->sep[0].y = y;
+	b->sep[0].w = w;
+	b->sep[0].h = 1.0f;
+	y += 1.0f + 22.0f;
+	if ( b->pathCount > 0 ) {
+		y = MH_PathRows( &b->pathTitleT, b->pathRoundT, b->pathWhatT, b->pathTagT, b->pathRound, b->pathWhat, b->pathTag,
+		                 b->pathCount, x, y, w );
+	} else {
+		MH_Set( &b->pathTitleT, &label12, "" );
+	}
+	if ( b->hintText ) {
+		y += 22.0f;
+		b->sep[1].x = x;
+		b->sep[1].y = y;
+		b->sep[1].w = w;
+		b->sep[1].h = 1.0f;
+		y += 1.0f + 22.0f;
+		MH_Set( &b->hintLabelT, &label11, b->hintLabel ? b->hintLabel : "" );
+		MH_Set( &b->hintTextT, &text14, b->hintText );
+		MH_Place( &b->hintLabelT, x, y );
+		b->hintLabelT.box.w = w;
+		MH_Place( &b->hintTextT, x, y + b->hintLabelT.box.h + 6.0f );
+		MH_Fit( &b->hintTextT, w );
+		b->hintTextT.box.w = w;
+	} else {
+		memset( &b->sep[1], 0, sizeof( b->sep[1] ) );
+		MH_Set( &b->hintLabelT, &label11, "" );
+		MH_Set( &b->hintTextT, &text14, "" );
+	}
+
+	/* the bracket: a column a round and one for the winner, the cards
+	 * evenly spaced in the first, each later one between the two it comes from */
+	for ( b->rounds = 0; ( 2 << b->rounds ) <= b->size && b->rounds < MH_BRACKET_ROUNDS; b->rounds++ ) {
+	}
+	cols = b->rounds + 1;
+	total = e->viewWidth - MH_END_MARGIN - x0;
+	cardW = b->size >= 16 ? 176.0f : b->size >= 8 ? 210.0f : 240.0f;
+	rowH = b->size >= 16 ? 22.0f : 30.0f;
+	gap = ( total - cols * cardW ) / ( cols - 1 );
+	first = b->size / 2;
+	pitch = ( bottom - top ) / first;
+	b->lineCount = 0;
+	MH_Set( &b->upNextT, &label10, "" );
+	for ( r = 0; r < b->rounds; r++ ) {
+		cx = x0 + r * ( cardW + gap );
+		for ( j = 0; j < b->size >> ( r + 1 ); j++ ) {
+			cy = r == 0 ? top + ( j + 0.5f ) * pitch : ( centre[r - 1][2 * j] + centre[r - 1][2 * j + 1] ) * 0.5f;
+			centre[r][j] = cy;
+			MH_BracketCard( b, &b->card[r][j], &b->divider[r][j], &b->slot[r][2 * j], &b->nameT[r][2 * j], &b->botT[r][2 * j],
+			                &b->winsT[r][2 * j], &b->row[r][2 * j], cx, cy, cardW, rowH );
+			if ( r == b->nextRound && j == b->nextPair && !b->nextThird ) {
+				MH_Set( &b->upNextT, &label10, "UP NEXT" );
+				MH_Place( &b->upNextT, cx, b->card[r][j].y - 18.0f );
+			}
+			if ( r > 0 ) {	/* in from the two before: out of each, down the middle, in */
+				float px = cx - gap, lo = centre[r - 1][2 * j], hi = centre[r - 1][2 * j + 1];
+				MH_BracketLineRect( b, px, lo, gap * 0.5f, 1.0f );
+				MH_BracketLineRect( b, px, hi, gap * 0.5f, 1.0f );
+				MH_BracketLineRect( b, px + gap * 0.5f, lo, 1.0f, hi - lo );
+				MH_BracketLineRect( b, px + gap * 0.5f, cy, gap * 0.5f, 1.0f );
+			}
+		}
+	}
+	for ( r = 0; r <= b->rounds; r++ ) {
+		MH_Set( &b->headT[r], &label11, b->head[r] ? b->head[r] : "" );
+		MH_Place( &b->headT[r], x0 + r * ( cardW + gap ), top - 40.0f );
+	}
+
+	/* the winner: out of the final to a card of its own, 56 high */
+	cx = x0 + b->rounds * ( cardW + gap );
+	cy = centre[b->rounds - 1][0];
+	MH_BracketLineRect( b, cx - gap, cy, gap, 1.0f );
+	b->winnerCard.x = cx;
+	b->winnerCard.y = cy - 28.0f;
+	b->winnerCard.w = cardW;
+	b->winnerCard.h = 56.0f;
+	b->trophy.x = cx + 1.0f + 12.0f;
+	b->trophy.w = b->trophy.h = 20.0f;
+	b->trophy.y = b->winnerCard.y + 2.0f + ( 56.0f - 3.0f - 20.0f ) * 0.5f;
+	MH_Set( &b->winnerT, &text16, b->champion ? b->champion : "?" );
+	MH_Place( &b->winnerT, b->trophy.x + 20.0f + 10.0f, b->winnerCard.y + 2.0f + ( 56.0f - 3.0f - b->winnerT.box.h ) * 0.5f );
+	MH_Fit( &b->winnerT, cx + cardW - 13.0f - b->winnerT.box.x );
+
+	/* third place under it */
+	MH_Set( &b->thirdLabelT, &label10, "THIRD PLACE" );
+	MH_Place( &b->thirdLabelT, cx, cy + 90.0f - 18.0f );
+	MH_BracketCard( b, &b->thirdCard, &b->thirdDivider, b->third, b->thirdNameT, b->thirdBotT, b->thirdWinsT, b->thirdRow,
+	                cx, cy + 90.0f + ( 2.0f * rowH + 1.0f ) * 0.5f, cardW, rowH );
 }

@@ -136,7 +136,29 @@ A drag race ends on its own page (`EndDrag.dc.html`), the duel:
 The server sends only each car's current state; the client writes every
 heat down as it runs (`cg_drag_log.c`, tested in `tests/test_drag_log.py`),
 with the 60 ft, 330 ft and 1/8 mile splits the HUD measures, now for both
-lanes. In a tournament the bracket follows after five seconds as before.
+lanes.
+
+A drag tournament (`g_dragTournament 1`) shows the match's own end screen
+first; five seconds later (TAB holds the heat results) the tournament:
+
+- Between the matches the bracket (`Tourney.dc.html`, `Tourney16.dc.html`):
+  at the left the match up next, big, who rides it (YOU, BOT), your way
+  through the rounds (won, lost, up next, the ones to come) and, when two
+  bots are up next, the hint to `/dragskip`. At the right a column a
+  round, a card a match: the drivers with the heats they won, the winner
+  white, the one out grey, bots in grey type with BOT, your lines lit, the
+  match up next outlined with UP NEXT; the winner's card and third place
+  after the final. 16 drivers get lower lines.
+- After the final (`TourneyEnd.dc.html`), the end screen's page for the
+  whole tournament: your place of the field, your last match and how it
+  went, matches and heats won and lost, your way; the podium (champion,
+  finalist, third) with their cars and scores; a clean sweep and the most
+  heats won as highlights; every match with its winner, heats and the one
+  beaten.
+
+The bracket's bookkeeping (rounds, pairings, a driver's way, the places)
+is shared with the classic bracket in `cg_drag_bracket.c`, tested in
+`tests/test_drag_bracket.py`.
 
 ## The TAB table
 
