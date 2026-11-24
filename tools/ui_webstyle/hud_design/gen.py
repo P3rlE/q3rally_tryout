@@ -812,10 +812,10 @@ def stat(k, v, color='#ffffff', unit=''):
             f'<div style="display: flex; align-items: baseline; gap: 6px">{big(v, 30, color)}{u}</div></div>')
 
 
-def footer(waiting, ready, total):
+def footer(waiting, ready, total, keys=(('FIRE', 'READY'), ('TAB', 'DETAILS'), ('ESC', 'MENU'))):
     """Q3 waits for the drivers between maps: FIRE says you are ready, the bar how many are."""
     keys = ''.join(f'<div style="display: flex; gap: 8px; align-items: baseline">{lab(k, "#ffffff", 12)}{lab(a, "#777777", 12)}</div>'
-                   for k, a in (('FIRE', 'READY'), ('TAB', 'DETAILS'), ('ESC', 'MENU')))
+                   for k, a in keys)
     return (f'<div style="position: absolute; left: 56px; right: 56px; bottom: 36px; display: flex; align-items: center; gap: 40px">'
             f'<div style="display: flex; gap: 28px">{keys}</div>'
             f'<div style="margin-left: auto; width: 360px; display: flex; flex-direction: column; gap: 6px">'
@@ -1067,6 +1067,201 @@ board('EndDrag.dc.html', 'Drag result', None, [
 ])
 
 # ---------------------------------------------------------------------------
+# the drag tournament: the bracket between the matches, the podium after the
+# final. A match a card, two lines: who, the heats won; the winner white, the
+# one out grey, you lit, bots in grey type; the match up next outlined.
+# ---------------------------------------------------------------------------
+TOURNEY_KEYS = (('FIRE', 'CONTINUE'), ('TAB', 'HEAT RESULTS'), ('ESC', 'MENU'))
+
+
+def t_entrant(name, wins, state, row_h, bot=False, me=False):
+    """state: 'won', 'out' or '' (not played yet)."""
+    color = '#777777' if state == 'out' else '#bbbbbb' if bot else '#ffffff'
+    bg = 'background: rgba(255,85,0,0.18);' if me else ''
+    w = mono(str(wins), 14, '#777777' if state == 'out' else '#ffffff') if wins != '' else ''
+    return (f'<div style="height: {row_h}px; display: flex; align-items: center; gap: 8px; padding: 0 10px; {bg}">'
+            f'{text(name or "–", 15 if row_h >= 26 else 13, color if name else "#555555", 700 if me else 400, "flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis")}'
+            f'{lab("BOT", "#666666", 9) if bot and name else ""}{w}</div>')
+
+
+def t_match(a, b, w, row_h, nxt=False):
+    border = f'1px solid {ACC}' if nxt else f'1px solid {LINE}'
+    return (f'<div style="width: {w}px; background: {PANEL}; border: {border}; box-sizing: border-box">'
+            f'{t_entrant(*a)}<div style="height: 1px; background: {LINE}"></div>{t_entrant(*b)}</div>')
+
+
+def bracket(rounds, heads, x0, w_total, top, bottom, card_w, row_h, third=None, champion=None):
+    """rounds: a list of rounds, each a list of matches (a, b, next); laid out from the left, every
+    match centred on the two it comes from. Connectors in the line colour."""
+    n_cols = len(rounds) + 1
+    gap = (w_total - n_cols * card_w) / (n_cols - 1)
+    card_h = 2 * row_h + 1
+    out, centres = [], []
+    first = len(rounds[0])
+    pitch = (bottom - top) / first
+    for r, matches in enumerate(rounds):
+        x = x0 + r * (card_w + gap)
+        cs = []
+        for j, (a, b, nxt) in enumerate(matches):
+            cy = top + (j + 0.5) * pitch if r == 0 else (centres[r - 1][2 * j] + centres[r - 1][2 * j + 1]) / 2
+            cs.append(cy)
+            if nxt:
+                out.append(f'<div style="position: absolute; left: {x}px; top: {cy - card_h / 2 - 18}px">{lab("Up next", ACC, 10)}</div>')
+            out.append(f'<div style="position: absolute; left: {x}px; top: {cy - card_h / 2}px">{t_match(a, b, card_w, row_h, nxt)}</div>')
+            if r > 0:  # the lines in from the two before
+                px = x - gap
+                for k in (2 * j, 2 * j + 1):
+                    py = centres[r - 1][k]
+                    out.append(f'<div style="position: absolute; left: {px}px; top: {py}px; width: {gap / 2}px; height: 1px; background: #3a3a3a"></div>')
+                lo, hi = sorted((centres[r - 1][2 * j], centres[r - 1][2 * j + 1]))
+                out.append(f'<div style="position: absolute; left: {px + gap / 2}px; top: {lo}px; width: 1px; height: {hi - lo}px; background: #3a3a3a"></div>'
+                           f'<div style="position: absolute; left: {px + gap / 2}px; top: {cy}px; width: {gap / 2}px; height: 1px; background: #3a3a3a"></div>')
+        centres.append(cs)
+    # the heads over the columns
+    for r, h in enumerate(heads):
+        out.append(f'<div style="position: absolute; left: {x0 + r * (card_w + gap)}px; top: {top - 40}px">{lab(h, "#999999", 11)}</div>')
+    # the winner: the final's line out to a card of its own
+    xw = x0 + len(rounds) * (card_w + gap)
+    cy = centres[-1][0]
+    out.append(f'<div style="position: absolute; left: {xw - gap}px; top: {cy}px; width: {gap}px; height: 1px; background: #3a3a3a"></div>')
+    name = champion or ''
+    out.append(f'<div style="position: absolute; left: {xw}px; top: {cy - 28}px; width: {card_w}px; height: 56px; background: {PANEL}; '
+               f'border: 1px solid {LINE}; border-top: 2px solid {ACC if name else LINE}; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 12px">'
+               f'{icon("trophy", 20, ACC if name else "#555555")}{text(name or "?", 16, "#ffffff" if name else "#555555")}</div>')
+    # third place under it
+    if third:
+        a, b, nxt = third
+        ty = cy + 90
+        out.append(f'<div style="position: absolute; left: {xw}px; top: {ty - 18}px">{lab("Third place", ACC if nxt else "#999999", 10)}</div>')
+        out.append(f'<div style="position: absolute; left: {xw}px; top: {ty}px">{t_match(a, b, card_w, row_h, nxt)}</div>')
+    return ''.join(out)
+
+
+def path_line(round_, what, state):
+    color = {'won': '#ffffff', 'next': ACC, 'out': '#777777', '': '#555555'}[state]
+    tag = {'won': lab('Won', FAST, 11), 'next': lab('Up next', ACC, 11), 'out': lab('Out', ACC, 11), '': lab('', '#555555', 11)}[state]
+    return (f'<div style="display: flex; align-items: baseline; gap: 12px; height: 26px">'
+            f'<div style="width: 112px">{lab(round_, "#999999", 11)}</div>{text(what, 15, color)}'
+            f'<div style="margin-left: auto">{tag}</div></div>')
+
+
+def tourney_left(up_label, big_text, a, b, path, note=None):
+    vs = (f'<div style="display: flex; flex-direction: column; gap: 6px">'
+          f'<div style="display: flex; align-items: baseline; gap: 10px">{text(a[0], 22, ACC if a[1] else "#ffffff", 700)}'
+          f'{lab("YOU", ACC, 11) if a[1] else lab("BOT", "#777777", 11) if a[2] else ""}</div>{lab("against", "#777777", 11)}'
+          f'<div style="display: flex; align-items: baseline; gap: 10px">{text(b[0], 22, ACC if b[1] else "#ffffff", 700)}'
+          f'{lab("BOT", "#777777", 11) if b[2] else ""}</div></div>')
+    hint = (f'<div style="display: flex; flex-direction: column; gap: 6px">{lab("A bot match", "#bbbbbb", 11)}'
+            f'{text(note, 14, "#999999")}</div>') if note else ''
+    return (f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+            f'<div style="display: flex; flex-direction: column; gap: 8px">{lab(up_label, ACC, 12)}{big(big_text, 64)}</div>'
+            + vs + sep() +
+            f'<div style="display: flex; flex-direction: column; gap: 4px">{lab("Your way")}'
+            + ''.join(path_line(*x) for x in path) + '</div>' + (sep() + hint if hint else '') + '</div>')
+
+
+# eight drivers, the quarter-finals done, your semi-final up next
+qf = [(('Player', 2, 'won', 18, False, True), ('Tony', 1, 'out', 18, True), False),
+      (('Vlad', 2, 'won', 18, True), ('Ivan', 0, 'out', 18, False), False),
+      (('Sam', 2, 'won', 18, False), ('Bee', 0, 'out', 18, True), False),
+      (('Carla', 1, 'out', 18, True), ('Janine', 2, 'won', 18, False), False)]
+qf = [(e1[:3] + e1[4:], e2[:3] + e2[4:], n) for e1, e2, n in qf]
+sf = [(('Player', '', '', False, True), ('Vlad', '', '', True), True), (('Sam', '', ''), ('Janine', '', ''), False)]
+fin = [(('', '', ''), ('', '', ''), False)]
+
+
+def rows_h(matches, h):
+    return [((a[0], a[1], a[2], h) + tuple(a[3:]), (b[0], b[1], b[2], h) + tuple(b[3:]), n) for a, b, n in matches]
+
+
+board('Tourney.dc.html', 'Drag tournament', None, [
+    blurred(BG['drag']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Drag tournament", ACC, 13)}{lab("8 drivers · best of 3 · quarter-finals done", "#999999", 12)}</div>',
+    tourney_left('Up next', 'Semi-final', ('Player', True, False), ('Vlad', False, True),
+                 [('Quarter-final', 'beat Tony 2-1', 'won'), ('Semi-final', 'against Vlad', 'next'), ('Final', '', '')]),
+    bracket([rows_h(qf, 30), rows_h(sf, 30), rows_h(fin, 30)], ['Quarter-finals', 'Semi-finals', 'Final', 'Winner'],
+            476, 1068, 172, 760, 210, 30, third=(('', '', '', 30), ('', '', '', 30), False)),
+    footer('WAITING FOR 1 DRIVER', 0, 1, TOURNEY_KEYS),
+])
+
+# sixteen drivers: a round more, lower lines; the next match is between bots
+names16 = ['Player', 'Tony', 'Vlad', 'Ivan', 'Sam', 'Bee', 'Carla', 'Janine', 'Minori', 'Josh', 'Tanya', 'Emma',
+           'Bobby', 'Samuel', 'Paul', 'Kai']
+bots16 = {'Tony', 'Vlad', 'Bee', 'Carla', 'Minori', 'Josh', 'Tanya', 'Emma', 'Bobby', 'Samuel', 'Paul', 'Kai'}
+r16 = []
+for j in range(8):
+    a, b = names16[2 * j], names16[2 * j + 1]
+    played = j < 5
+    wa = (j % 3 != 1)
+    r16.append(((a, (2 if wa else 1) if played else '', ('won' if wa else 'out') if played else '', 22, a in bots16, a == 'Player'),
+                (b, (1 if wa else 2) if played else '', ('out' if wa else 'won') if played else '', 22, b in bots16, b == 'Player'),
+                j == 5))
+q16 = [(('Player', '', '', 22, False, True), ('Ivan', '', '', 22, False), False),
+       (('Sam', '', '', 22, False), ('Janine', '', '', 22, False), False),
+       (('Josh', '', '', 22, True), ('', '', '', 22), False), (('', '', '', 22), ('', '', '', 22), False)]
+s16 = [(('', '', '', 22), ('', '', '', 22), False)] * 2
+board('Tourney16.dc.html', 'Drag tournament, 16 drivers', None, [
+    blurred(BG['drag']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Drag tournament", ACC, 13)}{lab("16 drivers · best of 3 · round of 16", "#999999", 12)}</div>',
+    tourney_left('Up next', 'Round of 16', ('Tanya', False, True), ('Emma', False, True),
+                 [('Round of 16', 'beat Tony 2-1', 'won'), ('Quarter-final', 'against Ivan', ''), ('Semi-final', '', ''), ('Final', '', '')],
+                 note='/dragskip skips it, /dragskip all skips to your next match.'),
+    bracket([r16, q16, s16, [(('', '', '', 22), ('', '', '', 22), False)]],
+            ['Round of 16', 'Quarter-finals', 'Semi-finals', 'Final', 'Winner'],
+            476, 1068, 172, 760, 176, 22, third=(('', '', '', 22), ('', '', '', 22), False)),
+    footer('WAITING FOR 1 DRIVER', 0, 1, TOURNEY_KEYS),
+])
+
+
+# after the final: the podium, where you ended, every match
+def t_results(rows):
+    grid = 'display: grid; grid-template-columns: 34px 1fr 44px 1fr; gap: 10px'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">{lab("RND", "#999999", 11)}{lab("WINNER", "#999999", 11)}'
+            f'<div style="text-align: center">{lab("HEATS", "#999999", 11)}</div>{lab("BEATEN", "#999999", 11)}</div>')
+    out = []
+    for rnd, w, score, l, me in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(rnd, 13, "#999999")}{text(w, 15, "#ffffff", 400, "overflow: hidden; white-space: nowrap; text-overflow: ellipsis")}'
+                   f'<div style="text-align: center">{mono(score, 14, "#dddddd")}</div>'
+                   f'{text(l, 15, "#777777", 400, "overflow: hidden; white-space: nowrap; text-overflow: ellipsis")}</div>')
+    return panel(row(lab('Every match'), lab('8 drivers', '#999999')) + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+board('TourneyEnd.dc.html', 'Drag tournament over', None, [
+    blurred(BG['drag']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Drag tournament", ACC, 13)}{lab("8 drivers · best of 3 · Sam wins", "#999999", 12)}</div>',
+    f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+    f'<div style="display: flex; align-items: baseline; gap: 14px">{big("P2", 168)}{big("/ 8", 48, "#777777")}</div>'
+    f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -18px">{lab("You finish second")}'
+    f'{big("1-2", 44)}{lab("lost the final to Sam", ACC, 12)}</div>'
+    + sep() +
+    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">'
+    f'{stat("Matches won", "2")}{stat("Matches lost", "1")}{stat("Heats won", "5")}{stat("Heats lost", "3")}</div>'
+    + sep() +
+    f'<div style="display: flex; flex-direction: column; gap: 4px">{lab("Your way")}'
+    + path_line('Quarter-final', 'beat Tony 2-1', 'won') + path_line('Semi-final', 'beat Vlad 2-0', 'won')
+    + path_line('Final', 'lost to Sam 1-2', 'out') + '</div></div>',
+    f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; height: 410px; display: flex; gap: 12px; align-items: flex-end">'
+    + podium_card(2, 'Player', 'viper', '2-1 · 2-0', '', 192, 176, me=True).replace('SECOND', 'FINALIST')
+    + podium_card(1, 'Sam', 'murcielago', '2-0 · 2-1 · 2-1', '', 210, 236).replace('WINNER', 'CHAMPION')
+    + podium_card(3, 'Vlad', 'db12', 'third place 2-1', '', 192, 140) + '</div>',
+    f'<div style="position: absolute; left: 476px; top: 530px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{lab("Highlights")}'
+    + award('flag', 'Clean sweep', 'Sam · no heat lost', '6-0', FAST)
+    + award('trophy', 'Most heats won', 'Sam · three matches', '6', PURPLE) + '</div>',
+    col('right: 56px; top: 92px', t_results([
+        ('QF', 'Player', '2-1', 'Tony', True), ('QF', 'Vlad', '2-0', 'Ivan', False), ('QF', 'Sam', '2-0', 'Bee', False),
+        ('QF', 'Janine', '2-1', 'Carla', False), ('SF', 'Player', '2-0', 'Vlad', True), ('SF', 'Sam', '2-1', 'Janine', False),
+        ('3RD', 'Vlad', '2-1', 'Janine', False), ('F', 'Sam', '2-1', 'Player', False)]), 420),
+    footer('WAITING FOR 1 DRIVER', 0, 1, (('FIRE', 'NEXT TOURNAMENT'), ('TAB', 'HEAT RESULTS'), ('ESC', 'MENU'))),
+])
+
+# ---------------------------------------------------------------------------
 # the TAB table: held during the game (and when you are wrecked), the game
 # dimmed behind it, the HUD out of the way. One table for every mode: the
 # columns are the mode's, your row lit, bots without a ping.
@@ -1213,6 +1408,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
         ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndDrag.dc.html'],
+        ['Tourney.dc.html', 'Tourney16.dc.html', 'TourneyEnd.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
 titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zonen und Bausteine', 'Sprint.dc.html': 'Sprint',
@@ -1220,12 +1416,12 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndDrag.dc.html': 'Endbildschirm Drag Race',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}
 rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen',
-               'Endbildschirme', 'TAB-Tabelle']
+               'Endbildschirme', 'Drag-Turnier', 'TAB-Tabelle']
 boards, notes = {}, {}
 for r, names in enumerate(ROWS):
     for c, n in enumerate(names):

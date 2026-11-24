@@ -85,6 +85,11 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- The drag tournament in the v0.9 style: between the matches the bracket
+  with the match up next, your way through the rounds and every match's
+  heats, the one up next outlined; after the final the podium with the
+  champion, the finalist and third place, your place and figures, the
+  highlights and every match.
 - The end screen for drag races: the match score, your quickest run
   against your rival's, best reaction, trap speed and fouls, your heats as
   a chart, a time slip a lane of the deciding heat with the better figure

@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_public.h"
 #include "cg_race_result.h"
 #include "cg_drag_log.h"
+#include "cg_drag_bracket.h"
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -2357,6 +2358,8 @@ void CG_DrawFrontendString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
 int  CG_IngameStringWidth( const char *text, int style, float scale );
 qboolean CG_DrawDragTourney( void );
+qboolean CG_DragTourneyDue( void );
+void CG_ModernHUD_DrawTourney( void );
 void CG_DrawIngameString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
 void CG_DrawIngameSmallString( int x, int y, const char *text,

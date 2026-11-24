@@ -460,14 +460,65 @@ int main(void) {
             B("specLabel", t.specLabelT.box); B("spec", t.specT.box); B("server", t.serverT.box);
             printf("\"name0\":\"%s\"}\n", t.cellT[0][1].text);
 #undef B
+        } else if (!strcmp(command, "hudbracket")) {
+            /* hudbracket <view width>, then: title|sub|up label|up name|vs a~tag~b~tag|path round~what~tag;..|
+             * hint label~text|size|rounds e;e;../e;..  (e = name~wins~bot~me~out, name - unknown)|third e;e|
+             * next round~pair~third|champion|heads a~b..|keys k~a;..|waiting|ready */
+            static mhBracketLayout_t b; static char line[8192]; static char *f[16]; char *r, *item, *more, *p[6], *rnd, *rmore;
+            int n = 0, i, k, rr;
+            memset(&b, 0, sizeof(b));
+            scanf("%f\n", &b.frame.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 16; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+#define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
+#define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+#define ENTRANT(dst) SPLIT(item, 5) (dst).name = strcmp(p[0], "-") ? p[0] : NULL; (dst).wins = p[1]; (dst).bot = atoi(p[2]); (dst).me = atoi(p[3]); (dst).out = atoi(p[4]);
+            b.frame.title = f[0]; b.frame.subtitle = f[1]; b.upLabel = f[2]; b.upName = f[3];
+            SPLIT(f[4], 4) b.vsName[0] = p[0]; b.vsTag[0] = p[1]; b.vsName[1] = p[2]; b.vsTag[1] = p[3];
+            EACH(f[5]) SPLIT(item, 3) i = b.pathCount++; b.pathRound[i] = p[0]; b.pathWhat[i] = p[1]; b.pathTag[i] = p[2]; }
+            if (*f[6]) { SPLIT(f[6], 2) b.hintLabel = p[0]; b.hintText = p[1]; }
+            b.size = atoi(f[7]);
+            for (rr = 0, rnd = f[8]; rnd && *rnd; rnd = rmore, rr++) { rmore = strchr(rnd, '/'); if (rmore) *rmore++ = 0;
+                i = 0; EACH(rnd) ENTRANT(b.slot[rr][i]) i++; } }
+            i = 0; EACH(f[9]) ENTRANT(b.third[i]) i++; }
+            SPLIT(f[10], 3) b.nextRound = atoi(p[0]); b.nextPair = atoi(p[1]); b.nextThird = atoi(p[2]);
+            b.champion = *f[11] ? f[11] : NULL;
+            for (i = 0, r = f[12]; r && *r && i <= MH_BRACKET_ROUNDS; i++) { b.head[i] = r; r = strchr(r, '~'); if (r) *r++ = 0; }
+            i = 0; EACH(f[13]) SPLIT(item, 2) b.frame.keyName[i] = p[0]; b.frame.keyAction[i] = p[1]; i++; }
+            b.frame.readyLabel = f[14]; b.frame.readyValue = f[15];
+#undef SPLIT
+#undef EACH
+#undef ENTRANT
+            uis.glconfig.vidWidth = b.frame.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_BracketLayout(&b);
+#define B(name, R) printf("\"%s\":[%g,%g,%g,%g],", name, (R).x, (R).y, (R).w, (R).h)
+            printf("{"); B("title", b.frame.titleT.box); B("sub", b.frame.subtitleT.box); B("upLabel", b.upLabelT.box);
+            B("upName", b.upNameT.box); B("against", b.againstT.box); B("sep0", b.sep[0]); B("sep1", b.sep[1]);
+            B("pathTitle", b.pathTitleT.box); B("hintLabel", b.hintLabelT.box); B("hintText", b.hintTextT.box);
+            B("upNext", b.upNextT.box); B("winnerCard", b.winnerCard); B("trophy", b.trophy); B("winner", b.winnerT.box);
+            B("thirdLabel", b.thirdLabelT.box); B("thirdCard", b.thirdCard);
+            for (k = 0; k < 2; k++) { char key[32]; sprintf(key, "vsName%d", k); B(key, b.vsNameT[k].box);
+                sprintf(key, "vsTag%d", k); B(key, b.vsTagT[k].box); sprintf(key, "thirdName%d", k); B(key, b.thirdNameT[k].box); }
+            for (i = 0; i < b.pathCount; i++) { char key[32]; sprintf(key, "pathRound%d", i); B(key, b.pathRoundT[i].box);
+                sprintf(key, "pathWhat%d", i); B(key, b.pathWhatT[i].box); sprintf(key, "pathTag%d", i); B(key, b.pathTagT[i].box); }
+            for (i = 0; i <= b.rounds; i++) { char key[32]; sprintf(key, "head%d", i); B(key, b.headT[i].box); }
+            for (rr = 0; rr < b.rounds; rr++) for (i = 0; i < b.size >> rr; i++) { char key[32];
+                if (!(i & 1)) { sprintf(key, "card%d_%d", rr, i / 2); B(key, b.card[rr][i / 2]); sprintf(key, "divider%d_%d", rr, i / 2); B(key, b.divider[rr][i / 2]); }
+                sprintf(key, "row%d_%d", rr, i); B(key, b.row[rr][i]); sprintf(key, "name%d_%d", rr, i); B(key, b.nameT[rr][i].box);
+                sprintf(key, "wins%d_%d", rr, i); B(key, b.winsT[rr][i].box); sprintf(key, "bot%d_%d", rr, i); B(key, b.botT[rr][i].box); }
+            for (i = 0; i < b.lineCount; i++) { char key[32]; sprintf(key, "line%d", i); B(key, b.line[i]); }
+            for (i = 0; i < 3; i++) { char key[32]; sprintf(key, "keyName%d", i); B(key, b.frame.keyNameT[i].box); }
+            B("readyValue", b.frame.readyValueT.box);
+            printf("\"lines\":%d}\n", b.lineCount);
+#undef B
         } else if (!strcmp(command, "hudend")) {
             /* hudend <view width>, then fields split by |, lists by ; and ~ */
-            static mhEndLayout_t e; static char line[4096]; static char *f[30]; char *r, *item, *more, *p[6];
+            static mhEndLayout_t e; static char line[4096]; static char *f[32]; char *r, *item, *more, *p[6];
             int n = 0, i, k;
             memset(&e, 0, sizeof(e));
             scanf("%f\n", &e.viewWidth);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            for (r = line; n < 30; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            for (r = line; n < 32; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
 #define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
 #define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
             e.title = f[0]; e.subtitle = f[1]; e.pos = f[2]; e.of = f[3]; e.doneLabel = f[4]; e.doneTime = f[5]; e.doneNote = f[6];
@@ -497,6 +548,9 @@ int main(void) {
             if (n > 26) EACH(f[26]) SPLIT(item, 4) i = e.slipCount++; e.slipLane[i] = p[0]; e.slipName[i] = p[1];
                 e.slipMe[i] = atoi(p[2]); e.slipWin[i] = atoi(p[3]); }
             if (n > 27) for (r = f[27]; r && *r; ) { e.slipLabel[e.slipRows++] = r; r = strchr(r, '~'); if (r) *r++ = 0; }
+            /* tournament: 29 path round~what~tag;.., 30 the list as matches */
+            if (n > 29) EACH(f[29]) SPLIT(item, 3) i = e.pathCount++; e.pathRound[i] = p[0]; e.pathWhat[i] = p[1]; e.pathTag[i] = p[2]; }
+            if (n > 30) e.listMatches = atoi(f[30]);
             i = 0; if (n > 28) EACH(f[28]) char *v = item; for (k = 0; v && k < MH_END_SLIP_ROWS; k++) {
                 e.slipValue[i][k] = v; v = strchr(v, '~'); if (v) *v++ = 0; } i++; }
 #undef SPLIT
@@ -525,6 +579,9 @@ int main(void) {
                 sprintf(key, "spreadValue%d", i); T(key, e.spreadValueT[i]);
                 for (k = 0; k < e.spreadDots[i]; k++) { sprintf(key, "spreadDot%d_%d", i, k); rect(key, e.spreadDotR[i][k]); } }
             if (e.slipCount) { T("slipTitle", e.slipTitleT); T("slipNote", e.slipNoteT); }
+            if (e.pathCount) T("pathTitle", e.pathTitleT);
+            for (i = 0; i < e.pathCount; i++) { char key[24]; sprintf(key, "pathRound%d", i); T(key, e.pathRoundT[i]);
+                sprintf(key, "pathWhat%d", i); T(key, e.pathWhatT[i]); sprintf(key, "pathTag%d", i); T(key, e.pathTagT[i]); }
             for (i = 0; i < e.slipCount; i++) { char key[24]; sprintf(key, "slip%d", i); rect(key, e.slip[i]);
                 sprintf(key, "slipCar%d", i); rect(key, e.slipCar[i]); sprintf(key, "slipLane%d", i); T(key, e.slipLaneT[i]);
                 sprintf(key, "slipName%d", i); T(key, e.slipNameT[i]); sprintf(key, "slipTag%d", i); T(key, e.slipTagT[i]);

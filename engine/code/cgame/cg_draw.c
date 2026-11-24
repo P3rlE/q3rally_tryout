@@ -4055,9 +4055,12 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 #endif
 	cg.scoreFadeTime = cg.time;
 
-	/* a drag tournament: the bracket once the result had its moment */
-	if ( CG_ModernHUD_EndActive() && cgs.gametype == GT_DRAG && CG_DrawDragTourney() ) {
+	/* a drag tournament: the bracket (after the final: the podium) once the
+	 * match's own result had its moment */
+	if ( CG_ModernHUD_EndActive() && cgs.gametype == GT_DRAG && CG_DragTourneyDue() ) {
+		CG_ModernHUD_DrawTourney();
 		cg.scoreBoardShowing = qtrue;
+		if ( stereoFrame == STEREO_CENTER ) CG_JukeboxFrame();
 		return;
 	}
 	/* the v0.9 end screen; TAB shows the scoreboard */

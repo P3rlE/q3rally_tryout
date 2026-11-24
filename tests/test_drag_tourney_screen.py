@@ -46,6 +46,9 @@ static int count(const char *label) {
     int i, n=0; for(i=0;i<strings;i++) if(!strcmp(labels[i],label)) n++; return n;
 }
 '''
+    # the bracket's bookkeeping, shared with the v0.9 bracket
+    bracket = (CODE / "cgame/cg_drag_bracket.c").read_text().replace('#include "cg_drag_bracket.h"', '')
+    harness += bracket + "\n"
     harness += racing[begin:] + "\n"
     harness += r'''
 static void field4(int played) {
