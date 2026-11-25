@@ -85,6 +85,12 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- End screens for Racing DM, Team Racing DM and Elimination: Racing DM
+  and Team Racing DM on the race's and the team race's page with your
+  frags and deaths, K / D in the classification, the most frags and your
+  nemesis; Elimination ordered by who lasted longest, how long you
+  survived and in which lap you went out, the laps survived, under every
+  lap how many drivers were left, who went out first.
 - End screens for Deathmatch, Team Deathmatch, Derby and Last Car
   Standing: place and score, kills, deaths, streaks and damage, the match
   minute by minute (frags or damage, under it your place, the drivers left

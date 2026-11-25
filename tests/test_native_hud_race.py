@@ -25,6 +25,8 @@ END_GHOST = json.loads((ROOT / 'tests/fixtures/hud_end_ghost_layout.json').read_
 END_COMBAT = {n: json.loads((ROOT / f'tests/fixtures/hud_end_{n}_layout.json').read_text())['els']
               for n in ('deathmatch', 'derby', 'teamdm')}
 END_SPRINT = json.loads((ROOT / 'tests/fixtures/hud_end_sprint_layout.json').read_text())['els']
+END_RACINGDM = json.loads((ROOT / 'tests/fixtures/hud_end_racingdm_layout.json').read_text())['els']
+END_ELIM = json.loads((ROOT / 'tests/fixtures/hud_end_elimination_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
@@ -1028,6 +1030,89 @@ def test_native_sprint_end_screen_matches_the_design():
     pairs += [(f'row{i}', lst + f'/div:2/div:{i}') for i in range(8)]
     pairs += [(f'rowBest{i}', lst + f'/div:2/div:{i}/div:3/div:0') for i in range(8)]
     problems = check_all(mine, END_SPRINT, pairs)
+    assert not problems, problems
+
+
+END_RACINGDM_MODEL = list(END_MODEL)
+END_RACINGDM_MODEL[0] = 'RACING DM RESULT'
+END_RACINGDM_MODEL[7] = 'BEST LAP~0:51.204~;TOP SPEED~214~KM/H;FRAGS~4~;DEATHS~2~'
+END_RACINGDM_MODEL[10] = ('FASTEST LAP~Sam~0:50.871;MOST FRAGS~Carla · 6 frags~6;'
+                          'YOUR NEMESIS~Tony · got you 2 times~2')
+END_RACINGDM_MODEL[14] = ';'.join(f'{p}~{n}~{t}~{b}' for p, n, t, b in [
+    ('01', 'Sam', '4:20.238', '3 / 1'), ('02', 'Player', '+1.142', '4 / 2'), ('03', 'Carla', '+3.907', '6 / 1'),
+    ('04', 'Tony', '+9.415', '2 / 3'), ('05', 'Janine', '+12.770', '1 / 2'), ('06', 'Ivan', '+21.004', '0 / 4'),
+    ('07', 'Minori', '+1 LAP', '1 / 3'), ('08', 'Bee', 'DNF', '0 / 1')])
+END_RACINGDM_MODEL += ['', '', '', '', '', '', 'POS~DRIVER~TIME~K / D']
+
+ELIM_LAPS = [52.93, 51.88, 51.20, 51.62, 51.47, 51.81]
+
+
+def elim_bars():
+    best, worst = min(ELIM_LAPS), max(ELIM_LAPS) - min(ELIM_LAPS)
+    return ';'.join(f"{int(56 * (v - best) / worst) / 56:.6f}~{'best' if v == best else f'+{v - best:.2f}'}~L{i + 1}"
+                    for i, v in enumerate(ELIM_LAPS))
+
+
+END_ELIM_MODEL = ['ELIMINATION RESULT', 'COUNTRY · THE LAST ONE OUT EVERY LAP · 8 DRIVERS', 'P2', '/ 8',
+                  'SURVIVED', '6:12', 'OUT IN THE LAST LAP · SAM WON',
+                  'BEST LAP~0:51.204~;TOP SPEED~198~KM/H;LAPS SURVIVED~6 / 7~;PLACES GAINED~+3~',
+                  elim_bars(),
+                  'Sam~7 laps~~WINNER~0;Player~6 laps~out lap 7~SECOND~1;Carla~5 laps~out lap 6~THIRD~0',
+                  'FASTEST LAP~Sam~0:50.871;FIRST OUT~Bee · lap 1~;BIGGEST GAIN~Player · P5 to P2~+3',
+                  'FINAL CLASSIFICATION', '7 LAPS', 0,
+                  ';'.join(f'{p}~{n}~{t}~{b}' for p, n, t, b in [
+                      ('01', 'Sam', 'WINNER', '0:50.871'), ('02', 'Player', 'LAP 7', '0:51.204'),
+                      ('03', 'Carla', 'LAP 6', '0:51.660'), ('04', 'Tony', 'LAP 5', '0:52.013'),
+                      ('05', 'Janine', 'LAP 4', '0:52.390'), ('06', 'Ivan', 'LAP 3', '0:52.881'),
+                      ('07', 'Minori', 'LAP 2', '0:53.512'), ('08', 'Bee', 'LAP 1', '0:54.120')]),
+                  'FIRE~READY;TAB~DETAILS;ESC~MENU', 'WAITING FOR 5 DRIVERS', '3 / 8 READY',
+                  'YOUR LAPS~LOST TO YOUR BEST · DRIVERS LEFT', '', '', '', '', '',
+                  'POS~DRIVER~OUT~BEST', '', '', '', '', '', '',
+                  '~'.join(['7', '6', '5', '4', '3', '2'])]
+
+
+def race_variant_pairs(laps, places=False):
+    left, pod, aw, lst = '/div:3', '/div:4', '/div:5', '/div:6/div:0'
+    chart = left + '/div:5/div:1'
+    pairs = [('title', '/div:2/div:0'), ('subtitle', '/div:2/div:1'),
+             ('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'),
+             ('listRight', lst + '/div:0/div:1')]
+    pairs += [(f'statLabel{i}', left + f'/div:3/div:{i}/div:0') for i in range(4)]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    for i in range(laps):
+        col = chart + f'/div:{i}'
+        pairs += [(f'lapSlot{i}', col), (f'lapValue{i}', col + '/div:1'), (f'lapName{i}', col + '/div:2')]
+        if places:
+            pairs += [(f'lapBar{i}', col + '/div:0/div:0'), (f'lapRule{i}', col + '/div:3'), (f'lapPlace{i}', col + '/div:4')]
+    for place, div in ((0, 1), (1, 0), (2, 2)):
+        card = pod + f'/div:{div}'
+        pairs += [(f'podium{place}', card), (f'podiumCar{place}', card + '/div:0'),
+                  (f'podiumName{place}', card + '/div:1/div:1')]
+    for i in range(3):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardLabel{i}', aw + f'/div:{i + 1}/div:1/div:0'),
+                  (f'awardValue{i}', aw + f'/div:{i + 1}/div:2/div:0')]
+    pairs += [(f'head{i}', lst + f'/div:1/div:{i}') for i in range(4)]
+    pairs += [(f'row{i}', lst + f'/div:2/div:{i}') for i in range(8)]
+    pairs += [(f'rowBest{i}', lst + f'/div:2/div:{i}/div:3/div:0') for i in range(8)]
+    return pairs
+
+
+def test_native_racing_dm_end_screen_matches_the_design():
+    # the race's page: frags and deaths for the last two figures, K / D for the best lap
+    mine, = layouts(end_command(END_RACINGDM_MODEL))
+    problems = check_all(mine, END_RACINGDM, race_variant_pairs(5))
+    assert not problems, problems
+
+
+def test_native_elimination_end_screen_matches_the_design():
+    # who lasted longest; under every lap how many were left
+    mine, = layouts(end_command(END_ELIM_MODEL))
+    # the first out has no figure: an empty box in the design
+    pairs = [pr for pr in race_variant_pairs(6, places=True) if pr[0] != 'awardValue1']
+    problems = check_all(mine, END_ELIM, pairs)
     assert not problems, problems
 
 

@@ -1524,6 +1524,11 @@ static qboolean MH_EndIsCombat( void ) {
 	return cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS;
 }
 
+/* the kills are written down here too: the races with weapons */
+static qboolean MH_CombatLogged( void ) {
+	return MH_EndIsCombat() || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_ELIMINATION;
+}
+
 /* a new match: a new log */
 static void MH_CombatCheck( void ) {
 	if ( mhCombatStart == cgs.levelStartTime ) return;
@@ -1535,7 +1540,7 @@ static void MH_CombatCheck( void ) {
 /* the scores came: keep them for the minute (cg_servercmds.c) */
 void CG_ModernHUD_CombatScores( void ) {
 	int score[CG_COMBAT_CLIENTS], damage[CG_COMBAT_CLIENTS], team[CG_COMBAT_TEAMS], i;
-	if ( !MH_EndIsCombat() || cg.warmup || ( cg.snap && cg.snap->ps.pm_type == PM_INTERMISSION ) ) return;
+	if ( !MH_CombatLogged() || cg.warmup || ( cg.snap && cg.snap->ps.pm_type == PM_INTERMISSION ) ) return;
 	MH_CombatCheck();
 	for ( i = 0; i < CG_COMBAT_CLIENTS; i++ ) { score[i] = CG_COMBAT_NONE; damage[i] = 0; }
 	for ( i = 0; i < cg.numScores; i++ ) {
@@ -1551,7 +1556,7 @@ void CG_ModernHUD_CombatScores( void ) {
 void CG_ModernHUD_Obituary( int target, int attacker, int mod ) {
 	int i;
 	if ( target < 0 || target >= MAX_CLIENTS ) return;
-	if ( MH_EndIsCombat() && !cg.warmup ) {
+	if ( MH_CombatLogged() && !cg.warmup ) {
 		MH_CombatCheck();
 		CG_CombatKill( &mhCombat, attacker >= 0 && attacker < MAX_CLIENTS ? attacker : -1, target, cg.time );
 	}
@@ -2700,13 +2705,15 @@ static struct {
 	/* combat */
 	qboolean		combat;
 	qboolean		lapLit[MH_END_LAPS];		/* the best minute */
+	qboolean		racingDM;
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
 	int i;
 	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
 	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_SPRINT && cgs.gametype != GT_GHOST &&
-	     cgs.gametype != GT_DRAG && !MH_EndIsCombat() ) return qfalse;
+	     cgs.gametype != GT_DRAG && cgs.gametype != GT_RACING_DM && cgs.gametype != GT_TEAM_RACING_DM &&
+	     cgs.gametype != GT_ELIMINATION && !MH_EndIsCombat() ) return qfalse;
 	if ( cgs.gametype == GT_DRAG ) return cgs.dragLog.count > 0;	/* the heats the client wrote down */
 	if ( MH_EndIsCombat() ) return cg.numScores > 0;
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
@@ -4624,6 +4631,257 @@ static void MH_EndCombat( void ) {
 #undef SC
 }
 
+/* ---------------------------------------------------------------------------
+   the race variants (gen.py EndRacingDM, EndElimination): Racing DM and Team
+   Racing DM on the race's and the team race's page with frags and deaths
+   (the kills written down as in the combat modes); Elimination ordered by
+   who lasted longest, from the server's elimination events.
+   ------------------------------------------------------------------------- */
+
+/* Elimination: when each went out (the event's round and time), the winner
+ * the one with the highest round */
+static int mhElimRound[MAX_CLIENTS], mhElimAt[MAX_CLIENTS], mhElimWinner = -1;
+
+void CG_ModernHUD_ElimReset( void ) {
+	memset( mhElimRound, 0, sizeof( mhElimRound ) );
+	memset( mhElimAt, 0, sizeof( mhElimAt ) );
+	mhElimWinner = -1;
+}
+
+/* the server's elim_status with the winner */
+void CG_ModernHUD_ElimWinner( int client ) {
+	if ( client >= 0 && client < MAX_CLIENTS ) mhElimWinner = client;
+}
+
+/* the order: the winner, then the later out first; without an event still
+ * in (above those out) unless there is a winner already (then at the end) */
+static int MH_ElimRank( int c ) {
+	if ( c == mhElimWinner ) return 100000;
+	if ( mhElimRound[c] ) return mhElimRound[c];
+	return mhElimWinner >= 0 ? -1 : 99999;
+}
+
+void CG_ModernHUD_ElimEvent( int client, int round, int time ) {
+	if ( client < 0 || client >= MAX_CLIENTS || mhElimRound[client] ) return;
+	mhElimRound[client] = round > 0 ? round : 1;
+	mhElimAt[client] = time;
+}
+
+/* Racing DM: frags and deaths in place of the last two figures, K / D in
+ * place of the best lap, the most frags and your nemesis as highlights */
+static void MH_EndRacingDM( int me ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	int i, k, best = 0, who = -1, times;
+	char name[40];
+
+	e->statLabel[2] = "FRAGS";
+	Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d", mhCombat.kills[me] );
+	mhEnd.statColor[2] = mhCombat.kills[me] ? mhFast : mhWhite;
+	e->statUnit[2] = NULL;
+	e->statLabel[3] = "DEATHS";
+	Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d", mhCombat.deaths[me] );
+	mhEnd.statColor[3] = mhWhite;
+	e->statUnit[3] = NULL;
+
+	e->listHead[0] = "POS";
+	e->listHead[1] = "DRIVER";
+	e->listHead[2] = "TIME";
+	e->listHead[3] = "K / D";
+	for ( k = 0; k < e->rowCount; k++ ) {
+		int c = mhEnd.rowClient[k];
+		Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "%d / %d", mhCombat.kills[c], mhCombat.deaths[c] );
+		mhEnd.rowBestColor[k] = mhMuted;
+	}
+
+	/* the fastest lap stays first; then the most frags, your nemesis */
+	if ( e->awardCount > 1 ) e->awardCount = 1;
+	if ( e->awardCount == 1 && Q_stricmp( e->awardLabel[0], "FASTEST LAP" ) ) e->awardCount = 0;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( cgs.clientinfo[i].infoValid && mhCombat.kills[i] > best ) { best = mhCombat.kills[i]; who = i; }
+	}
+	if ( who >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "MOST FRAGS";
+		MH_Plain( cgs.clientinfo[who].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d frag%s", name, best, best == 1 ? "" : "s" );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.gun;
+	}
+	who = CG_CombatNemesis( &mhCombat, me, &times );
+	if ( who >= 0 && times > 0 && e->awardCount < MH_END_AWARDS ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "YOUR NEMESIS";
+		MH_Plain( cgs.clientinfo[who].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 got you %d time%s", name, times, times == 1 ? "" : "s" );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", times );
+		mhEnd.awardColor[k] = mhAccent;
+		mhEnd.awardIcon[k] = mh.chevron;
+	}
+}
+
+/* the laps a driver made: the winner all, one out one less than the lap he
+ * went out in, one still in (the race ended on the lap limit) his own */
+static int MH_ElimLaps( const cgRaceResult_t *all, int c, int winner, int rounds ) {
+	if ( c == winner ) return rounds;
+	if ( mhElimRound[c] ) return mhElimRound[c] - 1;
+	return all[c].lapCount < rounds ? all[c].lapCount : rounds;	/* nobody past the winner */
+}
+
+/* Elimination: the order is who lasted longest; under the laps how many
+ * were left after each */
+static void MH_EndElimination( const cgRaceResult_t *all, const int *order, int count, int me, const cgRaceResult_t *mine ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	int sorted[MAX_CLIENTS], i, k, n = 0, place = 0, winner = -1, top = 0, first = -1, gain = 0, gainClient = -1, laps, firstLap, rounds;
+	char name[40], *dot;
+
+	for ( i = 0; i < count; i++ ) {
+		int c = order[i], a = MH_ElimRank( c );
+		for ( k = n; k > 0; k-- ) {
+			int o = sorted[k - 1], b = MH_ElimRank( o );
+			if ( a > b || ( a == b && mhElimAt[c] > mhElimAt[o] ) ) sorted[k] = sorted[k - 1];
+			else break;
+		}
+		sorted[k] = c;
+		n++;
+	}
+	for ( i = 0; i < n; i++ ) {
+		if ( mhElimRound[sorted[i]] > top ) top = mhElimRound[sorted[i]];
+		if ( sorted[i] == me ) place = i + 1;
+	}
+	if ( n < 1 ) return;
+	winner = sorted[0];	/* the winner, or the first of those still in */
+	if ( !place ) place = 1;
+	/* the laps raced: the winner's round is one past the last one out */
+	rounds = mhElimRound[winner] ? mhElimRound[winner] - 1 : top;
+	/* the race ended on the lap limit (no winner's event), or was won before
+	 * anyone went out: the winner's laps */
+	if ( !mhElimRound[winner] || rounds < 1 ) rounds = MAX( rounds, all[winner].lapCount );
+	for ( i = 0; i < n; i++ ) {
+		int r = mhElimRound[sorted[i]];
+		if ( r && sorted[i] != winner && ( first < 0 || r < mhElimRound[first] ) ) first = sorted[i];
+	}
+
+	e->title = "ELIMINATION RESULT";
+	dot = strstr( mhEnd.sub, " \xb7 " );
+	if ( dot ) Com_sprintf( dot, sizeof( mhEnd.sub ) - ( dot - mhEnd.sub ),  " \xb7 THE LAST ONE OUT EVERY LAP \xb7 %d DRIVER%s", n, n == 1 ? "" : "S" );
+	Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "P%d", place );
+	Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", n );
+	Q_strncpyz( mhEnd.doneLabel, "SURVIVED", sizeof( mhEnd.doneLabel ) );
+	e->doneLabel = mhEnd.doneLabel;
+	{
+		int end = mhElimAt[me] ? mhElimAt[me] : mine->finishTime ? mine->finishTime : cg.time;
+		int sec = end > mine->startTime ? ( end - mine->startTime ) / 1000 : 0;
+		Com_sprintf( mhEnd.doneTime, sizeof( mhEnd.doneTime ), "%d:%02d", sec / 60, sec % 60 );	/* minutes and seconds */
+	}
+	if ( me == winner ) Q_strncpyz( mhEnd.doneNote, "WINNER", sizeof( mhEnd.doneNote ) );
+	else {
+		MH_Plain( cgs.clientinfo[winner].name, name, sizeof( name ) );
+		Q_strupr( name );
+		if ( mhElimRound[me] && mhElimRound[me] >= rounds )
+			Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "OUT IN THE LAST LAP \xb7 %s WON", name );
+		else if ( mhElimRound[me] ) Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "OUT IN LAP %d \xb7 %s WON", mhElimRound[me], name );
+		else Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%s WON", name );
+	}
+
+	/* the figures: best lap and top speed stay; laps survived, places gained */
+	laps = MH_ElimLaps( all, me, winner, rounds );
+	e->statLabel[2] = "LAPS SURVIVED";
+	Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d / %d", laps, rounds );
+	mhEnd.statColor[2] = mhWhite;
+	e->statUnit[2] = NULL;
+	e->statLabel[3] = "PLACES GAINED";
+	e->statUnit[3] = NULL;
+	mhEnd.statColor[3] = mhWhite;
+	if ( mine->grid > 0 ) {
+		int g = mine->grid - place;
+		Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), g > 0 ? "+%d" : "%d", g );
+		mhEnd.statColor[3] = g > 0 ? mhFast : g < 0 ? mhAccent : mhWhite;
+	} else Q_strncpyz( mhEnd.stat[3], "--", sizeof( mhEnd.stat[3] ) );
+
+	/* under the laps: how many were left after each */
+	e->chartNote = "LOST TO YOUR BEST \xb7 DRIVERS LEFT";
+	firstLap = mine->lapCount < CG_RESULT_LAPS ? mine->lapCount : CG_RESULT_LAPS;
+	firstLap = firstLap > MH_END_LAPS ? firstLap - MH_END_LAPS : 0;
+	for ( k = 0; k < e->lapCount; k++ ) {
+		int lap = firstLap + k + 1, left = 0;
+		for ( i = 0; i < n; i++ ) if ( !mhElimRound[sorted[i]] || mhElimRound[sorted[i]] > lap ) left++;
+		Com_sprintf( mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ), "%d", left );
+		mhEnd.lapPlaceLit[k] = k == 0 || Q_stricmp( mhEnd.lapPlace[k], mhEnd.lapPlace[k - 1] );
+		e->lapPlace[k] = mhEnd.lapPlace[k];
+	}
+
+	/* the podium: the laps each made, when they went out */
+	e->podiumCount = 0;
+	for ( k = 0; k < n && k < 3; k++ ) {
+		static const char *tags[3] = { "WINNER", "SECOND", "THIRD" };
+		int c = sorted[k], made = MH_ElimLaps( all, c, winner, rounds );
+		mhEnd.client[k] = c;
+		MH_Plain( cgs.clientinfo[c].name, mhEnd.podName[k], sizeof( mhEnd.podName[k] ) );
+		Com_sprintf( mhEnd.podTime[k], sizeof( mhEnd.podTime[k] ), "%d lap%s", made, made == 1 ? "" : "s" );
+		if ( c != winner && mhElimRound[c] ) Com_sprintf( mhEnd.podGap[k], sizeof( mhEnd.podGap[k] ), "out lap %d", mhElimRound[c] );
+		else mhEnd.podGap[k][0] = '\0';
+		e->podiumName[k] = mhEnd.podName[k];
+		e->podiumTime[k] = mhEnd.podTime[k];
+		e->podiumGap[k] = mhEnd.podGap[k];
+		e->podiumTag[k] = tags[k];
+		e->podiumMe[k] = c == cg.snap->ps.clientNum;
+		e->podiumCount = k + 1;
+	}
+
+	/* the highlights: the fastest lap stays; who went out first; the biggest gain */
+	if ( e->awardCount > 1 ) e->awardCount = 1;
+	if ( e->awardCount == 1 && Q_stricmp( e->awardLabel[0], "FASTEST LAP" ) ) e->awardCount = 0;
+	if ( first >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "FIRST OUT";
+		MH_Plain( cgs.clientinfo[first].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 lap %d", name, mhElimRound[first] );
+		mhEnd.awardValue[k][0] = '\0';
+		mhEnd.awardColor[k] = mhAccent;
+		mhEnd.awardIcon[k] = mh.flag;
+	}
+	for ( i = 0; i < n; i++ ) {
+		int g = all[sorted[i]].grid > 0 ? all[sorted[i]].grid - ( i + 1 ) : 0;
+		if ( g > gain ) { gain = g; gainClient = sorted[i]; }
+	}
+	if ( gainClient >= 0 && e->awardCount < MH_END_AWARDS ) {
+		int to = 0;
+		for ( i = 0; i < n; i++ ) if ( sorted[i] == gainClient ) to = i + 1;
+		k = e->awardCount++;
+		e->awardLabel[k] = "BIGGEST GAIN";
+		MH_Plain( cgs.clientinfo[gainClient].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 P%d to P%d", name, all[gainClient].grid, to );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "+%d", gain );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.chevron;
+	}
+
+	/* the classification: who lasted longest, when each went out, the best lap */
+	e->listHead[0] = "POS";
+	e->listHead[1] = "DRIVER";
+	e->listHead[2] = "OUT";
+	e->listHead[3] = "BEST";
+	e->rowCount = 0;
+	for ( i = 0; i < n && e->rowCount < MH_END_ROWS; i++ ) {
+		int c = sorted[i], b = CG_ResultBestLap( &all[c] );
+		k = e->rowCount++;
+		mhEnd.rowClient[k] = c;
+		Com_sprintf( mhEnd.rowPos[k], sizeof( mhEnd.rowPos[k] ), "%02d", i + 1 );
+		MH_Plain( cgs.clientinfo[c].name, mhEnd.rowName[k], sizeof( mhEnd.rowName[k] ) );
+		if ( c == winner ) Q_strncpyz( mhEnd.rowTime[k], "WINNER", sizeof( mhEnd.rowTime[k] ) );
+		else if ( mhElimRound[c] ) Com_sprintf( mhEnd.rowTime[k], sizeof( mhEnd.rowTime[k] ), "LAP %d", mhElimRound[c] );
+		else Q_strncpyz( mhEnd.rowTime[k], mhElimWinner >= 0 ? "--" : "IN", sizeof( mhEnd.rowTime[k] ) );
+		if ( b ) CG_ResultTime( b, mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ) );
+		else Q_strncpyz( mhEnd.rowBest[k], "--", sizeof( mhEnd.rowBest[k] ) );
+		mhEnd.rowMe[k] = c == cg.snap->ps.clientNum;
+		e->rowPos[k] = mhEnd.rowPos[k];
+		e->rowName[k] = mhEnd.rowName[k];
+		e->rowTime[k] = mhEnd.rowTime[k];
+		e->rowBest[k] = mhEnd.rowBest[k];
+	}
+}
+
 static void MH_EndPrepare( void ) {
 	mhEndLayout_t *e = &mhEnd.e;
 	const cgRaceResult_t *all = CG_RaceResult( 0 ), *mine, *winner;
@@ -4653,7 +4911,7 @@ static void MH_EndPrepare( void ) {
 	for ( i = 0; i < count; i++ ) {
 		int team = MH_Team( order[i] );
 		if ( !cgs.clientinfo[order[i]].infoValid ) continue;
-		if ( cgs.gametype == GT_TEAM_RACING && ( team < TEAM_RED || team >= TEAM_RED + MH_END_TEAMS ) ) continue;
+		if ( ( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM ) && ( team < TEAM_RED || team >= TEAM_RED + MH_END_TEAMS ) ) continue;
 		order[n++] = order[i];
 	}
 	count = n;
@@ -4827,11 +5085,19 @@ static void MH_EndPrepare( void ) {
 
 	mhEnd.teams = qfalse;
 	mhEnd.drag = qfalse;
+	mhEnd.racingDM = qfalse;
 	mhEnd.sprint = MH_EndIsSprint() && cgs.gametype != GT_GHOST;
 	mhEnd.ghost = cgs.gametype == GT_GHOST;
 	mhEnd.posColor = mhWhite;
 	mhEnd.doneNoteColor = mhAccent;
-	if ( cgs.gametype == GT_TEAM_RACING ) MH_EndTeams( all, order, count, me, mine, place );
+	if ( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM ) MH_EndTeams( all, order, count, me, mine, place );
+	if ( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ) {
+		MH_CombatCheck();
+		MH_EndRacingDM( me );
+		mhEnd.racingDM = qtrue;	/* K / D in its own colour */
+		e->title = cgs.gametype == GT_RACING_DM ? "RACING DM RESULT" : "TEAM RACING DM RESULT";
+	}
+	if ( cgs.gametype == GT_ELIMINATION ) MH_EndElimination( all, order, count, me, mine );
 	if ( cgs.gametype == GT_DRAG ) MH_EndDrag();
 	if ( mhEnd.sprint ) MH_EndSprint( all, order, count, me, mine, place, mapName );
 	if ( mhEnd.ghost ) MH_EndGhost( all, order, count, me, mine, mapName );
@@ -5044,7 +5310,7 @@ void CG_ModernHUD_DrawEnd( void ) {
 		time.box.x += time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) );
 		best.box.x += best.box.w - WS_TextWidth( &best.style, best.text, strlen( best.text ) );
 		MH_Str( &time, mhValue, 1.0f );
-		MH_Str( &best, mhEnd.drag || mhEnd.ghost || mhEnd.combat ? mhEnd.rowBestColor[i] : mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
+		MH_Str( &best, mhEnd.drag || mhEnd.ghost || mhEnd.combat || mhEnd.racingDM ? mhEnd.rowBestColor[i] : mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
 	}
 
 	/* a ghost race: the ladder, yours lit, the ghost raced marked */

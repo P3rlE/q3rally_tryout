@@ -1302,6 +1302,71 @@ board('EndTeamDM.dc.html', 'Team deathmatch result', None, [
 ])
 
 # ---------------------------------------------------------------------------
+# the race variants: Racing DM (a race with weapons: the race's page with
+# frags and deaths; Team Racing DM the team race's page the same way) and
+# Elimination (the last one out at the end of every lap: the order is who
+# lasted longest, under the laps how many were left).
+# ---------------------------------------------------------------------------
+
+def lap_chart_under(laps, unders):
+    """The race's lap chart with a line under it: what each lap ended with."""
+    best = min(laps)
+    worst = max(laps) - best
+    cols = []
+    for i, (v, u) in enumerate(zip(laps, unders)):
+        cols.append(f'<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px">'
+                    f'<div style="height: 56px; width: 100%; display: flex; align-items: flex-end">'
+                    f'<div style="width: 100%; height: {max(3, int(56 * (v - best) / worst))}px; '
+                    f'background: {"#e6e6e6" if v == best else "#5a5a5a"}"></div></div>'
+                    f'{mono("best" if v == best else f"+{v - best:.2f}", 11, "#ffffff" if v == best else "#bbbbbb")}'
+                    f'{lab(f"L{i + 1}", "#777777", 10)}'
+                    f'<div style="height: 1px; width: 100%; background: {LINE}"></div>'
+                    f'{mono(u, 12, "#ffffff" if i == 0 or u != unders[i - 1] else "#777777")}</div>')
+    return f'<div style="display: flex; gap: 8px">{"".join(cols)}</div>'
+
+
+board('EndRacingDM.dc.html', 'Racing DM result', None, [
+    blurred(BG['racing_dm']),
+    end_header('Racing DM result', 'Downtown · 5 laps · 8 drivers'),
+    end_left('P2', '/ 8', '#ffffff', 'Finished', '4:21.380', '+1.142 to the winner', ACC,
+             [('Best lap', '0:51.204'), ('Top speed', '214', '#ffffff', 'km/h'), ('Frags', '4', FAST), ('Deaths', '2')],
+             'Your laps', 'lost to your best', lap_chart([53.81, 52.42, 51.20, 51.66, 52.29])),
+    podium3([podium_card(2, 'Player', 'viper', '4:21.380', '+1.142', 192, 176, me=True),
+             podium_card(1, 'Sam', 'murcielago', '4:20.238', '', 210, 236),
+             podium_card(3, 'Carla', 'db12', '4:24.145', '+3.907', 192, 140)]),
+    end_awards([('trophy', 'Fastest lap', 'Sam', '0:50.871', PURPLE),
+                ('gun', 'Most frags', 'Carla · 6 frags', '6', FAST),
+                ('chevron', 'Your nemesis', 'Tony · got you 2 times', '2', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', '5 laps', ['POS', 'DRIVER', 'TIME', 'K / D'], [
+        ('01', None, 'Sam', '4:20.238', '3 / 1', '#999999', False), ('02', None, 'Player', '+1.142', '4 / 2', '#999999', True),
+        ('03', None, 'Carla', '+3.907', '6 / 1', '#999999', False), ('04', None, 'Tony', '+9.415', '2 / 3', '#999999', False),
+        ('05', None, 'Janine', '+12.770', '1 / 2', '#999999', False), ('06', None, 'Ivan', '+21.004', '0 / 4', '#999999', False),
+        ('07', None, 'Minori', '+1 LAP', '1 / 3', '#999999', False), ('08', None, 'Bee', 'DNF', '0 / 1', '#999999', False)]), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+board('EndElimination.dc.html', 'Elimination result', None, [
+    blurred(BG['racing']),
+    end_header('Elimination result', 'Country · the last one out every lap · 8 drivers'),
+    end_left('P2', '/ 8', '#ffffff', 'Survived', '6:12', 'out in the last lap · Sam won', ACC,
+             [('Best lap', '0:51.204'), ('Top speed', '198', '#ffffff', 'km/h'), ('Laps survived', '6 / 7'), ('Places gained', '+3', FAST)],
+             'Your laps', 'lost to your best · drivers left',
+             lap_chart_under([52.93, 51.88, 51.20, 51.62, 51.47, 51.81], ['7', '6', '5', '4', '3', '2'])),
+    podium3([podium_card(2, 'Player', 'viper', '6 laps', 'out lap 7', 192, 176, me=True),
+             podium_card(1, 'Sam', 'murcielago', '7 laps', '', 210, 236),
+             podium_card(3, 'Carla', 'db12', '5 laps', 'out lap 6', 192, 140)]),
+    end_awards([('trophy', 'Fastest lap', 'Sam', '0:50.871', PURPLE),
+                ('flag', 'First out', 'Bee · lap 1', '', ACC),
+                ('chevron', 'Biggest gain', 'Player · P5 to P2', '+3', FAST)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', '7 laps', ['POS', 'DRIVER', 'OUT', 'BEST'], [
+        ('01', None, 'Sam', 'WINNER', '0:50.871', PURPLE, False), ('02', None, 'Player', 'LAP 7', '0:51.204', '#999999', True),
+        ('03', None, 'Carla', 'LAP 6', '0:51.660', '#999999', False), ('04', None, 'Tony', 'LAP 5', '0:52.013', '#999999', False),
+        ('05', None, 'Janine', 'LAP 4', '0:52.390', '#999999', False), ('06', None, 'Ivan', 'LAP 3', '0:52.881', '#999999', False),
+        ('07', None, 'Minori', 'LAP 2', '0:53.512', '#999999', False), ('08', None, 'Bee', 'LAP 1', '0:54.120', '#999999', False)]), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+# ---------------------------------------------------------------------------
 # the end screen of a drag race: the duel. A time slip a lane, the deciding
 # heat line by line, the better figure of each line in blue; the heats on
 # the right.
@@ -1744,7 +1809,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
         ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndSprint.dc.html', 'EndGhost.dc.html', 'EndDrag.dc.html'],
-        ['EndDeathmatch.dc.html', 'EndDerby.dc.html', 'EndTeamDM.dc.html'],
+        ['EndDeathmatch.dc.html', 'EndDerby.dc.html', 'EndTeamDM.dc.html', 'EndRacingDM.dc.html', 'EndElimination.dc.html'],
         ['Tourney.dc.html', 'Tourney16.dc.html', 'TourneyEnd.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
@@ -1753,7 +1818,7 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'EndDeathmatch.dc.html': 'Endbildschirm Deathmatch', 'EndDerby.dc.html': 'Endbildschirm Derby (auch Last Car Standing)', 'EndTeamDM.dc.html': 'Endbildschirm Team Deathmatch', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'EndDeathmatch.dc.html': 'Endbildschirm Deathmatch', 'EndDerby.dc.html': 'Endbildschirm Derby (auch Last Car Standing)', 'EndTeamDM.dc.html': 'Endbildschirm Team Deathmatch', 'EndRacingDM.dc.html': 'Endbildschirm Racing DM (Team Racing DM: Team-Racing-Seite mit Frags)', 'EndElimination.dc.html': 'Endbildschirm Elimination', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}
