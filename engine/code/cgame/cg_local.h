@@ -36,6 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_race_result.h"
 #include "cg_drag_log.h"
 #include "cg_drag_bracket.h"
+#include "cg_combat_log.h"
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -2414,6 +2415,7 @@ void CG_ModernHUD_DrawStandings( void );
 void CG_ModernHUD_DrawMessages( void );
 void CG_ModernHUD_DrawSpectator( void );
 void CG_ModernHUD_Obituary( int target, int attacker, int mod );
+void CG_ModernHUD_CombatScores( void );
 void CG_ModernHUD_Eliminated( int clientNum, int remaining );
 void CG_ModernHUD_DrawAmmoWarning( const char *text, qboolean out );
 

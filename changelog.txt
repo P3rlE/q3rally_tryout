@@ -85,6 +85,12 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- End screens for Deathmatch, Team Deathmatch, Derby and Last Car
+  Standing: place and score, kills, deaths, streaks and damage, the match
+  minute by minute (frags or damage, under it your place, the drivers left
+  or your team's lead); the podium of drivers or teams with their cars; the
+  best streak, the most damage, your nemesis or who took you out; the
+  classification with K / D or when each went out.
 - The end screen for ghost races: the margin to the ghost big, your best
   lap against it checkpoint by checkpoint with the running gap, where it
   would rank on the ghost ladder and against your personal best; you and

@@ -179,6 +179,7 @@ cg.scores[i].kothHoldTimeMs = atoi(CG_Argv(i * SCOREBOARD_FIELDS_PER_CLIENT + 28
 	CG_SetScoreSelection(NULL);
 #endif
 
+	CG_ModernHUD_CombatScores();	/* the combat end screen's minutes */
 }
 
 /* "abStats <count> (<client> <goals> <assists> <saves> <shots> <demos> <bestShotKmh>)*" */

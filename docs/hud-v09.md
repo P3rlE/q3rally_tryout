@@ -162,6 +162,32 @@ The client keeps the splits of your best lap against the ghost
 (`cg.ghostBestSplit*`) and the personal best before the run's ghost
 replaced it (`cg.ghostPrevPersonalMs`).
 
+The combat modes end on the race's page with the score (`EndDeathmatch`,
+`EndDerby`, `EndTeamDM` on the canvas):
+
+- Deathmatch: the place, the score and how far behind the winner; kills,
+  deaths, best streak, damage dealt; in place of the laps your frags a
+  minute (the best one lit) with your place at the end of each under it.
+  The podium with the cars and the frags; the best streak, the most damage
+  and your nemesis (who got you most); the classification with K / D.
+- Derby and Last Car Standing: the place, how long you lasted and how long
+  before the end you went out (LAST CAR STANDING, or TIME UP with how many
+  were still in); score, cars you wrecked, damage dealt and taken; your
+  damage a minute with the drivers left under it. The podium with the
+  points and when each went out; the last car standing, the most damage
+  and who took you out; the classification with when each went out (LAST,
+  IN).
+- Team Deathmatch: your team's place in its colour, its score and margin;
+  your place, frags, deaths and best streak; your frags a minute with your
+  team's lead under it; the teams on the podium with their drivers, the
+  teams' scores over the classification and each driver's team square.
+
+The server sends the scores (score, damage) and every kill; the client
+writes the match down (`cg_combat_log.c`, tested in
+`tests/test_combat_log.py`): who killed whom and when, the streaks, who went
+out when, and each minute's scores. Who joins later sees it from then on.
+Past eight minutes the chart shows eight stretches.
+
 A drag race ends on its own page (`EndDrag.dc.html`), the duel:
 
 - At the left: the match ("2-1 / 3", the best of), whether you won it and
@@ -238,4 +264,4 @@ many drivers are ready in place of the clock.
 - Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
   orange. Under it the spectators and the server with how full it is.
 
-Still to come: the end screens of the combat and team modes.
+Still to come: the end screens of the team objective modes (CTF, Domination, KOTH, Autoball) and Racing DM / Elimination.
