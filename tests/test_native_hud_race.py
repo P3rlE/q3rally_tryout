@@ -21,6 +21,7 @@ CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els
 END = json.loads((ROOT / 'tests/fixtures/hud_end_racing_layout.json').read_text())['els']
 END_TEAM = json.loads((ROOT / 'tests/fixtures/hud_end_teamracing_layout.json').read_text())['els']
 END_DRAG = json.loads((ROOT / 'tests/fixtures/hud_end_drag_layout.json').read_text())['els']
+END_SPRINT = json.loads((ROOT / 'tests/fixtures/hud_end_sprint_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
@@ -973,4 +974,55 @@ def test_native_tournament_end_matches_the_design():
         r = f'{lst}/div:2/div:{i}'
         pairs += [(f'row{i}', r), (f'rowName{i}', r + '/div:1'), (f'rowTime{i}', r + '/div:2'), (f'rowBest{i}', r + '/div:3')]
     problems = check_all(mine, TOURNEY['tourney_end'], pairs)
+    assert not problems, problems
+
+
+SPRINT_LOST = [0.42, 0.18, 0.0, 0.31, 0.12, 0.0, 0.27, 0.09]
+SPRINT_NAMES = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'FIN']
+END_SPRINT_MODEL = ['SPRINT RESULT', 'TIMBER RUN \u00b7 2.98 KM \u00b7 7 CHECKPOINTS \u00b7 8 DRIVERS', 'P2', '/ 8',
+                    'FINISHED', '1:28.402', '+1.142 TO THE WINNER',
+                    'AVG SPEED~121.4~KM/H;TOP SPEED~172~KM/H;PLACES GAINED~+3~;SECTORS QUICKEST~2 / 8~',
+                    ';'.join(f"{v / 0.42:.4f}~{'best' if v == 0 else f'+{v:.2f}'}~{n}" for v, n in zip(SPRINT_LOST, SPRINT_NAMES)),
+                    'Sam~1:27.260~~WINNER~0;Player~1:28.402~+1.142~SECOND~1;Carla~1:31.167~+3.907~THIRD~0',
+                    'BEST SECTOR~Player \u00b7 S3~0:09.814;CLOSEST FINISH~Tony \u00b7 behind Carla~0.214;'
+                    'BIGGEST GAIN~Player \u00b7 P5 to P2~+3',
+                    'FINAL CLASSIFICATION', '2.98 KM', 0,
+                    ';'.join(f'{p}~{n}~{t}~{b}' for p, n, t, b in [
+                        ('01', 'Sam', '1:27.260', '122.9'), ('02', 'Player', '+1.142', '121.4'),
+                        ('03', 'Carla', '+3.907', '117.7'), ('04', 'Tony', '+4.121', '117.4'),
+                        ('05', 'Janine', '+9.770', '110.6'), ('06', 'Ivan', '+12.004', '108.1'),
+                        ('07', 'Minori', '+18.512', '101.4'), ('08', 'Bee', 'DNF', 'CP 5')]),
+                    'FIRE~READY;TAB~DETAILS;ESC~MENU', 'WAITING FOR 5 DRIVERS', '3 / 8 READY',
+                    'YOUR SECTORS~LOST TO THE QUICKEST \u00b7 YOUR PLACE', '', '', '', '', '',
+                    'POS~DRIVER~TIME~AVG KM/H', '', '', '', '', '', '',
+                    '~'.join(['P4', 'P4', 'P3', 'P3', 'P3', 'P2', 'P2', 'P2'])]
+
+
+def test_native_sprint_end_screen_matches_the_design():
+    mine, = layouts(end_command(END_SPRINT_MODEL))
+    left, pod, aw, lst = '/div:3', '/div:4', '/div:5', '/div:6/div:0'
+    chart = left + '/div:5/div:1'
+    pairs = [('title', '/div:2/div:0'), ('subtitle', '/div:2/div:1'),
+             ('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'),
+             ('listRight', lst + '/div:0/div:1')]
+    pairs += [(f'statLabel{i}', left + f'/div:3/div:{i}/div:0') for i in range(4)]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    for i in range(8):
+        col = chart + f'/div:{i}'
+        pairs += [(f'lapSlot{i}', col), (f'lapBar{i}', col + '/div:0/div:0'), (f'lapValue{i}', col + '/div:1'),
+                  (f'lapName{i}', col + '/div:2'), (f'lapRule{i}', col + '/div:3'), (f'lapPlace{i}', col + '/div:4')]
+    for place, div in ((0, 1), (1, 0), (2, 2)):
+        card = pod + f'/div:{div}'
+        pairs += [(f'podium{place}', card), (f'podiumCar{place}', card + '/div:0'),
+                  (f'podiumName{place}', card + '/div:1/div:1')]
+    for i in range(3):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardLabel{i}', aw + f'/div:{i + 1}/div:1/div:0'),
+                  (f'awardValue{i}', aw + f'/div:{i + 1}/div:2/div:0')]
+    pairs += [(f'head{i}', lst + f'/div:1/div:{i}') for i in range(4)]
+    pairs += [(f'row{i}', lst + f'/div:2/div:{i}') for i in range(8)]
+    pairs += [(f'rowBest{i}', lst + f'/div:2/div:{i}/div:3/div:0') for i in range(8)]
+    problems = check_all(mine, END_SPRINT, pairs)
     assert not problems, problems

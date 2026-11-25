@@ -46,6 +46,7 @@ void CG_ResultStart( cgRaceResult_t *r, int startTime ) {
 void CG_ResultSplit( cgRaceResult_t *r, int checkpoint, int time ) {
 	int sector;
 	if ( !r->present || r->finishTime || time <= r->lastCross ) return;
+	if ( checkpoint > 0 && checkpoint < CG_RESULT_CPS ) r->cpAt[checkpoint] = time - r->startTime > 0 ? time - r->startTime : 1;
 	sector = time - r->lastCross;
 	if ( !r->bestSector || sector < r->bestSector ) {
 		r->bestSector = sector;
@@ -63,9 +64,53 @@ void CG_ResultLap( cgRaceResult_t *r, int time ) {
 }
 
 void CG_ResultFinish( cgRaceResult_t *r, int time ) {
+	int i;
 	if ( !r->present || r->finishTime ) return;
 	CG_ResultLap( r, time );
 	r->finishTime = time;
+	/* the finish line sends a split too: it is no checkpoint */
+	for ( i = 1; i < CG_RESULT_CPS; i++ ) {
+		if ( r->cpAt[i] >= time - r->startTime ) r->cpAt[i] = 0;
+	}
+}
+
+int CG_ResultReached( const cgRaceResult_t *r ) {
+	int i, n = 0;
+	for ( i = 1; i < CG_RESULT_CPS; i++ ) if ( r->cpAt[i] ) n = i;
+	return n;
+}
+
+int CG_ResultCheckpoints( const cgRaceResult_t *d, int count ) {
+	int i, n = 0;
+	for ( i = 0; i < count; i++ ) {
+		if ( d[i].present && CG_ResultReached( &d[i] ) > n ) n = CG_ResultReached( &d[i] );
+	}
+	return n;
+}
+
+/* ms from the start to the end of a sector, 0: not there */
+static int CG_ResultAt( const cgRaceResult_t *r, int sector, int checkpoints ) {
+	if ( sector <= 0 ) return 0;
+	if ( sector > checkpoints ) return CG_ResultTotal( r );
+	return sector < CG_RESULT_CPS ? r->cpAt[sector] : 0;
+}
+
+int CG_ResultSector( const cgRaceResult_t *r, int sector, int checkpoints ) {
+	int end = CG_ResultAt( r, sector, checkpoints ), begin = sector > 1 ? CG_ResultAt( r, sector - 1, checkpoints ) : 0;
+	if ( !r->present || !end || ( sector > 1 && !begin ) || end <= begin ) return 0;
+	return end - begin;
+}
+
+int CG_ResultPlaceAt( const cgRaceResult_t *d, int count, int who, int sector, int checkpoints ) {
+	int i, place = 1, mine = CG_ResultAt( &d[who], sector, checkpoints );
+	if ( !d[who].present || !mine ) return 0;
+	for ( i = 0; i < count; i++ ) {
+		int t;
+		if ( i == who || !d[i].present ) continue;
+		t = CG_ResultAt( &d[i], sector, checkpoints );
+		if ( t && ( t < mine || ( t == mine && i < who ) ) ) place++;
+	}
+	return place;
 }
 
 int CG_ResultBestLap( const cgRaceResult_t *r ) {

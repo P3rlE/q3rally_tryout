@@ -1297,6 +1297,18 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 		MH_Place( &e->lapNameT[i], sx + ( slot - e->lapNameT[i].box.w ) * 0.5f,
 		          e->lapValueT[i].box.y + e->lapValueT[i].box.h + 6.0f );
 		e->lapSlot[i].h = e->lapNameT[i].box.y + e->lapNameT[i].box.h - y;
+		if ( e->lapPlace[i] ) {
+			/* a sprint: 6px, a 1px rule, 6px, the place */
+			wsTextStyle_t mono12;
+			MH_Mono( &mono12, 12.0f );
+			e->lapRule[i].x = sx;
+			e->lapRule[i].y = e->lapNameT[i].box.y + e->lapNameT[i].box.h + 6.0f;
+			e->lapRule[i].w = slot;
+			e->lapRule[i].h = 1.0f;
+			MH_Set( &e->lapPlaceT[i], &mono12, e->lapPlace[i] );
+			MH_Place( &e->lapPlaceT[i], sx + ( slot - e->lapPlaceT[i].box.w ) * 0.5f, e->lapRule[i].y + 1.0f + 6.0f );
+			e->lapSlot[i].h = e->lapPlaceT[i].box.y + e->lapPlaceT[i].box.h - y;
+		}
 	}
 }
 
