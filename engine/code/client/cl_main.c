@@ -3377,8 +3377,44 @@ void CL_StartHunkUsers( qboolean rendererOnly ) {
 CL_RefMalloc
 ============
 */
+/* Q3Rally: the renderer's big blocks come from the C heap, the small ones
+ * from the zone. A decoded image is width x height x 4: a 2048 x 2048 one
+ * (the end screen's big font) 16 MB in one piece, which the 48 MB zone may
+ * not have once a large map's AAS is in it (Z_Malloc failed on 16777256
+ * bytes at the end of a sprint on Timber Run). The pointers are kept, so
+ * CL_RefFree knows where a block came from. */
+#define REF_HEAP_MIN	( 512 * 1024 )
+#define REF_HEAP_MAX	64
+static void *refHeap[REF_HEAP_MAX];
+
 void *CL_RefMalloc( int size ) {
+	if ( size >= REF_HEAP_MIN ) {
+		int i;
+		for ( i = 0; i < REF_HEAP_MAX; i++ ) {
+			if ( !refHeap[i] ) {
+				refHeap[i] = calloc( 1, size );	/* zeroed, as the zone's */
+				if ( !refHeap[i] ) {
+					Com_Error( ERR_FATAL, "CL_RefMalloc: failed on allocation of %i bytes", size );
+				}
+				return refHeap[i];
+			}
+		}
+	}
 	return Z_TagMalloc( size, TAG_RENDERER );
+}
+
+static void CL_RefFree( void *ptr ) {
+	int i;
+	if ( ptr ) {
+		for ( i = 0; i < REF_HEAP_MAX; i++ ) {
+			if ( refHeap[i] == ptr ) {
+				free( ptr );
+				refHeap[i] = NULL;
+				return;
+			}
+		}
+	}
+	Z_Free( ptr );
 }
 
 int CL_ScaledMilliseconds(void) {
@@ -3436,7 +3472,7 @@ void CL_InitRef( void ) {
 	ri.Error = Com_Error;
 	ri.Milliseconds = CL_ScaledMilliseconds;
 	ri.Malloc = CL_RefMalloc;
-	ri.Free = Z_Free;
+	ri.Free = CL_RefFree;
 #ifdef HUNK_DEBUG
 	ri.Hunk_AllocDebug = Hunk_AllocDebug;
 #else

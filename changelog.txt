@@ -292,6 +292,14 @@ Removed:
   or code loads (tools/assets/find_unused_assets.py), and the textures of
   the old weapons.
 
+Fixed:
+
+- The game stopped with "Z_Malloc: failed on allocation of 16777256 bytes"
+  when the end screen came up after a sprint on Timber Run: its big font
+  (2048 x 2048) is loaded then, and the 48 MB memory zone has no 16 MB in
+  one piece left once a large map's bot navigation is in it. The renderer
+  now takes its big blocks (from 512 KB) from the system's memory.
+
 v0.8.4 - 2026-11-03
 
 Fixed:
