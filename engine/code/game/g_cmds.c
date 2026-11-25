@@ -2274,6 +2274,13 @@ void ClientCommand( int clientNum ) {
 		return;
 	}
 
+	// Q3Rally: a drag tournament's bot match can be skipped from the bracket
+	// shown between the matches, before it is lined up
+	if (Q_stricmp (cmd, "dragskip") == 0) {
+		Cmd_DragSkip_f( ent );
+		return;
+	}
+
 	// ignore all other commands when at intermission
 	if (level.intermissiontime) {
 		Cmd_Say_f (ent, qfalse, qtrue);
@@ -2332,8 +2339,6 @@ void ClientCommand( int clientNum ) {
 	else if (Q_stricmp (cmd, "stats") == 0)
 		Cmd_Stats_f( ent );
 // STONELANCE
-	else if (Q_stricmp (cmd, "dragskip") == 0)
-		Cmd_DragSkip_f( ent );
 	else if (Q_stricmp (cmd, "gearUp") == 0){
 		if ( G_DragTryGearChange( ent, 1, Cmd_DragGearTime( ent ) ) ) return;
 		if ( g_gametype.integer == GT_DRAG ) ent->client->pers.transmissionMode = TR_MANUAL;

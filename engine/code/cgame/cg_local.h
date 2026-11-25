@@ -1702,6 +1702,7 @@ typedef struct {
 		int		winner[16];	/* play order; size-2 third place, size-1 final */
 		int		wins[16][2];
 	} dragTourney;
+	char			dragTourneyCar[16][MAX_QPATH];	/* each entrant's car ("viper/graphite"), "" for a human (dragTourneyCars) */
 	cgDragLog_t		dragLog;	/* the heats of the match, for the end screen */
 } cgs_t;
 
@@ -2066,6 +2067,13 @@ qhandle_t CG_StatusHandle(int task);
 // cg_player.c
 //
 void CG_Player( centity_t *cent );
+/* the handles the showroom draws a car with (CG_ShowroomCarOf) */
+typedef struct {
+	qhandle_t	body, bodySkin, wheel, wheelSkin, plate, plateShader;
+} cgShowroomCar_t;
+qboolean CG_ShowroomCarOf( int clientNum, cgShowroomCar_t *car );
+qboolean CG_ShowroomCarLoad( const char *name, const char *model, int slot, cgShowroomCar_t *car );
+void CG_DrawShowroomModel( float x, float y, float w, float h, const cgShowroomCar_t *car, float yaw );
 void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, float yaw );
 void CG_ResetPlayerEntity( centity_t *cent );
 void CG_AddRefEntityWithPowerups( refEntity_t *ent, entityState_t *state, int team );

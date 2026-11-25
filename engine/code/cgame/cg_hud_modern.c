@@ -1579,6 +1579,48 @@ static qboolean MH_Views( void ) {
 }
 
 /* everything the frame shows, laid out once */
+/* A drag tournament's cars. The server sends away the bots that do not ride
+ * the match up next, their cars with them; the podium after the final still
+ * shows them: the showroom's handles of every entrant, kept whenever it is
+ * seen (a tournament lives across map_restart, the cgame with it). */
+static struct {
+	char			name[16];
+	cgShowroomCar_t	car;
+	qboolean		valid;
+} mhTourneyCars[CG_BRACKET_MAX];
+
+static void MH_TourneyRemember( void ) {
+	char name[MAX_QPATH];
+	cgShowroomCar_t car;
+	int i, e;
+	if ( cgs.gametype != GT_DRAG || !cgs.dragTourney.size ) return;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !CG_ShowroomCarOf( i, &car ) ) continue;
+		MH_Plain( cgs.clientinfo[i].name, name, sizeof( name ) );
+		for ( e = 0; e < cgs.dragTourney.size && e < CG_BRACKET_MAX; e++ ) {
+			if ( Q_stricmp( cgs.dragTourney.name[e], name ) ) continue;
+			Q_strncpyz( mhTourneyCars[e].name, cgs.dragTourney.name[e], sizeof( mhTourneyCars[e].name ) );
+			mhTourneyCars[e].car = car;
+			mhTourneyCars[e].valid = qtrue;
+		}
+	}
+}
+
+/* an entrant's car: as it is now, or as it was last seen, or (a bot never
+ * seen here) from its bot file, loaded once */
+static qboolean MH_TourneyCar( int entrant, cgShowroomCar_t *car ) {
+	if ( entrant < 0 || entrant >= CG_BRACKET_MAX ) return qfalse;
+	MH_TourneyRemember();
+	if ( !mhTourneyCars[entrant].valid || Q_stricmp( mhTourneyCars[entrant].name, cgs.dragTourney.name[entrant] ) ) {
+		if ( !CG_ShowroomCarLoad( cgs.dragTourney.name[entrant], cgs.dragTourneyCar[entrant], MAX_CLIENTS - 1 - entrant, car ) ) return qfalse;
+		Q_strncpyz( mhTourneyCars[entrant].name, cgs.dragTourney.name[entrant], sizeof( mhTourneyCars[entrant].name ) );
+		mhTourneyCars[entrant].car = *car;
+		mhTourneyCars[entrant].valid = qtrue;
+	}
+	*car = mhTourneyCars[entrant].car;
+	return qtrue;
+}
+
 static void MH_Prepare( void ) {
 	mhRaceLayout_t *l = &mh.l;
 	playerState_t *ps = &cg.snap->ps;
@@ -1587,6 +1629,8 @@ static void MH_Prepare( void ) {
 	const char *map;
 	vec3_t forward;
 	float factor;
+
+	MH_TourneyRemember();
 
 	if ( mh.ready && mh.time == cg.time ) return;
 	mh.time = cg.time;
@@ -2603,6 +2647,8 @@ static struct {
 	qboolean		slipBetter[2][MH_END_SLIP_ROWS];
 	const float		*rowBestColor[MH_END_ROWS];
 	qboolean		tourney;			/* the drag tournament over */
+	cgShowroomCar_t	podCar[3];			/* its podium: the cars kept (their drivers may be gone) */
+	qboolean		podCarValid[3];
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
@@ -3185,19 +3231,6 @@ static int MH_TourneySelf( void ) {
 	return -1;
 }
 
-/* the client still in the game under an entrant's name (its car), -1 */
-static int MH_TourneyClient( int entrant ) {
-	char name[MAX_QPATH];
-	int i;
-	if ( entrant < 0 ) return -1;
-	for ( i = 0; i < MAX_CLIENTS; i++ ) {
-		if ( !cgs.clientinfo[i].infoValid ) continue;
-		MH_Plain( cgs.clientinfo[i].name, name, sizeof( name ) );
-		if ( !Q_stricmp( name, cgs.dragTourney.name[entrant] ) ) return i;
-	}
-	return -1;
-}
-
 /* "SEMI-FINAL" as the big type has it: "Semi-final" */
 static void MH_TourneyTitle( const char *in, char *out, int size ) {
 	Q_strncpyz( out, in, size );
@@ -3504,7 +3537,8 @@ static void MH_EndTourney( void ) {
 		static const char *tags[3] = { "CHAMPION", "FINALIST", "THIRD" };
 		int pn, q;
 		if ( place[i] < 0 ) break;
-		mhEnd.client[i] = MH_TourneyClient( place[i] );
+		mhEnd.client[i] = -1;
+		mhEnd.podCarValid[i] = MH_TourneyCar( place[i], &mhEnd.podCar[i] );
 		Q_strncpyz( mhEnd.podName[i], cgs.dragTourney.name[place[i]], sizeof( mhEnd.podName[i] ) );
 		mhEnd.podTime[i][0] = '\0';
 		pn = CG_BracketPath( &br, place[i], path, CG_BRACKET_ROUNDS + 1 );
@@ -3886,10 +3920,15 @@ void CG_ModernHUD_DrawEnd( void ) {
 	}
 	for ( k = 0; k < e->podiumCount; k++ ) {
 		const wsRect_t *c = &e->podiumCar[k];
+		float yaw = AngleMod( 150.0f + k * 40.0f + cg.time * 0.018f );
+		if ( mhEnd.tourney && mhEnd.podCarValid[k] ) {
+			CG_DrawShowroomModel( MH_Snap( c->x ), MH_Snap( c->y ), MH_Snap( c->x + c->w ) - MH_Snap( c->x ),
+			                      MH_Snap( c->y + c->h ) - MH_Snap( c->y ), &mhEnd.podCar[k], yaw );
+			continue;
+		}
 		if ( mhEnd.client[k] < 0 ) continue;
 		CG_DrawShowroomCar( MH_Snap( c->x ), MH_Snap( c->y ), MH_Snap( c->x + c->w ) - MH_Snap( c->x ),
-		                    MH_Snap( c->y + c->h ) - MH_Snap( c->y ), mhEnd.client[k],
-		                    AngleMod( 150.0f + k * 40.0f + cg.time * 0.018f ) );
+		                    MH_Snap( c->y + c->h ) - MH_Snap( c->y ), mhEnd.client[k], yaw );
 	}
 	for ( k = 0; k < e->podiumCount; k++ ) {
 		MH_Str( &e->podiumPlaceT[k], mhEnd.teams ? MH_TeamColor( TEAM_RED + mhEnd.podiumTeam[k] ) : k == 0 ? mhAccent : mhWhite, 1.0f );

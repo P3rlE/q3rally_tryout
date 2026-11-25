@@ -144,7 +144,8 @@ first; five seconds later (TAB holds the heat results) the tournament:
 - Between the matches the bracket (`Tourney.dc.html`, `Tourney16.dc.html`):
   at the left the match up next, big, who rides it (YOU, BOT), your way
   through the rounds (won, lost, up next, the ones to come) and, when two
-  bots are up next, the hint to `/dragskip`. At the right a column a
+  bots are up next, the hint to `/dragskip` (it works right there, between
+  the matches, and the bracket takes the result at once). At the right a column a
   round, a card a match: the drivers with the heats they won, the winner
   white, the one out grey, bots in grey type with BOT, your lines lit, the
   match up next outlined with UP NEXT; the winner's card and third place
@@ -155,6 +156,14 @@ first; five seconds later (TAB holds the heat results) the tournament:
   finalist, third) with their cars and scores; a clean sweep and the most
   heats won as highlights; every match with its winner, heats and the one
   beaten.
+
+The server sends away the bots that do not ride the match up next; the
+podium still shows their cars: the client keeps every entrant's car (the
+showroom's handles) whenever it sees it, and the tournament with its
+cgame lives across the map restarts between the matches. A bot it never
+saw (a match skipped with `/dragskip`, or a client that joined late) gets
+its car from the bot file: the server sends each bot's model with the
+bracket (`dragTourneyCars`), and the client loads it once.
 
 The bracket's bookkeeping (rounds, pairings, a driver's way, the places)
 is shared with the classic bracket in `cg_drag_bracket.c`, tested in

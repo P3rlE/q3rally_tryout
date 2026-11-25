@@ -1970,6 +1970,17 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	/* the tournament's cars: each bot's from its bot file, so the podium can
+	 * show it after the server sent the bot away */
+	if ( !strcmp( cmd, "dragTourneyCars" ) ) {
+		int i;
+		memset( cgs.dragTourneyCar, 0, sizeof( cgs.dragTourneyCar ) );
+		for ( i = 0; i < 16 && i + 1 < trap_Argc(); i++ ) {
+			Q_strncpyz( cgs.dragTourneyCar[i], CG_Argv( i + 1 ), sizeof( cgs.dragTourneyCar[i] ) );
+		}
+		return;
+	}
+
 	if ( !strcmp( cmd, "dragMatch" ) ) {
 		static int lastHeatToast;
 		int heat, count, i;

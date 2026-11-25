@@ -5124,13 +5124,13 @@ body with its paint, the four wheels on their tags, the plate. The end
 screen's podium.
 ===============
 */
-static void CG_ShowroomWheel( refEntity_t *body, const clientInfo_t *ci, char *tag, float roll ) {
+static void CG_ShowroomWheel( refEntity_t *body, const cgShowroomCar_t *ci, char *tag, float roll ) {
 	refEntity_t wheel;
 	vec3_t angles;
-	if ( !ci->wheelModel || !CG_TagExists( body->hModel, tag ) ) return;
+	if ( !ci->wheel || !CG_TagExists( body->hModel, tag ) ) return;
 	memset( &wheel, 0, sizeof( wheel ) );
-	wheel.hModel = ci->wheelModel;
-	wheel.customSkin = CG_TagExists( ci->wheelModel, "tag_polygonwheel" ) ? 0 : ci->wheelSkin;
+	wheel.hModel = ci->wheel;
+	wheel.customSkin = CG_TagExists( ci->wheel, "tag_polygonwheel" ) ? 0 : ci->wheelSkin;
 	VectorSet( angles, 0.0f, 0.0f, roll );
 	AnglesToAxis( angles, wheel.axis );
 	CG_PositionRotatedEntityOnTag( &wheel, body, body->hModel, tag );
@@ -5139,16 +5139,13 @@ static void CG_ShowroomWheel( refEntity_t *body, const clientInfo_t *ci, char *t
 	trap_R_AddRefEntityToScene( &wheel );
 }
 
-void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, float yaw ) {
-	const clientInfo_t *ci;
+void CG_DrawShowroomModel( float x, float y, float w, float h, const cgShowroomCar_t *ci, float yaw ) {
 	refdef_t refdef;
 	refEntity_t body, plate;
 	vec3_t mins, maxs, centre, angles, viewAngles, forward;
 	float radius, dist, fovX = 26.0f;
 
-	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || w < 2.0f || h < 2.0f ) return;
-	ci = &cgs.clientinfo[clientNum];
-	if ( !ci->infoValid || !ci->bodyModel ) return;
+	if ( !ci || !ci->body || w < 2.0f || h < 2.0f ) return;
 
 	memset( &refdef, 0, sizeof( refdef ) );
 	refdef.rdflags = RDF_NOWORLDMODEL;
@@ -5165,7 +5162,7 @@ void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, floa
 	VectorClear( refdef.vieworg );
 
 	/* the car's middle where the camera looks, far enough to fit */
-	trap_R_ModelBounds( ci->bodyModel, mins, maxs );
+	trap_R_ModelBounds( ci->body, mins, maxs );
 	VectorAdd( mins, maxs, centre );
 	VectorScale( centre, 0.5f, centre );
 	radius = 0.5f * sqrt( ( maxs[0] - mins[0] ) * ( maxs[0] - mins[0] ) + ( maxs[1] - mins[1] ) * ( maxs[1] - mins[1] ) );
@@ -5181,7 +5178,7 @@ void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, floa
 	AngleVectors( viewAngles, forward, NULL, NULL );
 
 	memset( &body, 0, sizeof( body ) );
-	body.hModel = ci->bodyModel;
+	body.hModel = ci->body;
 	body.customSkin = ci->bodySkin;
 	body.renderfx = RF_NOSHADOW | RF_LIGHTING_ORIGIN;
 	VectorSet( angles, 0.0f, yaw, 0.0f );
@@ -5200,11 +5197,11 @@ void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, floa
 	CG_ShowroomWheel( &body, ci, "tag_wheelfr", 0.0f );
 	CG_ShowroomWheel( &body, ci, "tag_wheelrl", 0.0f );
 	CG_ShowroomWheel( &body, ci, "tag_wheelrr", 0.0f );
-	if ( ci->plateModel && CG_TagExists( ci->bodyModel, "tag_plate" ) ) {
+	if ( ci->plate && CG_TagExists( ci->body, "tag_plate" ) ) {
 		memset( &plate, 0, sizeof( plate ) );
-		plate.hModel = ci->plateModel;
+		plate.hModel = ci->plate;
 		plate.customShader = ci->plateShader;
-		CG_PositionEntityOnTag( &plate, &body, ci->bodyModel, "tag_plate" );
+		CG_PositionEntityOnTag( &plate, &body, ci->body, "tag_plate" );
 		VectorCopy( body.lightingOrigin, plate.lightingOrigin );
 		plate.renderfx = body.renderfx;
 		trap_R_AddRefEntityToScene( &plate );
@@ -5217,4 +5214,59 @@ void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, floa
 		trap_R_AddLightToScene( light, radius * 6.0f, 1.0f, 0.95f, 0.9f );
 	}
 	trap_R_RenderScene( &refdef );
+}
+
+/* a client's car as the showroom draws it: the handles only, kept by whoever
+ * wants to show it after the client is gone */
+qboolean CG_ShowroomCarOf( int clientNum, cgShowroomCar_t *car ) {
+	const clientInfo_t *ci;
+	memset( car, 0, sizeof( *car ) );
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) return qfalse;
+	ci = &cgs.clientinfo[clientNum];
+	if ( !ci->infoValid || !ci->bodyModel ) return qfalse;
+	car->body = ci->bodyModel;
+	car->bodySkin = ci->bodySkin;
+	car->wheel = ci->wheelModel;
+	car->wheelSkin = ci->wheelSkin;
+	car->plate = ci->plateModel;
+	car->plateShader = ci->plateShader;
+	return qtrue;
+}
+
+/* a car no client brings: a drag tournament's bot already sent away, from
+ * its bot file's model ("viper/graphite"). Registers the models, so once
+ * per car; slot keeps its plate image apart from the clients' ones. */
+qboolean CG_ShowroomCarLoad( const char *name, const char *model, int slot, cgShowroomCar_t *car ) {
+	static clientInfo_t ci;
+	char *slash;
+	memset( car, 0, sizeof( *car ) );
+	if ( !model || !model[0] ) return qfalse;
+	memset( &ci, 0, sizeof( ci ) );
+	Q_strncpyz( ci.name, name ? name : "", sizeof( ci.name ) );
+	ci.clientNum = slot;
+	Q_strncpyz( ci.modelName, model, sizeof( ci.modelName ) );
+	slash = strchr( ci.modelName, '/' );
+	if ( slash ) {
+		Q_strncpyz( ci.skinName, slash + 1, sizeof( ci.skinName ) );
+		*slash = '\0';
+	} else {
+		Q_strncpyz( ci.skinName, DEFAULT_SKIN, sizeof( ci.skinName ) );
+	}
+	Q_strncpyz( ci.headModelName, ci.modelName, sizeof( ci.headModelName ) );
+	if ( !CG_RegisterClientModelname( &ci, ci.modelName, ci.skinName, ci.rimName, ci.headModelName, "" ) || !ci.bodyModel ) {
+		return qfalse;
+	}
+	CG_RegisterClientPlate( &ci );
+	car->body = ci.bodyModel;
+	car->bodySkin = ci.bodySkin;
+	car->wheel = ci.wheelModel;
+	car->wheelSkin = ci.wheelSkin;
+	car->plate = ci.plateModel;
+	car->plateShader = ci.plateShader;
+	return qtrue;
+}
+
+void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, float yaw ) {
+	cgShowroomCar_t car;
+	if ( CG_ShowroomCarOf( clientNum, &car ) ) CG_DrawShowroomModel( x, y, w, h, &car, yaw );
 }
