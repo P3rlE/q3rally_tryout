@@ -21,6 +21,7 @@ CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els
 END = json.loads((ROOT / 'tests/fixtures/hud_end_racing_layout.json').read_text())['els']
 END_TEAM = json.loads((ROOT / 'tests/fixtures/hud_end_teamracing_layout.json').read_text())['els']
 END_DRAG = json.loads((ROOT / 'tests/fixtures/hud_end_drag_layout.json').read_text())['els']
+END_GHOST = json.loads((ROOT / 'tests/fixtures/hud_end_ghost_layout.json').read_text())['els']
 END_SPRINT = json.loads((ROOT / 'tests/fixtures/hud_end_sprint_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
@@ -1026,3 +1027,80 @@ def test_native_sprint_end_screen_matches_the_design():
     pairs += [(f'rowBest{i}', lst + f'/div:2/div:{i}/div:3/div:0') for i in range(8)]
     problems = check_all(mine, END_SPRINT, pairs)
     assert not problems, problems
+
+
+GHOST_DELTAS = [-0.21, -0.48, 0.12, -0.05, -0.31, 0.088]
+GHOST_NAMES = ['S1', 'S2', 'S3', 'S4', 'S5', 'FIN']
+
+
+def ghost_running():
+    run, out = 0.0, []
+    for v in GHOST_DELTAS:
+        run += v
+        out.append(f'{run:+.2f}')
+    return out
+
+
+END_GHOST_MODEL = (['GHOST RACE RESULT', 'COUNTRY \u00b7 5 LAPS \u00b7 3 DRIVERS', '-0.842', '',
+                    'BEST LAP', '1:20.558', 'GHOST BEATEN \u00b7 ROCKET 1:21.400',
+                    'LADDER PLACE~#3~OF 42;PERSONAL BEST~-0.31~NEW;TOP SPEED~172~KM/H;LAPS FASTER~3 / 5~',
+                    ';'.join(f'{v / 0.48:.4f}~{v:+.2f}~{n}' for v, n in zip(GHOST_DELTAS, GHOST_NAMES)),
+                    '',
+                    'BIGGEST GAIN~S2 \u00b7 against the ghost~-0.48;FASTEST LAP~Player \u00b7 lap 4~1:20.558;'
+                    'PERSONAL BEST~Player \u00b7 new ghost saved~-0.31',
+                    'RESULTS AGAINST THE GHOST', '5 LAPS', 0,
+                    'Player~1:20.558~01~-0.842;Carla~1:21.902~02~+0.214;Tony~1:23.115~03~-0.310',
+                    'FIRE~READY;TAB~DETAILS;ESC~MENU', 'WAITING FOR 2 DRIVERS', '1 / 3 READY',
+                    'YOUR BEST LAP~AGAINST THE GHOST \u00b7 RUNNING GAP', '', '', '', '', '',
+                    'POS~DRIVER~BEST~VS GHOST', '', '', '', '', '', '0',
+                    '~'.join(ghost_running()),
+                    '120', '1',
+                    'YOU~Player~1:20.558~-0.842;GHOST \u00b7 LADDER #3~Rocket~1:21.400~Murcielago',
+                    'GHOST LADDER~42 GHOSTS',
+                    ';'.join(f'{p}~{n}~{t}~{g}~{m}' for p, n, t, g, m in [
+                        ('#1', 'Vlad', '1:19.904', '', 0), ('#2', 'Sam', '1:20.311', '', 0), ('#3', 'Player', '1:20.558', '', 1),
+                        ('#4', 'Rocket', '1:21.400', 'VS', 0), ('#5', 'Minori', '1:21.977', '', 0), ('#6', 'Bee', '1:22.630', '', 0)])])
+
+
+def test_native_ghost_end_screen_matches_the_design():
+    # the rows: pos~name~time~best with the columns in the classification's order
+    model = list(END_GHOST_MODEL)
+    model[14] = ';'.join(f'{p}~{n}~{b}~{v}' for p, n, b, v in [
+        ('01', 'Player', '1:20.558', '-0.842'), ('02', 'Carla', '1:21.902', '+0.214'), ('03', 'Tony', '1:23.115', '-0.310')])
+    mine, = layouts(end_command(model))
+    left, aw, right = '/div:3', '/div:6', '/div:7'
+    lst, lad = right + '/div:0', right + '/div:1'
+    chart = left + '/div:5/div:1'
+    pairs = [('title', '/div:2/div:0'), ('subtitle', '/div:2/div:1'), ('pos', left + '/div:0/div:0'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'), ('listRight', lst + '/div:0/div:1'),
+             ('ladder', lad), ('ladderTitle', lad + '/div:0/div:0'), ('ladderRight', lad + '/div:0/div:1')]
+    pairs += [(f'statLabel{i}', left + f'/div:3/div:{i}/div:0') for i in range(4)]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    for i, v in enumerate(GHOST_DELTAS):
+        col = chart + f'/div:{i}'
+        bar = col + ('/div:0/div:0/div:0' if v <= 0 else '/div:0/div:2/div:0')
+        pairs += [(f'lapSlot{i}', col), (f'lapBar{i}', bar), (f'lapAxis{i}', col + '/div:0/div:1'),
+                  (f'lapValue{i}', col + '/div:1'), (f'lapName{i}', col + '/div:2'), (f'lapRule{i}', col + '/div:3'),
+                  (f'lapPlace{i}', col + '/div:4')]
+    for k in range(2):
+        card = f'/div:4/div:{k}'
+        car = card + ('/div:0' if k == 0 else '/div:0/div:0')
+        pairs += [(f'duel{k}', card), (f'duelCar{k}', car), (f'duelTag{k}', card + '/div:1/div:0'),
+                  (f'duelName{k}', card + '/div:1/div:1'), (f'duelLap{k}', card + '/div:1/div:2/div:0'),
+                  (f'duelNote{k}', card + '/div:1/div:2/div:1')]
+    for i in range(3):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardLabel{i}', aw + f'/div:{i + 1}/div:1/div:0'),
+                  (f'awardValue{i}', aw + f'/div:{i + 1}/div:2/div:0')]
+    pairs += [(f'head{i}', lst + f'/div:1/div:{i}') for i in range(4)]
+    pairs += [(f'row{i}', lst + f'/div:2/div:{i}') for i in range(3)]
+    for i in range(6):
+        r = lad + f'/div:1/div:{i}'
+        pairs += [(f'ladderRow{i}', r), (f'ladderPos{i}', r + '/div:0'), (f'ladderName{i}', r + '/div:1'),
+                  (f'ladderLap{i}', r + '/div:2/div:0')]
+    problems = check_all(mine, END_GHOST, pairs)
+    assert not problems, problems
+    # VS: centred in the gap between the cards (the design's box is the gap)
+    gap = END_GHOST['/div:5/div:0']
+    assert abs(mine['vs'][0] + mine['vs'][2] / 2 - (gap[0] + gap[2] / 2)) <= 0.5 and abs(mine['vs'][1] - gap[1]) <= 0.5

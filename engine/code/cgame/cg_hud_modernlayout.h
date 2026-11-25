@@ -226,6 +226,7 @@ typedef struct {
 #define MH_END_MEMBERS		4		/* a team's drivers listed on its podium card */
 #define MH_END_SLIP_ROWS	6		/* a drag time slip: reaction, 60 ft .. trap */
 #define MH_PATH_ROWS		6		/* a tournament driver's way: a round a line */
+#define MH_END_LADDER		8		/* a ghost race: the ghost ladder's rows */
 
 typedef struct {
 	/* inputs */
@@ -241,6 +242,16 @@ typedef struct {
 	float		lapFrac[MH_END_LAPS];
 	const char	*lapValue[MH_END_LAPS], *lapName[MH_END_LAPS];
 	const char	*lapPlace[MH_END_LAPS];	/* a sprint: under a rule, your place at the sector's end (NULL: none) */
+	qboolean	lapDiverge;			/* a ghost race: bars up (lapFrac < 0, gained) and down from a middle line */
+	float		posSize;			/* the big figure, 0: 168 (a ghost race's margin: 120) */
+	/* a ghost race: you [0] and the ghost [1] side by side in place of the podium */
+	qboolean	duel;
+	const char	*duelTag[2], *duelName[2], *duelLap[2], *duelNote[2];
+	/* a ghost race: the ghost ladder in a panel under the classification */
+	int			ladderCount;
+	const char	*ladderTitle, *ladderRight;
+	const char	*ladderPos[MH_END_LADDER], *ladderName[MH_END_LADDER], *ladderLap[MH_END_LADDER], *ladderTag[MH_END_LADDER];
+	qboolean	ladderMe[MH_END_LADDER];
 	int			spreadCount;		/* team races, in place of the lap chart: a row per team, */
 	int			spreadDots[MH_END_TEAMS];	/* its drivers on the time axis (0..1), */
 	float		spreadDot[MH_END_TEAMS][MH_END_DOTS];
@@ -282,6 +293,11 @@ typedef struct {
 	mhText_t	lapsTitleT, lapsNoteT, lapValueT[MH_END_LAPS], lapNameT[MH_END_LAPS];
 	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS], lapRule[MH_END_LAPS];
 	mhText_t	lapPlaceT[MH_END_LAPS];
+	wsRect_t	lapAxis[MH_END_LAPS];
+	wsRect_t	duelCard[2], duelCar[2];
+	mhText_t	duelTagT[2], duelNameT[2], duelLapT[2], duelNoteT[2], vsT;
+	wsRect_t	ladder, ladderRow[MH_END_LADDER];
+	mhText_t	ladderTitleT, ladderRightT, ladderPosT[MH_END_LADDER], ladderNameT[MH_END_LADDER], ladderLapT[MH_END_LADDER], ladderTagT[MH_END_LADDER];
 	wsRect_t	podium[3], podiumCar[3], podiumRule[3];
 	mhText_t	pathTitleT, pathRoundT[MH_PATH_ROWS], pathWhatT[MH_PATH_ROWS], pathTagT[MH_PATH_ROWS];
 	mhText_t	slipTitleT, slipNoteT, slipLaneT[2], slipYouT[2], slipTagT[2], slipNameT[2];

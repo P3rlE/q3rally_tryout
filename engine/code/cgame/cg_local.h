@@ -1073,6 +1073,11 @@ typedef struct {
 	int			ghostSplitCheckpoint[MAX_GHOST_SPLITS];
 	int			ghostSplitElapsed[MAX_GHOST_SPLITS];	/* our time into the lap */
 	int			ghostSplitDeltaAt[MAX_GHOST_SPLITS];	/* to the ghost, negative: ahead */
+	/* the same for the best lap, for the end screen */
+	int			ghostBestSplitCount, ghostBestSplitLapMs, ghostBestSplitLap;
+	int			ghostBestSplitCheckpoint[MAX_GHOST_SPLITS];
+	int			ghostBestSplitDeltaAt[MAX_GHOST_SPLITS];
+	int			ghostPrevPersonalMs;	/* the personal ghost's lap before this run replaced it, 0: none */
 	float		raceTopSpeed;		/* the end screen: our top speed in this race (display units) */
 } cg_t;
 
@@ -2495,6 +2500,7 @@ void CG_LadderGhost_DrawPicker( void );
 const char *CG_LadderGhost_StatusText( qboolean *isError );
 qboolean CG_GhostRace_Opponent( char *name, int nameSize, int *lapMs );
 void CG_GhostRace_ResetResult( void );
+const char *CG_GhostRace_Vehicle( void );
 void CG_GhostRace_ResetRace( void );
 void CG_GhostRace_EvaluateFinish( int bestLapMs );
 qboolean CG_GhostRace_ScoreboardGhost( char *name, int nameSize, int *ghostMs, int *playerMs, qboolean *finished );

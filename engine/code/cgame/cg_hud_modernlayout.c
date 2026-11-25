@@ -1187,7 +1187,7 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 	float x = MH_END_MARGIN, y = e->top + MH_END_TOP, w = MH_END_LEFT_W, h, slot;
 	int i;
 
-	MH_Big( &big168, 168.0f );
+	MH_Big( &big168, e->posSize > 0.0f ? e->posSize : 168.0f );
 	MH_Big( &big48, 48.0f );
 	MH_Big( &big44, 44.0f );
 	MH_Big( &big30, 30.0f );
@@ -1196,12 +1196,13 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 	MH_Label( &label10, 10.0f );
 	MH_Mono( &mono11, 11.0f );
 
-	/* "P2" and "/ 8" on one baseline, 14px apart */
+	/* "P2" and "/ 8" on one baseline, 14px apart; a ghost race's margin
+	 * smaller, the best lap 10px under it */
 	MH_Set( &e->posT, &big168, e->pos );
 	MH_Set( &e->ofT, &big48, e->of ? e->of : "" );
 	MH_Place( &e->posT, x, y );
 	MH_Place( &e->ofT, x + e->posT.box.w + 14.0f, y + MH_Base( &e->posT ) - MH_Base( &e->ofT ) );
-	y += e->posT.box.h + 22.0f - 18.0f;
+	y += e->posT.box.h + 22.0f - ( e->posSize > 0.0f ? 10.0f : 18.0f );
 
 	/* finished: label, time, note, 6px apart, blocks over the column */
 	MH_Set( &e->doneLabelT, &label12, e->doneLabel );
@@ -1291,6 +1292,17 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 		e->lapBar[i].w = slot;
 		e->lapBar[i].h = bh;
 		e->lapBar[i].y = y + 56.0f - bh;
+		if ( e->lapDiverge ) {
+			/* 27 up, a 2px line, 27 down: gained up from it, lost down */
+			bh = (float)(int)( 26.0f * ( e->lapFrac[i] < 0.0f ? -e->lapFrac[i] : e->lapFrac[i] ) );	/* whole pixels */
+			if ( bh < 2.0f ) bh = 2.0f;
+			e->lapAxis[i].x = sx;
+			e->lapAxis[i].y = y + 27.0f;
+			e->lapAxis[i].w = slot;
+			e->lapAxis[i].h = 2.0f;
+			e->lapBar[i].h = bh;
+			e->lapBar[i].y = e->lapFrac[i] < 0.0f ? y + 27.0f - bh : y + 29.0f;
+		}
 		MH_Set( &e->lapValueT[i], &mono11, e->lapValue[i] );
 		MH_Set( &e->lapNameT[i], &label10, e->lapName[i] );
 		MH_Place( &e->lapValueT[i], sx + ( slot - e->lapValueT[i].box.w ) * 0.5f, y + 56.0f + 6.0f );
@@ -1385,6 +1397,96 @@ static void MH_EndCard( mhEndLayout_t *e, int k, float x, float w, float carH, f
 	}
 }
 
+/* a ghost race: you and the ghost, cards 268 wide 64 apart from the top,
+ * the car 250 high; VS in the gap. A card: the car, 12px, the tag, 6px,
+ * the name, 6px, the lap with the note on its baseline, 14px */
+static void MH_EndDuel( mhEndLayout_t *e, float x, float top ) {
+	wsTextStyle_t label11, text20, big34, mono13;
+	int k;
+
+	MH_Label( &label11, 11.0f );
+	MH_Text( &text20, 20.0f );
+	MH_Big( &big34, 34.0f );
+	MH_Mono( &mono13, 13.0f );
+	for ( k = 0; k < 2; k++ ) {
+		float cx = x + k * ( 268.0f + 64.0f ), inX = cx + 1.0f + 14.0f, inW = 268.0f - 2.0f - 28.0f, y;
+		MH_Set( &e->duelTagT[k], &label11, e->duelTag[k] ? e->duelTag[k] : "" );
+		MH_Set( &e->duelNameT[k], &text20, e->duelName[k] ? e->duelName[k] : "" );
+		MH_Set( &e->duelLapT[k], &big34, e->duelLap[k] ? e->duelLap[k] : "" );
+		MH_Set( &e->duelNoteT[k], &mono13, e->duelNote[k] ? e->duelNote[k] : "" );
+		e->duelCard[k].x = cx;
+		e->duelCard[k].y = top;
+		e->duelCard[k].w = 268.0f;
+		e->duelCar[k].x = cx + 1.0f;
+		e->duelCar[k].y = top + 2.0f;
+		e->duelCar[k].w = 266.0f;
+		e->duelCar[k].h = 250.0f;
+		y = top + 2.0f + 250.0f + 12.0f;
+		MH_Place( &e->duelTagT[k], inX, y );
+		e->duelTagT[k].box.w = inW;
+		y += e->duelTagT[k].box.h + 6.0f;
+		MH_Fit( &e->duelNameT[k], inW );
+		MH_Place( &e->duelNameT[k], inX, y );
+		e->duelNameT[k].box.w = inW;
+		y += e->duelNameT[k].box.h + 6.0f;
+		y += MH_BaselineRow( &e->duelLapT[k], &e->duelNoteT[k], inX, y, inW );
+		e->duelCard[k].h = y + 14.0f + 1.0f - top;
+	}
+	MH_Set( &e->vsT, &big34, "VS" );
+	MH_Place( &e->vsT, x + 268.0f + ( 64.0f - e->vsT.box.w ) * 0.5f, top + 104.0f );
+}
+
+/* a ghost race: the ladder, a panel 16px under the classification; the
+ * title row, 12px, rows 30 high 2px apart: 34, the name, 82, 40, 10 apart */
+static void MH_EndLadder( mhEndLayout_t *e ) {
+	wsTextStyle_t label12, label10, mono13, text15;
+	float inX, inW, y, colX[4], colW[4];
+	int i;
+
+	if ( e->ladderCount <= 0 ) return;
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label10, 10.0f );
+	MH_Mono( &mono13, 13.0f );
+	MH_Text( &text15, 15.0f );
+	e->ladder.x = e->list.x;
+	e->ladder.y = e->list.y + e->list.h + 16.0f;
+	e->ladder.w = e->list.w;
+	inX = e->ladder.x + 1.0f + MH_PAD_X;
+	inW = e->ladder.w - 2.0f - 2.0f * MH_PAD_X;
+	y = e->ladder.y + 2.0f + MH_PAD_Y;
+	MH_Set( &e->ladderTitleT, &label12, e->ladderTitle ? e->ladderTitle : "GHOST LADDER" );
+	MH_Set( &e->ladderRightT, &label12, e->ladderRight ? e->ladderRight : "" );
+	y += MH_BaselineRow( &e->ladderTitleT, &e->ladderRightT, inX, y, inW ) + 12.0f;
+	colW[0] = 34.0f;
+	colW[2] = 82.0f;
+	colW[3] = 40.0f;
+	colW[1] = inW - colW[0] - colW[2] - colW[3] - 30.0f;
+	colX[0] = 0.0f;
+	for ( i = 1; i < 4; i++ ) colX[i] = colX[i - 1] + colW[i - 1] + 10.0f;
+	for ( i = 0; i < e->ladderCount && i < MH_END_LADDER; i++ ) {
+		wsRect_t *r = &e->ladderRow[i];
+		r->x = inX - 8.0f;
+		r->w = inW + 16.0f;
+		r->y = y;
+		r->h = 30.0f;
+		MH_Set( &e->ladderPosT[i], &mono13, e->ladderPos[i] );
+		MH_Set( &e->ladderNameT[i], &text15, e->ladderName[i] );
+		MH_Set( &e->ladderLapT[i], &mono13, e->ladderLap[i] );
+		MH_Set( &e->ladderTagT[i], &label10, e->ladderTag[i] ? e->ladderTag[i] : "" );
+		MH_Fit( &e->ladderNameT[i], colW[1] );
+		MH_Place( &e->ladderPosT[i], inX + colX[0], y + ( 30.0f - e->ladderPosT[i].box.h ) * 0.5f );
+		MH_Place( &e->ladderNameT[i], inX + colX[1], y + ( 30.0f - e->ladderNameT[i].box.h ) * 0.5f );
+		MH_Place( &e->ladderLapT[i], inX + colX[2], y + ( 30.0f - e->ladderLapT[i].box.h ) * 0.5f );
+		MH_Place( &e->ladderTagT[i], inX + colX[3], y + ( 30.0f - e->ladderTagT[i].box.h ) * 0.5f );
+		e->ladderPosT[i].box.w = colW[0];
+		e->ladderNameT[i].box.w = colW[1];
+		e->ladderLapT[i].box.w = colW[2];
+		e->ladderTagT[i].box.w = colW[3];
+		y += 30.0f + ( i < e->ladderCount - 1 ? 2.0f : 0.0f );
+	}
+	e->ladder.h = y + MH_PAD_Y + 1.0f - e->ladder.y;
+}
+
 /* the middle: the podium (second, winner, third, 12px apart, on one line),
  * 28px under it the highlights */
 /* a drag duel: the heat over a time slip a lane (gen.py time_slip), the
@@ -1450,6 +1552,7 @@ static void MH_EndMiddle( mhEndLayout_t *e ) {
 	int i;
 
 	if ( e->slipCount > 0 ) bottom = MH_EndSlips( e, x, top );
+	if ( e->duel ) MH_EndDuel( e, x, top );
 
 	/* the cars: lower on a team's card, the drivers stand under them */
 	if ( e->podiumCount >= 2 ) MH_EndCard( e, 1, x, 192.0f, e->teamPodium ? 128.0f : 176.0f, bottom );
@@ -1637,6 +1740,7 @@ void MH_EndLayout( mhEndLayout_t *e ) {
 	MH_EndLeft( e );
 	MH_EndMiddle( e );
 	MH_EndList( e );
+	MH_EndLadder( e );
 	MH_EndFooter( e );
 }
 

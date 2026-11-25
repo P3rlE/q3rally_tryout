@@ -1050,6 +1050,115 @@ board('EndSprint.dc.html', 'Sprint result', None, [
 ])
 
 # ---------------------------------------------------------------------------
+# the end screen of a ghost race: you against a recorded lap. The big figure
+# is the margin; in place of the laps your best lap against the ghost, sector
+# by sector (blue gained, orange lost) with the running gap under it; in the
+# middle you and the ghost side by side; at the right everybody's result
+# against their ghost and the ghost ladder with your time in it.
+# ---------------------------------------------------------------------------
+
+def ghost_sector_chart(deltas, names):
+    """deltas: per sector your time minus the ghost's (negative: gained); under it the running gap."""
+    worst = max(abs(v) for v in deltas)
+    run, cols = 0.0, []
+    for v, name in zip(deltas, names):
+        run += v
+        h = max(2, int(26 * abs(v) / worst))
+        gained = v <= 0
+        c = FAST if gained else ACC
+        up = f'<div style="width: 100%; height: {h if gained else 0}px; background: {c}"></div>'
+        down = f'<div style="width: 100%; height: {0 if gained else h}px; background: {c}"></div>'
+        cols.append(f'<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px">'
+                    f'<div style="height: 56px; width: 100%; display: flex; flex-direction: column">'
+                    f'<div style="height: 27px; display: flex; align-items: flex-end">{up}</div>'
+                    f'<div style="height: 2px; background: #777777"></div>'
+                    f'<div style="height: 27px; display: flex; align-items: flex-start">{down}</div></div>'
+                    f'{mono(f"{v:+.2f}", 11, c)}{lab(name, "#777777", 10)}'
+                    f'<div style="height: 1px; width: 100%; background: {LINE}"></div>'
+                    f'{mono(f"{run:+.2f}", 12, FAST if run <= 0 else ACC)}</div>')
+    return f'<div style="display: flex; gap: 8px">{"".join(cols)}</div>'
+
+
+def duel_card(tag, tag_color, name, car, lap, note, note_color, ghost=False):
+    view = car_view(car, 266, 250)
+    if ghost:
+        view = (f'<div style="position: relative; opacity: 0.55; filter: saturate(0.2)">{view}'
+                f'<div style="position: absolute; inset: 0; background: rgba(90,176,255,0.16)"></div></div>')
+    return (f'<div style="width: 268px; background: {PANEL}; border: 1px solid {LINE}; border-top: 2px solid {tag_color}; '
+            f'box-sizing: border-box; display: flex; flex-direction: column">{view}'
+            f'<div style="padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px">'
+            f'{lab(tag, tag_color, 11)}{text(name, 20, "#ffffff", 700)}'
+            f'{row(big(lap, 34), mono(note, 13, note_color))}</div></div>')
+
+
+def ghost_results(rows):
+    grid = 'display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">{lab("POS", "#999999", 11)}{lab("DRIVER", "#999999", 11)}'
+            f'<div style="text-align: right">{lab("BEST", "#999999", 11)}</div>'
+            f'<div style="text-align: right">{lab("VS GHOST", "#999999", 11)}</div></div>')
+    out = []
+    for pos, name, best, vs, me in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(pos, 14, ACC if pos == "01" else "#999999")}'
+                   f'{text(name, 16, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(best, 14, "#dddddd")}</div>'
+                   f'<div style="text-align: right">{mono(vs, 14, FAST if vs.startswith("-") else ACC)}</div></div>')
+    return panel(row(lab('Results against the ghost'), lab('5 laps', '#999999')) + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+def ghost_ladder(rows, right):
+    """The ladder's ghosts for this track, your best lap put in where it ranks."""
+    grid = 'display: grid; grid-template-columns: 34px 1fr 82px 40px; gap: 10px'
+    out = []
+    for pos, name, lap, tag, me in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 30px; padding: 0 8px; {bg}">'
+                   f'{mono(pos, 13, "#ffffff" if me else "#999999")}'
+                   f'{text(name, 15, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(lap, 13, "#dddddd" if me else "#999999")}</div>'
+                   f'<div style="text-align: right">{lab(tag, FAST, 10) if tag else ""}</div></div>')
+    return panel(row(lab('Ghost ladder'), lab(right, '#999999')) +
+                 f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+board('EndGhost.dc.html', 'Ghost race result', None, [
+    blurred(BG['racing']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Ghost race result", ACC, 13)}{lab("Country · 5 laps · 3 drivers", "#999999", 12)}</div>',
+    # your result: the margin to the ghost
+    f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+    f'<div style="display: flex; align-items: baseline; gap: 14px">{big("-0.842", 120, FAST)}</div>'
+    f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -10px">{lab("Best lap")}'
+    f'{big("1:20.558", 44)}{lab("Ghost beaten · Rocket 1:21.400", FAST, 12)}</div>'
+    + sep() +
+    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">'
+    f'{stat("Ladder place", "#3", "#ffffff", "of 42")}{stat("Personal best", "-0.31", FAST, "new")}'
+    f'{stat("Top speed", "172", "#ffffff", "km/h")}{stat("Laps faster", "3 / 5", FAST)}</div>'
+    + sep() +
+    f'<div style="display: flex; flex-direction: column; gap: 12px">{row(lab("Your best lap"), lab("against the ghost · running gap", "#777777", 11))}'
+    + ghost_sector_chart([-0.21, -0.48, 0.12, -0.05, -0.31, 0.088], ['S1', 'S2', 'S3', 'S4', 'S5', 'FIN']) + '</div></div>',
+    # you and the ghost
+    f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; display: flex; gap: 64px; align-items: flex-start">'
+    + duel_card('YOU', ACC, 'Player', 'viper', '1:20.558', '-0.842', FAST)
+    + duel_card('GHOST · LADDER #3', FAST, 'Rocket', 'murcielago', '1:21.400', 'Murcielago', '#999999', ghost=True) + '</div>',
+    f'<div style="position: absolute; left: 744px; top: 196px; width: 64px; text-align: center">{big("VS", 34, "#777777")}</div>',
+    f'<div style="position: absolute; left: 476px; top: 530px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{lab("Highlights")}'
+    + award('flag', 'Biggest gain', 'S2 · against the ghost', '-0.48', FAST)
+    + award('trophy', 'Fastest lap', 'Player · lap 4', '1:20.558', PURPLE)
+    + award('chevron', 'Personal best', 'Player · new ghost saved', '-0.31', '#e6e6e6') + '</div>',
+    col('right: 56px; top: 92px', ghost_results([('01', 'Player', '1:20.558', '-0.842', True),
+                                                  ('02', 'Carla', '1:21.902', '+0.214', False),
+                                                  ('03', 'Tony', '1:23.115', '-0.310', False)])
+        + ghost_ladder([('#1', 'Vlad', '1:19.904', '', False), ('#2', 'Sam', '1:20.311', '', False),
+                        ('#3', 'Player', '1:20.558', '', True), ('#4', 'Rocket', '1:21.400', 'VS', False),
+                        ('#5', 'Minori', '1:21.977', '', False), ('#6', 'Bee', '1:22.630', '', False)], '42 ghosts'), 420, gap=16),
+    footer('WAITING FOR 2 DRIVERS', 1, 3),
+])
+
+# ---------------------------------------------------------------------------
 # the end screen of a drag race: the duel. A time slip a lane, the deciding
 # heat line by line, the better figure of each line in blue; the heats on
 # the right.
@@ -1491,7 +1600,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html'],
         ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
-        ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndSprint.dc.html', 'EndDrag.dc.html'],
+        ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndSprint.dc.html', 'EndGhost.dc.html', 'EndDrag.dc.html'],
         ['Tourney.dc.html', 'Tourney16.dc.html', 'TourneyEnd.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
@@ -1500,7 +1609,7 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}
