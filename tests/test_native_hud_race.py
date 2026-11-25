@@ -22,6 +22,8 @@ END = json.loads((ROOT / 'tests/fixtures/hud_end_racing_layout.json').read_text(
 END_TEAM = json.loads((ROOT / 'tests/fixtures/hud_end_teamracing_layout.json').read_text())['els']
 END_DRAG = json.loads((ROOT / 'tests/fixtures/hud_end_drag_layout.json').read_text())['els']
 END_GHOST = json.loads((ROOT / 'tests/fixtures/hud_end_ghost_layout.json').read_text())['els']
+END_COMBAT = {n: json.loads((ROOT / f'tests/fixtures/hud_end_{n}_layout.json').read_text())['els']
+              for n in ('deathmatch', 'derby', 'teamdm')}
 END_SPRINT = json.loads((ROOT / 'tests/fixtures/hud_end_sprint_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
@@ -1104,3 +1106,98 @@ def test_native_ghost_end_screen_matches_the_design():
     # VS: centred in the gap between the cards (the design's box is the gap)
     gap = END_GHOST['/div:5/div:0']
     assert abs(mine['vs'][0] + mine['vs'][2] / 2 - (gap[0] + gap[2] / 2)) <= 0.5 and abs(mine['vs'][1] - gap[1]) <= 0.5
+
+
+def minute_bars(values, names):
+    top = max(values)
+    return ';'.join(f'{max(3, int(56 * v / top)) / 56:.6f}~{v:,}~{n}' for v, n in zip(values, names))
+
+
+ROWS6 = lambda rows: ';'.join(f'{p}~{n}~{t}~{b}' for p, n, t, b in rows)
+FOOTER = 'FIRE~READY;TAB~DETAILS;ESC~MENU'
+
+END_DM_MODEL = ['DEATHMATCH RESULT', 'BATTLE CANYON \u00b7 FRAGLIMIT 15 \u00b7 6 DRIVERS', 'P2', '/ 6',
+                'SCORE', '13', '2 BEHIND THE WINNER',
+                'KILLS~13~;DEATHS~9~;BEST STREAK~4~;DAMAGE DEALT~2,140~',
+                minute_bars([2, 1, 3, 0, 2, 4, 1], [f'M{i}' for i in range(1, 8)]),
+                'Sam~15 frags~~WINNER~0;Player~13 frags~-2~SECOND~1;Carla~11 frags~-4~THIRD~0',
+                'BEST STREAK~Sam \u00b7 6 in a row~6;MOST DAMAGE~Carla \u00b7 dealt~2,880;YOUR NEMESIS~Sam \u00b7 got you 4 times~4',
+                'FINAL CLASSIFICATION', 'FRAGLIMIT 15', 0,
+                ROWS6([('01', 'Sam', '15', '15 / 7'), ('02', 'Player', '13', '13 / 9'), ('03', 'Carla', '11', '11 / 10'),
+                       ('04', 'Tony', '8', '8 / 12'), ('05', 'Janine', '6', '6 / 11'), ('06', 'Ivan', '3', '3 / 14')]),
+                FOOTER, 'WAITING FOR 3 DRIVERS', '1 / 4 READY',
+                'YOUR FRAGS~A BAR A MINUTE \u00b7 YOUR PLACE', '', '', '', '', '',
+                'POS~DRIVER~SCORE~K / D', '', '', '', '', '', '0', '~'.join(['P3', 'P4', 'P2', 'P3', 'P3', 'P2', 'P2'])]
+
+END_DERBY_MODEL = ['DERBY RESULT', 'DAVID5 \u00b7 6 DRIVERS', 'P2', '/ 6',
+                   'SURVIVED', '3:42', 'OUT 12 S BEFORE CHLOE',
+                   'SCORE~840~;WRECKED~2~;DAMAGE DEALT~1,260~;DAMAGE TAKEN~980~',
+                   minute_bars([180, 320, 240, 410], ['M1', 'M2', 'M3', 'M4']),
+                   'Chloe~1,120 pts~~WINNER~0;Player~840 pts~out 3:42~SECOND~1;Josh~610 pts~out 2:58~THIRD~0',
+                   'LAST CAR STANDING~Chloe \u00b7 3:54~1,120;MOST DAMAGE~Player \u00b7 dealt~1,260;TOOK YOU OUT~Chloe \u00b7 3:42~',
+                   'FINAL CLASSIFICATION', 'MATCH 3:54', 0,
+                   ROWS6([('01', 'Chloe', '1,120', 'LAST'), ('02', 'Player', '840', '3:42'), ('03', 'Josh', '610', '2:58'),
+                          ('04', 'Sam', '400', '2:11'), ('05', 'Minori', '280', '1:20'), ('06', 'Ivan', '90', '0:47')]),
+                   FOOTER, 'WAITING FOR 3 DRIVERS', '1 / 4 READY',
+                   'YOUR DAMAGE~A BAR A MINUTE \u00b7 DRIVERS LEFT', '', '', '', '', '',
+                   'POS~DRIVER~SCORE~OUT', '', '', '', '', '', '0', '6~5~3~2']
+
+END_TDM_MODEL = ['TEAM DEATHMATCH RESULT', 'ARENA \u00b7 FRAGLIMIT 42 \u00b7 2 TEAMS \u00b7 8 DRIVERS', 'P1', '/ 2',
+                 'TEAM BLUE \u00b7 SCORE', '42', 'WON BY 5',
+                 'YOUR PLACE~P2~;YOUR FRAGS~12~;DEATHS~7~;BEST STREAK~3~',
+                 minute_bars([1, 2, 3, 1, 2, 3], [f'M{i}' for i in range(1, 7)]),
+                 'Blue~42 frags~~WINNER~1;Red~37 frags~-5~SECOND~0',
+                 'BEST STREAK~Carla \u00b7 5 in a row~5;MOST DAMAGE~Sam \u00b7 dealt~2,410;YOUR NEMESIS~Carla \u00b7 got you 3 times~3',
+                 'FINAL CLASSIFICATION', 'TEAM SCORE', 0,
+                 ROWS6([('01', 'Carla', '14', '14 / 6'), ('02', 'Player', '12', '12 / 7'), ('03', 'Sam', '11', '11 / 8'),
+                        ('04', 'Tony', '10', '10 / 9'), ('05', 'Minori', '10', '10 / 10'), ('06', 'Ivan', '9', '9 / 12'),
+                        ('07', 'Janine', '8', '8 / 11'), ('08', 'Bee', '5', '5 / 15')]),
+                 FOOTER, 'WAITING FOR 5 DRIVERS', '3 / 8 READY',
+                 "YOUR FRAGS~A BAR A MINUTE \u00b7 YOUR TEAM'S LEAD", '', 'YOUR TEAM',
+                 'P2:Player,P3:Sam,P5:Minori,P6:Ivan;P1:Carla,P4:Tony,P7:Janine,P8:Bee',
+                 'BLUE~42;RED~37', 1,
+                 'POS~DRIVER~SCORE~K / D', '', '', '', '', '', '0', '~'.join(['+1', '+3', '+2', '-1', '+3', '+5'])]
+
+
+def combat_pairs(bars, rows, podium, awards=3, team=False, members=()):
+    left, pod, aw, lst = '/div:3', '/div:4', '/div:5', '/div:6/div:0'
+    chart = left + '/div:5/div:1'
+    pairs = [('title', '/div:2/div:0'), ('subtitle', '/div:2/div:1'),
+             ('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'), ('listRight', lst + '/div:0/div:1')]
+    pairs += [(f'statLabel{i}', left + f'/div:3/div:{i}/div:0') for i in range(4)]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    for i in range(bars):
+        col = chart + f'/div:{i}'
+        pairs += [(f'lapSlot{i}', col), (f'lapBar{i}', col + '/div:0/div:0'), (f'lapValue{i}', col + '/div:1'),
+                  (f'lapName{i}', col + '/div:2'), (f'lapRule{i}', col + '/div:3'), (f'lapPlace{i}', col + '/div:4')]
+    for place, div in podium:
+        card = pod + f'/div:{div}'
+        pairs += [(f'podium{place}', card), (f'podiumCar{place}', card + '/div:0'),
+                  (f'podiumName{place}', card + '/div:1/div:1'), (f'podiumTime{place}', card + '/div:1/div:2/div:0')]
+        if team:
+            pairs += [(f'podiumRule{place}', card + '/div:1/div:3')]
+            pairs += [(f'member{place}_{k}', card + f'/div:1/div:4/div:{k}/div:1') for k in range(members[place])]
+    for i in range(awards):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardLabel{i}', aw + f'/div:{i + 1}/div:1/div:0')]
+    off = 1 if team else 0
+    if team:
+        pairs += [(f'teamCell{c}', lst + f'/div:1/div:{c}') for c in range(2)]
+        pairs += [('head0', lst + '/div:2/div:0'), ('head1', lst + '/div:2/div:2'), ('head2', lst + '/div:2/div:3'), ('head3', lst + '/div:2/div:4')]
+        pairs += [(f'rowSwatch{i}', lst + f'/div:3/div:{i}/div:1') for i in range(rows)]
+    else:
+        pairs += [(f'head{i}', lst + f'/div:1/div:{i}') for i in range(4)]
+    pairs += [(f'row{i}', lst + f'/div:{2 + off}/div:{i}') for i in range(rows)]
+    return pairs
+
+
+def test_native_combat_end_screens_match_the_design():
+    for model, name, pairs in (
+            (END_DM_MODEL, 'deathmatch', combat_pairs(7, 6, ((0, 1), (1, 0), (2, 2)))),
+            (END_DERBY_MODEL, 'derby', combat_pairs(4, 6, ((0, 1), (1, 0), (2, 2)))),
+            (END_TDM_MODEL, 'teamdm', combat_pairs(6, 8, ((0, 1), (1, 0)), team=True, members=(4, 4)))):
+        mine, = layouts(end_command(model))
+        problems = check_all(mine, END_COMBAT[name], pairs)
+        assert not problems, (name, problems)

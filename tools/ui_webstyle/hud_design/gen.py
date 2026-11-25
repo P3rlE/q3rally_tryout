@@ -1159,6 +1159,149 @@ board('EndGhost.dc.html', 'Ghost race result', None, [
 ])
 
 # ---------------------------------------------------------------------------
+# the end screens of the combat modes: Deathmatch, Derby (also Last Car
+# Standing) and Team Deathmatch. The race's page: your place and score, in
+# place of the laps the match minute by minute (your frags or damage, under
+# it your place, the drivers left or your team's lead); the podium with the
+# cars; the highlights from the kills the client writes down; the
+# classification with the mode's columns.
+# ---------------------------------------------------------------------------
+
+def minute_chart(values, labels, unders, under_colors=None, bar_color='#5a5a5a', best_color='#e6e6e6'):
+    """A bar a minute (the best one lit), its value, the minute; under a rule what it ended with."""
+    top = max(values)
+    cols = []
+    for i, (v, name, u) in enumerate(zip(values, labels, unders)):
+        lit = v == top
+        uc = under_colors[i] if under_colors else ('#ffffff' if i == 0 or u != unders[i - 1] else '#777777')
+        cols.append(f'<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px">'
+                    f'<div style="height: 56px; width: 100%; display: flex; align-items: flex-end">'
+                    f'<div style="width: 100%; height: {max(3, int(56 * v / top))}px; background: {best_color if lit else bar_color}"></div></div>'
+                    f'{mono(f"{v:,}", 11, "#ffffff" if lit else "#bbbbbb")}{lab(name, "#777777", 10)}'
+                    f'<div style="height: 1px; width: 100%; background: {LINE}"></div>'
+                    f'{mono(u, 12, uc)}</div>')
+    return f'<div style="display: flex; gap: 8px">{"".join(cols)}</div>'
+
+
+def combat_list(title, right, heads, rows, teams=None):
+    """rows: (pos, team or None, name, score, last, last colour, me); teams: (team, score) cells over it."""
+    sw = teams is not None
+    grid = ('display: grid; grid-template-columns: 34px 10px 1fr 82px 70px; gap: 10px' if sw
+            else 'display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px')
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">{lab(heads[0], "#999999", 11)}{"<div></div>" if sw else ""}'
+            f'{lab(heads[1], "#999999", 11)}'
+            f'<div style="text-align: right">{lab(heads[2], "#999999", 11)}</div>'
+            f'<div style="text-align: right">{lab(heads[3], "#999999", 11)}</div></div>')
+    out = []
+    for pos, team, name, score, last, lc, me in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(pos, 14, ACC if pos == "01" else "#999999")}{swatch(TEAM[team], 10) if sw else ""}'
+                   f'{text(name, 16, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(score, 14, "#dddddd")}</div>'
+                   f'<div style="text-align: right">{mono(last, 14, lc)}</div></div>')
+    cells = ''
+    if sw:
+        cells = ('<div style="display: flex; gap: 2px">' + ''.join(
+            f'<div style="flex: 1; background: {TEAM[t]}; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px">'
+            f'{lab(t.upper(), "#111111", 10)}{mono(v, 13, "#111111")}</div>' for t, v in teams) + '</div>')
+    return panel(row(lab(title), lab(right, '#999999')) + cells + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+def end_left(big_text, of, big_color, done_label, done_value, note, note_color, stats, chart_title, chart_note, chart,
+             label_color='#999999'):
+    return (f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+            f'<div style="display: flex; align-items: baseline; gap: 14px">{big(big_text, 168, big_color)}{big(of, 48, "#777777")}</div>'
+            f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -18px">{lab(done_label, label_color)}'
+            f'{big(done_value, 44)}{lab(note, note_color, 12)}</div>'
+            + sep() +
+            f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">{"".join(stat(*s) for s in stats)}</div>'
+            + sep() +
+            f'<div style="display: flex; flex-direction: column; gap: 12px">{row(lab(chart_title), lab(chart_note, "#777777", 11))}'
+            + chart + '</div></div>')
+
+
+def end_header(title, sub):
+    return (f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+            f'{lab(title, ACC, 13)}{lab(sub, "#999999", 12)}</div>')
+
+
+def end_awards(awards):
+    return (f'<div style="position: absolute; left: 476px; top: 530px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+            f'{lab("Highlights")}' + ''.join(award(*a) for a in awards) + '</div>')
+
+
+def podium3(cards):
+    return (f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; height: 410px; display: flex; gap: 12px; '
+            f'align-items: flex-end">' + ''.join(cards) + '</div>')
+
+
+board('EndDeathmatch.dc.html', 'Deathmatch result', None, [
+    blurred(BG['dm']),
+    end_header('Deathmatch result', 'Battle Canyon · fraglimit 15 · 6 drivers'),
+    end_left('P2', '/ 6', '#ffffff', 'Score', '13', '2 behind the winner', ACC,
+             [('Kills', '13'), ('Deaths', '9'), ('Best streak', '4', FAST), ('Damage dealt', '2,140')],
+             'Your frags', 'a bar a minute · your place',
+             minute_chart([2, 1, 3, 0, 2, 4, 1], [f'M{i}' for i in range(1, 8)], ['P3', 'P4', 'P2', 'P3', 'P3', 'P2', 'P2'])),
+    podium3([podium_card(2, 'Player', 'viper', '13 frags', '-2', 192, 176, me=True),
+             podium_card(1, 'Sam', 'murcielago', '15 frags', '', 210, 236),
+             podium_card(3, 'Carla', 'db12', '11 frags', '-4', 192, 140)]),
+    end_awards([('trophy', 'Best streak', 'Sam · 6 in a row', '6', PURPLE),
+                ('gun', 'Most damage', 'Carla · dealt', '2,880', FAST),
+                ('chevron', 'Your nemesis', 'Sam · got you 4 times', '4', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'fraglimit 15', ['POS', 'DRIVER', 'SCORE', 'K / D'], [
+        ('01', None, 'Sam', '15', '15 / 7', '#999999', False), ('02', None, 'Player', '13', '13 / 9', '#999999', True),
+        ('03', None, 'Carla', '11', '11 / 10', '#999999', False), ('04', None, 'Tony', '8', '8 / 12', '#999999', False),
+        ('05', None, 'Janine', '6', '6 / 11', '#999999', False), ('06', None, 'Ivan', '3', '3 / 14', '#999999', False)]), 420),
+    footer('WAITING FOR 3 DRIVERS', 1, 4),
+])
+
+board('EndDerby.dc.html', 'Derby result', None, [
+    blurred(BG['lcs']),
+    end_header('Derby result', 'David5 · 6 drivers'),
+    end_left('P2', '/ 6', '#ffffff', 'Survived', '3:42', 'out 12 s before Chloe', ACC,
+             [('Score', '840'), ('Wrecked', '2', FAST), ('Damage dealt', '1,260'), ('Damage taken', '980')],
+             'Your damage', 'a bar a minute · drivers left',
+             minute_chart([180, 320, 240, 410], ['M1', 'M2', 'M3', 'M4'], ['6', '5', '3', '2'])),
+    podium3([podium_card(2, 'Player', 'viper', '840 pts', 'out 3:42', 192, 176, me=True),
+             podium_card(1, 'Chloe', 'murcielago', '1,120 pts', '', 210, 236),
+             podium_card(3, 'Josh', 'db12', '610 pts', 'out 2:58', 192, 140)]),
+    end_awards([('trophy', 'Last car standing', 'Chloe · 3:54', '1,120', ACC),
+                ('gun', 'Most damage', 'Player · dealt', '1,260', FAST),
+                ('chevron', 'Took you out', 'Chloe · 3:42', '', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'match 3:54', ['POS', 'DRIVER', 'SCORE', 'OUT'], [
+        ('01', None, 'Chloe', '1,120', 'LAST', ACC, False), ('02', None, 'Player', '840', '3:42', '#999999', True),
+        ('03', None, 'Josh', '610', '2:58', '#999999', False), ('04', None, 'Sam', '400', '2:11', '#999999', False),
+        ('05', None, 'Minori', '280', '1:20', '#999999', False), ('06', None, 'Ivan', '90', '0:47', '#999999', False)]), 420),
+    footer('WAITING FOR 3 DRIVERS', 1, 4),
+])
+
+board('EndTeamDM.dc.html', 'Team deathmatch result', None, [
+    blurred(BG['team_dm']),
+    end_header('Team deathmatch result', 'Arena · fraglimit 42 · 2 teams · 8 drivers'),
+    end_left('P1', '/ 2', TEAM['blue'], 'Team blue · score', '42', 'won by 5', ACC,
+             [('Your place', 'P2'), ('Your frags', '12'), ('Deaths', '7'), ('Best streak', '3', FAST)],
+             'Your frags', 'a bar a minute · your team\'s lead',
+             minute_chart([1, 2, 3, 1, 2, 3], [f'M{i}' for i in range(1, 7)], ['+1', '+3', '+2', '-1', '+3', '+5'],
+                          [FAST, FAST, FAST, ACC, FAST, FAST]), label_color=TEAM['blue']),
+    podium3([team_podium_card(2, 'red', 'viper', '37 frags', '-5', [('P1', 'Carla', False), ('P4', 'Tony', False),
+                                                                      ('P7', 'Janine', False), ('P8', 'Bee', False)], 192, 128),
+             team_podium_card(1, 'blue', 'murcielago', '42 frags', '', [('P2', 'Player', True), ('P3', 'Sam', False),
+                                                                          ('P5', 'Minori', False), ('P6', 'Ivan', False)], 210, 172, me=True)]),
+    end_awards([('trophy', 'Best streak', 'Carla · 5 in a row', '5', PURPLE),
+                ('gun', 'Most damage', 'Sam · dealt', '2,410', FAST),
+                ('chevron', 'Your nemesis', 'Carla · got you 3 times', '3', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'team score', ['POS', 'DRIVER', 'SCORE', 'K / D'], [
+        ('01', 'red', 'Carla', '14', '14 / 6', '#999999', False), ('02', 'blue', 'Player', '12', '12 / 7', '#999999', True),
+        ('03', 'blue', 'Sam', '11', '11 / 8', '#999999', False), ('04', 'red', 'Tony', '10', '10 / 9', '#999999', False),
+        ('05', 'blue', 'Minori', '10', '10 / 10', '#999999', False), ('06', 'blue', 'Ivan', '9', '9 / 12', '#999999', False),
+        ('07', 'red', 'Janine', '8', '8 / 11', '#999999', False), ('08', 'red', 'Bee', '5', '5 / 15', '#999999', False)],
+        teams=[('blue', '42'), ('red', '37')]), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+# ---------------------------------------------------------------------------
 # the end screen of a drag race: the duel. A time slip a lane, the deciding
 # heat line by line, the better figure of each line in blue; the heats on
 # the right.
@@ -1601,6 +1744,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
         ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndSprint.dc.html', 'EndGhost.dc.html', 'EndDrag.dc.html'],
+        ['EndDeathmatch.dc.html', 'EndDerby.dc.html', 'EndTeamDM.dc.html'],
         ['Tourney.dc.html', 'Tourney16.dc.html', 'TourneyEnd.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
@@ -1609,12 +1753,12 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'EndDeathmatch.dc.html': 'Endbildschirm Deathmatch', 'EndDerby.dc.html': 'Endbildschirm Derby (auch Last Car Standing)', 'EndTeamDM.dc.html': 'Endbildschirm Team Deathmatch', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}
 rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen',
-               'Endbildschirme', 'Drag-Turnier', 'TAB-Tabelle']
+               'Endbildschirme', 'Endbildschirme Kampf', 'Drag-Turnier', 'TAB-Tabelle']
 boards, notes = {}, {}
 for r, names in enumerate(ROWS):
     for c, n in enumerate(names):
