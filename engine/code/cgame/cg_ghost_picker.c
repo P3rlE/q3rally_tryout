@@ -937,6 +937,9 @@ qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won ) {
 /* Called from CG_StartRace: forget all results, report the ghost again. */
 void CG_GhostRace_ResetRace( void ) {
 	memset( cg.ghostRaceResults, 0, sizeof( cg.ghostRaceResults ) );
+	cg.ghostBestSplitCount = 0;
+	cg.ghostBestSplitLapMs = 0;
+	cg.ghostPrevPersonalMs = 0;
 	cg.ghostOpponentReported[0] = '\0';
 	CG_GhostRace_ResetResult();
 }
@@ -966,6 +969,8 @@ void CG_GhostRace_EvaluateFinish( int bestLapMs ) {
 	int ghostMs;
 
 	CG_GhostRace_ResetResult();
+	/* the end screen: the personal best before this run's ghost replaces it */
+	cg.ghostPrevPersonalMs = cg.personalGhostAvailable ? cg.personalGhostBestTime : 0;
 	if ( bestLapMs <= 0 ) {
 		return;
 	}

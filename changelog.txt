@@ -85,6 +85,11 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- The end screen for ghost races: the margin to the ghost big, your best
+  lap against it checkpoint by checkpoint with the running gap, where it
+  would rank on the ghost ladder and against your personal best; you and
+  the ghost side by side with your cars; everybody's result against their
+  ghost and the ladder with your time put in.
 - The end screen for sprints (also an A to B course in a race): your place
   and time, the average speed, the sectors where you were the quickest;
   your sectors as bars, what each lost to the quickest anybody drove there,

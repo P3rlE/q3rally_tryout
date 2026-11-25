@@ -1429,6 +1429,11 @@ void CG_PrecacheGhostVehicle( const char *vehicle ) {
 }
 
 /* Vehicle of the ghost that is currently played back, "" = own car. */
+static const char *CG_ActiveGhostVehicle( void );
+const char *CG_GhostRace_Vehicle( void ) {
+        return CG_ActiveGhostVehicle();
+}
+
 static const char *CG_ActiveGhostVehicle( void ) {
         switch ( CG_GhostPlaybackMode() ) {
         case 3:
@@ -1829,6 +1834,17 @@ qboolean CG_RaceOrderIsActive( void ) {
 	return s_raceOrderActive;
 }
 
+/* a new best lap of ours: keep its splits against the ghost for the end
+ * screen (those of the lap just done, before the next one starts) */
+static void CG_GhostKeepBestSplits( const centity_t *cent, int lapMs ) {
+	int n = cg.ghostSplitLapStart == cent->startLapTime ? cg.ghostSplitCount : 0;
+	cg.ghostBestSplitCount = n;
+	cg.ghostBestSplitLapMs = lapMs;
+	cg.ghostBestSplitLap = cent->currentLap;
+	memcpy( cg.ghostBestSplitCheckpoint, cg.ghostSplitCheckpoint, n * sizeof( int ) );
+	memcpy( cg.ghostBestSplitDeltaAt, cg.ghostSplitDeltaAt, n * sizeof( int ) );
+}
+
 void CG_NewLapTime( int client, int lap, int time ) {
 	centity_t	*cent;
 	char		*t;
@@ -1843,6 +1859,7 @@ void CG_NewLapTime( int client, int lap, int time ) {
                 cent->bestLapStartTime = cent->startLapTime;
 
 		if ( client == cg.snap->ps.clientNum ) {
+			CG_GhostKeepBestSplits( cent, cent->bestLapTime );
 			t = getStringForTime( cent->bestLapTime );
 
 			Com_Printf("You got a personal record lap time of %s!\n", t);
@@ -1892,6 +1909,7 @@ void CG_FinishedRace( int client, int time ) {
                 cent->bestLapTime = (time - cent->startLapTime);
                 cent->bestLap = cent->currentLap;
                 cent->bestLapStartTime = cent->startLapTime;
+		CG_GhostKeepBestSplits( cent, cent->bestLapTime );
 
 		t = getStringForTime( cent->bestLapTime );
 

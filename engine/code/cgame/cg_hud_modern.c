@@ -2619,7 +2619,7 @@ static struct {
 	int				client[3];			/* on the podium, by place */
 	int				rowClient[MH_END_ROWS];
 	int				fastest;			/* the client with the fastest lap, -1 */
-	char			sub[96], pos[8], of[8], doneTime[16], doneNote[48];
+	char			sub[96], pos[12], of[8], doneTime[16], doneNote[48];
 	char			stat[MH_END_STATS][16], lap[MH_END_LAPS][12], lapName[MH_END_LAPS][8];
 	char			podName[3][40], podTime[3][32], podGap[3][16];
 	char			awardName[MH_END_AWARDS][64], awardValue[MH_END_AWARDS][16];
@@ -2653,12 +2653,21 @@ static struct {
 	qboolean		sprint;
 	char			lapPlace[MH_END_LAPS][8], avgHead[16];
 	qboolean		lapPlaceLit[MH_END_LAPS];	/* the place changed over the sector */
+	/* ghost race */
+	qboolean		ghost;
+	const float		*lapPlaceColor[MH_END_LAPS];	/* the running gap: blue ahead, orange behind */
+	char			gap[16], duelTag[2][32], duelName[2][40], duelLap[2][16], duelNote[2][24];
+	const float		*duelNoteColor[2];
+	cgShowroomCar_t	duelCar[2];
+	qboolean		duelCarValid[2];
+	char			ladderPos[MH_END_LADDER][8], ladderName[MH_END_LADDER][40], ladderLap[MH_END_LADDER][16], ladderRight[16], ladderOf[16];
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
 	int i;
 	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
-	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_SPRINT && cgs.gametype != GT_DRAG ) return qfalse;
+	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_SPRINT && cgs.gametype != GT_GHOST &&
+	     cgs.gametype != GT_DRAG ) return qfalse;
 	if ( cgs.gametype == GT_DRAG ) return cgs.dragLog.count > 0;	/* the heats the client wrote down */
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( CG_RaceResult( i )->present && CG_RaceResult( i )->finishTime ) return qtrue;
@@ -3664,6 +3673,7 @@ void CG_ModernHUD_DrawTourney( void ) {
    ------------------------------------------------------------------------- */
 
 #define MH_END_SPRINT_PARTS	8	/* the sector chart's columns */
+#define MH_END_LADDER_SHOWN	6	/* a ghost race: the ladder's rows around yours */
 
 static qboolean MH_EndIsSprint( void ) {
 	return cgs.gametype == GT_SPRINT || ( cgs.gametype == GT_RACING && CG_IsSprintTrack() );
@@ -3846,6 +3856,349 @@ static void MH_EndSprint( const cgRaceResult_t *all, const int *order, int count
 		else Q_strncpyz( mhEnd.rowBest[k], "--", sizeof( mhEnd.rowBest[k] ) );
 	}
 	(void)place;
+}
+
+/* ---------------------------------------------------------------------------
+   the end screen of a ghost race (gen.py EndGhost): you against a recorded
+   lap. The margin big; your best lap against the ghost sector by sector
+   (bars up: gained, down: lost) with the running gap under it; you and the
+   ghost side by side in place of the podium; everybody's result against
+   their ghost, and the ghost ladder with your time put in.
+   ------------------------------------------------------------------------- */
+
+/* "-0.842" "+0.214" */
+static void MH_EndSigned( int ms, char *out, int size ) {
+	int a = ms < 0 ? -ms : ms;
+	Com_sprintf( out, size, "%c%d.%03d", ms < 0 ? '-' : '+', a / 1000, a % 1000 );
+}
+
+/* "-0.21" "+0.12": hundredths */
+static void MH_EndSigned2( int ms, char *out, int size ) {
+	int a = ( ms < 0 ? -ms : ms ) / 10;
+	Com_sprintf( out, size, "%c%d.%02d", ms < 0 ? '-' : '+', a / 100, a % 100 );
+}
+
+/* a driver's best lap and the ghost's: the server's result, ours until it
+ * comes, the best lap alone without a ghost */
+static void MH_GhostOf( const cgRaceResult_t *all, int client, int *best, int *ghostMs, char *name, int nameSize ) {
+	*best = CG_ResultBestLap( &all[client] );
+	*ghostMs = 0;
+	if ( name ) name[0] = '\0';
+	if ( cg.ghostRaceResults[client].valid ) {
+		if ( cg.ghostRaceResults[client].playerMs > 0 ) *best = cg.ghostRaceResults[client].playerMs;
+		*ghostMs = cg.ghostRaceResults[client].ghostMs;
+		if ( name ) Q_strncpyz( name, cg.ghostRaceResults[client].name, nameSize );
+	} else if ( cg.snap && client == cg.snap->ps.clientNum && ( cg.ghostResultValid || cg.ghostFinishOnly ) ) {
+		/* our own lap as the ghost race times it: from the start line */
+		*best = cg.ghostResultPlayerMs;
+		*ghostMs = cg.ghostResultValid ? cg.ghostResultGhostMs : 0;
+		if ( name ) Q_strncpyz( name, cg.ghostResultName, nameSize );
+	}
+}
+
+/* the ghost's car once: registering it takes file lookups */
+static qboolean MH_GhostCar( const char *name, const char *vehicle, cgShowroomCar_t *car ) {
+	static char loaded[MAX_QPATH];
+	static cgShowroomCar_t kept;
+	static qboolean ok;
+	if ( Q_stricmp( loaded, vehicle ) ) {
+		Q_strncpyz( loaded, vehicle, sizeof( loaded ) );
+		ok = CG_ShowroomCarLoad( name, vehicle, MAX_CLIENTS - 1, &kept );
+	}
+	*car = kept;
+	return ok;
+}
+
+/* "Murcielago" from "murcielago/red" */
+static void MH_VehicleName( const char *vehicle, char *out, int size ) {
+	char *slash;
+	Q_strncpyz( out, vehicle, size );
+	slash = strchr( out, '/' );
+	if ( slash ) *slash = '\0';
+	if ( out[0] >= 'a' && out[0] <= 'z' ) out[0] += 'A' - 'a';
+}
+
+static void MH_EndGhost( const cgRaceResult_t *all, const int *order, int count, int me, const cgRaceResult_t *mine, const char *map ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	qboolean local = cg.snap && me == cg.snap->ps.clientNum;
+	int best, ghostMs, i, k, n, sorted[MAX_CLIENTS], faster = 0, laps, cps, parts, partEnd[MH_END_SPRINT_PARTS + 1];
+	int cum[MAX_GHOST_SPLITS + 1], cumCount = 0, worst = 0, gainMs = 0, gainAt = -1, fastest = 0, fastClient = -1;
+	char ghostName[40], tmp[40], top[16];
+
+	MH_GhostOf( all, me, &best, &ghostMs, ghostName, sizeof( ghostName ) );
+	/* not home: the ghost raced against (once home, a new personal ghost
+	 * may already have replaced it) */
+	if ( local && !ghostMs && !mine->finishTime ) CG_GhostRace_Opponent( ghostName, sizeof( ghostName ), &ghostMs );
+	e->title = "GHOST RACE RESULT";
+	if ( CG_IsSprintTrack() ) {	/* one run from A to B: no laps */
+		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 A TO B \xb7 %d DRIVER%s", map, count, count == 1 ? "" : "S" );
+		mhEnd.listRight[0] = '\0';
+	} else {
+		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 %d LAP%s \xb7 %d DRIVER%s", map, cgs.laplimit, cgs.laplimit == 1 ? "" : "S",
+		             count, count == 1 ? "" : "S" );
+	}
+
+	/* the margin big, the best lap under it; without a ghost the place */
+	e->doneLabel = "BEST LAP";
+	if ( best > 0 ) CG_ResultTime( best, mhEnd.doneTime, sizeof( mhEnd.doneTime ) );
+	else Q_strncpyz( mhEnd.doneTime, "--", sizeof( mhEnd.doneTime ) );
+	if ( best > 0 && ghostMs > 0 ) {
+		char lap[16], upper[40];
+		MH_EndSigned( best - ghostMs, mhEnd.pos, sizeof( mhEnd.pos ) );
+		mhEnd.posColor = best < ghostMs ? mhFast : mhAccent;
+		e->posSize = 120.0f;
+		e->of = "";
+		CG_ResultTime( ghostMs, lap, sizeof( lap ) );
+		MH_Plain( ghostName, upper, sizeof( upper ) );
+		Q_strupr( upper );
+		Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%s \xb7 %s %s", best < ghostMs ? "GHOST BEATEN" : "GHOST WINS", upper, lap );
+		mhEnd.doneNoteColor = best < ghostMs ? mhFast : mhAccent;
+	} else {
+		Q_strncpyz( mhEnd.doneNote, best > 0 ? "NO GHOST" : "NO LAP", sizeof( mhEnd.doneNote ) );
+		mhEnd.doneNoteColor = mhMuted;
+	}
+
+	/* the figures: the ladder place, the personal best, top speed, laps faster */
+	Q_strncpyz( top, mhEnd.stat[1], sizeof( top ) );
+	for ( i = 0; i < 4; i++ ) { e->statUnit[i] = NULL; mhEnd.statColor[i] = mhWhite; }
+	e->statLabel[0] = "LADDER PLACE";
+	Q_strncpyz( mhEnd.stat[0], "--", sizeof( mhEnd.stat[0] ) );
+	if ( local && best > 0 && cg.ladderGhostEntryCount > 0 ) {
+		int rank = 1;
+		for ( i = 0; i < cg.ladderGhostEntryCount; i++ ) if ( cg.ladderGhostEntries[i].lapMs > 0 && cg.ladderGhostEntries[i].lapMs < best ) rank++;
+		Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "#%d", rank );
+		Com_sprintf( mhEnd.ladderOf, sizeof( mhEnd.ladderOf ), "OF %d", cg.ladderGhostEntryCount );
+		e->statUnit[0] = mhEnd.ladderOf;
+	}
+	e->statLabel[1] = "PERSONAL BEST";
+	Q_strncpyz( mhEnd.stat[1], "--", sizeof( mhEnd.stat[1] ) );
+	if ( local && best > 0 ) {
+		if ( !cg.ghostPrevPersonalMs ) {
+			Q_strncpyz( mhEnd.stat[1], "NEW", sizeof( mhEnd.stat[1] ) );
+			mhEnd.statColor[1] = mhFast;
+		} else {
+			MH_EndSigned2( best - cg.ghostPrevPersonalMs, mhEnd.stat[1], sizeof( mhEnd.stat[1] ) );
+			if ( best < cg.ghostPrevPersonalMs ) { mhEnd.statColor[1] = mhFast; e->statUnit[1] = "NEW"; }
+		}
+	}
+	e->statLabel[2] = "TOP SPEED";
+	Q_strncpyz( mhEnd.stat[2], top, sizeof( mhEnd.stat[2] ) );
+	if ( Q_stricmp( top, "--" ) ) e->statUnit[2] = cg_metricUnits.integer ? "KM/H" : "MPH";
+	e->statLabel[3] = "LAPS FASTER";
+	laps = mine->lapCount < CG_RESULT_LAPS ? mine->lapCount : CG_RESULT_LAPS;
+	for ( i = 0; i < laps; i++ ) if ( ghostMs > 0 && mine->laps[i] > 0 && mine->laps[i] < ghostMs ) faster++;
+	if ( laps == 1 ) faster = best > 0 && best < ghostMs;	/* one lap (A to B): timed from the start line */
+	if ( ghostMs > 0 && laps > 0 ) {
+		Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d / %d", faster, laps );
+		if ( faster ) mhEnd.statColor[3] = mhFast;
+	} else Q_strncpyz( mhEnd.stat[3], "--", sizeof( mhEnd.stat[3] ) );
+
+	/* your best lap against the ghost: the running gap at each checkpoint,
+	 * the finish the lap's margin; past eight sectors in eight stretches */
+	if ( local && ghostMs > 0 && cg.ghostBestSplitCount > 0 && cg.ghostBestSplitLapMs == best ) {
+		n = cg.ghostBestSplitCount < MAX_GHOST_SPLITS ? cg.ghostBestSplitCount : MAX_GHOST_SPLITS;
+		for ( i = 0; i < n; i++ ) cum[cumCount++] = cg.ghostBestSplitDeltaAt[i];
+		cum[cumCount++] = best - ghostMs;
+		cps = cumCount;
+		parts = cps < MH_END_SPRINT_PARTS ? cps : MH_END_SPRINT_PARTS;
+		partEnd[0] = 0;
+		for ( k = 1; k <= parts; k++ ) partEnd[k] = ( k * cps + parts / 2 ) / parts;
+		for ( k = 0; k < parts; k++ ) {
+			int d = cum[partEnd[k + 1] - 1] - ( partEnd[k] > 0 ? cum[partEnd[k] - 1] : 0 );
+			if ( ( d < 0 ? -d : d ) > worst ) worst = d < 0 ? -d : d;
+		}
+		for ( i = 0; i < cps; i++ ) {	/* the biggest gain: a real sector */
+			int d = cum[i] - ( i > 0 ? cum[i - 1] : 0 );
+			if ( d < gainMs ) { gainMs = d; gainAt = i; }
+		}
+		e->chartTitle = "YOUR BEST LAP";
+		e->chartNote = "AGAINST THE GHOST \xb7 RUNNING GAP";
+		e->lapDiverge = qtrue;
+		e->lapCount = 0;
+		for ( k = 0; k < parts; k++ ) {
+			int last = partEnd[k + 1] - 1, d = cum[last] - ( partEnd[k] > 0 ? cum[partEnd[k] - 1] : 0 );
+			e->lapCount++;
+			e->lapFrac[k] = worst > 0 ? (float)d / worst : 0.0f;
+			MH_EndSigned2( d, mhEnd.lap[k], sizeof( mhEnd.lap[k] ) );
+			if ( last == cps - 1 ) Q_strncpyz( mhEnd.lapName[k], "FIN", sizeof( mhEnd.lapName[k] ) );
+			else Com_sprintf( mhEnd.lapName[k], sizeof( mhEnd.lapName[k] ), parts < cps ? "CP%d" : "S%d", cg.ghostBestSplitCheckpoint[last] );
+			MH_EndSigned2( cum[last], mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ) );
+			mhEnd.lapPlaceColor[k] = cum[last] <= 0 ? mhFast : mhAccent;
+			e->lapValue[k] = mhEnd.lap[k];
+			e->lapName[k] = mhEnd.lapName[k];
+			e->lapPlace[k] = mhEnd.lapPlace[k];
+		}
+	}
+
+	/* without a ghost the podium stays, with the best laps (a ghost race
+	 * times laps, not the race) */
+	for ( k = 0; k < e->podiumCount; k++ ) {
+		int b, g;
+		MH_GhostOf( all, mhEnd.client[k], &b, &g, NULL, 0 );
+		if ( b > 0 ) CG_ResultTime( b, mhEnd.podTime[k], sizeof( mhEnd.podTime[k] ) );
+		mhEnd.podGap[k][0] = '\0';
+	}
+
+	/* you and the ghost in place of the podium */
+	if ( ghostMs > 0 && best > 0 ) {
+		const char *vehicle = local ? CG_GhostRace_Vehicle() : "";
+		e->duel = qtrue;
+		e->podiumCount = 0;
+		Q_strncpyz( mhEnd.duelTag[0], "YOU", sizeof( mhEnd.duelTag[0] ) );
+		MH_Plain( cgs.clientinfo[me].name, mhEnd.duelName[0], sizeof( mhEnd.duelName[0] ) );
+		Q_strncpyz( mhEnd.duelLap[0], mhEnd.doneTime, sizeof( mhEnd.duelLap[0] ) );
+		Q_strncpyz( mhEnd.duelNote[0], mhEnd.pos, sizeof( mhEnd.duelNote[0] ) );
+		mhEnd.duelNoteColor[0] = mhEnd.posColor;
+		if ( local && CG_GhostPlaybackMode() == 3 && cg.ladderGhostSelected >= 0 ) {
+			int rank = 1;
+			for ( i = 0; i < cg.ladderGhostEntryCount; i++ )
+				if ( cg.ladderGhostEntries[i].lapMs < cg.ladderGhostEntries[cg.ladderGhostSelected].lapMs ) rank++;
+			Com_sprintf( mhEnd.duelTag[1], sizeof( mhEnd.duelTag[1] ), "GHOST \xb7 LADDER #%d", rank );
+		} else if ( local && CG_GhostPlaybackMode() == 1 ) Q_strncpyz( mhEnd.duelTag[1], "GHOST \xb7 PERSONAL", sizeof( mhEnd.duelTag[1] ) );
+		else if ( local && CG_GhostPlaybackMode() == 2 ) Q_strncpyz( mhEnd.duelTag[1], "GHOST \xb7 SERVER", sizeof( mhEnd.duelTag[1] ) );
+		else Q_strncpyz( mhEnd.duelTag[1], "GHOST", sizeof( mhEnd.duelTag[1] ) );
+		MH_Plain( ghostName, mhEnd.duelName[1], sizeof( mhEnd.duelName[1] ) );
+		CG_ResultTime( ghostMs, mhEnd.duelLap[1], sizeof( mhEnd.duelLap[1] ) );
+		mhEnd.duelNoteColor[1] = mhMuted;
+		/* the ghost's car: its vehicle, our own one ("") */
+		mhEnd.duelCarValid[0] = CG_ShowroomCarOf( me, &mhEnd.duelCar[0] );
+		if ( vehicle && vehicle[0] ) {
+			MH_VehicleName( vehicle, mhEnd.duelNote[1], sizeof( mhEnd.duelNote[1] ) );
+			mhEnd.duelCarValid[1] = MH_GhostCar( ghostName, vehicle, &mhEnd.duelCar[1] );
+		} else {
+			MH_VehicleName( cgs.clientinfo[me].modelName, mhEnd.duelNote[1], sizeof( mhEnd.duelNote[1] ) );
+			mhEnd.duelCar[1] = mhEnd.duelCar[0];
+			mhEnd.duelCarValid[1] = mhEnd.duelCarValid[0];
+		}
+		for ( k = 0; k < 2; k++ ) {
+			e->duelTag[k] = mhEnd.duelTag[k];
+			e->duelName[k] = mhEnd.duelName[k];
+			e->duelLap[k] = mhEnd.duelLap[k];
+			e->duelNote[k] = mhEnd.duelNote[k];
+		}
+	}
+
+	/* everybody by their best lap, with the result against their ghost */
+	n = 0;
+	for ( i = 0; i < count; i++ ) {
+		int b, g;
+		MH_GhostOf( all, order[i], &b, &g, NULL, 0 );
+		for ( k = n; k > 0; k-- ) {
+			int bk, gk;
+			MH_GhostOf( all, sorted[k - 1], &bk, &gk, NULL, 0 );
+			if ( b > 0 && ( bk <= 0 || b < bk ) ) sorted[k] = sorted[k - 1];
+			else break;
+		}
+		sorted[k] = order[i];
+		n++;
+		if ( b > 0 && ( !fastest || b < fastest ) ) { fastest = b; fastClient = order[i]; }
+	}
+	e->listHead[0] = "POS";
+	e->listHead[1] = "DRIVER";
+	e->listHead[2] = "BEST";
+	e->listHead[3] = "VS GHOST";
+	e->listTitle = "RESULTS AGAINST THE GHOST";
+	e->rowCount = 0;
+	for ( i = 0; i < n && e->rowCount < MH_END_ROWS; i++ ) {
+		int b, g;
+		k = e->rowCount++;
+		MH_GhostOf( all, sorted[i], &b, &g, NULL, 0 );
+		mhEnd.rowClient[k] = sorted[i];
+		Com_sprintf( mhEnd.rowPos[k], sizeof( mhEnd.rowPos[k] ), "%02d", i + 1 );
+		MH_Plain( cgs.clientinfo[sorted[i]].name, mhEnd.rowName[k], sizeof( mhEnd.rowName[k] ) );
+		if ( b > 0 ) CG_ResultTime( b, mhEnd.rowTime[k], sizeof( mhEnd.rowTime[k] ) );
+		else Q_strncpyz( mhEnd.rowTime[k], "--", sizeof( mhEnd.rowTime[k] ) );
+		if ( b > 0 && g > 0 ) {
+			MH_EndSigned( b - g, mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ) );
+			mhEnd.rowBestColor[k] = b < g ? mhFast : mhAccent;
+		} else {
+			Q_strncpyz( mhEnd.rowBest[k], "--", sizeof( mhEnd.rowBest[k] ) );
+			mhEnd.rowBestColor[k] = mhMuted;
+		}
+		mhEnd.rowMe[k] = sorted[i] == ( cg.snap ? cg.snap->ps.clientNum : -1 );
+		e->rowPos[k] = mhEnd.rowPos[k];
+		e->rowName[k] = mhEnd.rowName[k];
+		e->rowTime[k] = mhEnd.rowTime[k];
+		e->rowBest[k] = mhEnd.rowBest[k];
+	}
+
+	/* the ladder: six rows around where your best lap ranks */
+	e->ladderCount = 0;
+	if ( local && best > 0 && cg.ladderGhostEntryCount > 0 ) {
+		int idx[MAX_LADDER_GHOST_ENTRIES + 1], total = 0, mineAt = 0, first;
+		for ( i = 0; i < cg.ladderGhostEntryCount; i++ ) {
+			if ( cg.ladderGhostEntries[i].lapMs <= 0 ) continue;
+			for ( k = total; k > 0 && cg.ladderGhostEntries[idx[k - 1]].lapMs > cg.ladderGhostEntries[i].lapMs; k-- ) idx[k] = idx[k - 1];
+			idx[k] = i;
+			total++;
+		}
+		for ( i = 0; i < total && cg.ladderGhostEntries[idx[i]].lapMs < best; i++ ) {}
+		mineAt = i;
+		for ( k = total; k > mineAt; k-- ) idx[k] = idx[k - 1];
+		idx[mineAt] = -1;	/* you */
+		total++;
+		first = mineAt - 2;
+		if ( first > total - MH_END_LADDER_SHOWN ) first = total - MH_END_LADDER_SHOWN;
+		if ( first < 0 ) first = 0;
+		for ( i = first; i < total && e->ladderCount < MH_END_LADDER_SHOWN; i++ ) {
+			k = e->ladderCount++;
+			Com_sprintf( mhEnd.ladderPos[k], sizeof( mhEnd.ladderPos[k] ), "#%d", i + 1 );
+			if ( idx[i] < 0 ) {
+				MH_Plain( cgs.clientinfo[me].name, mhEnd.ladderName[k], sizeof( mhEnd.ladderName[k] ) );
+				CG_ResultTime( best, mhEnd.ladderLap[k], sizeof( mhEnd.ladderLap[k] ) );
+			} else {
+				MH_Plain( cg.ladderGhostEntries[idx[i]].name, mhEnd.ladderName[k], sizeof( mhEnd.ladderName[k] ) );
+				CG_ResultTime( cg.ladderGhostEntries[idx[i]].lapMs, mhEnd.ladderLap[k], sizeof( mhEnd.ladderLap[k] ) );
+			}
+			e->ladderPos[k] = mhEnd.ladderPos[k];
+			e->ladderName[k] = mhEnd.ladderName[k];
+			e->ladderLap[k] = mhEnd.ladderLap[k];
+			e->ladderTag[k] = idx[i] >= 0 && idx[i] == cg.ladderGhostSelected && CG_GhostPlaybackMode() == 3 ? "VS" : "";
+			e->ladderMe[k] = idx[i] < 0;
+		}
+		Com_sprintf( tmp, sizeof( tmp ), "%d GHOSTS", cg.ladderGhostEntryCount );
+		e->ladderTitle = "GHOST LADDER";
+		Q_strncpyz( mhEnd.ladderRight, tmp, sizeof( mhEnd.ladderRight ) );
+		e->ladderRight = mhEnd.ladderRight;
+	}
+
+	/* the highlights */
+	e->awardCount = 0;
+	mhEnd.fastest = -1;
+	if ( gainAt >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "BIGGEST GAIN";
+		if ( gainAt == cumCount - 1 ) Q_strncpyz( mhEnd.awardName[k], "To the line \xb7 against the ghost", sizeof( mhEnd.awardName[k] ) );
+		else Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "S%d \xb7 against the ghost", cg.ghostBestSplitCheckpoint[gainAt] );
+		MH_EndSigned2( gainMs, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.flag;
+	}
+	if ( fastClient >= 0 ) {
+		int lap = 0;
+		const cgRaceResult_t *r = &all[fastClient];
+		for ( i = 0; i < r->lapCount && i < CG_RESULT_LAPS; i++ ) if ( r->laps[i] == fastest ) lap = i + 1;
+		if ( CG_IsSprintTrack() ) lap = 0;	/* the run */
+		k = e->awardCount++;
+		e->awardLabel[k] = "FASTEST LAP";
+		MH_Plain( cgs.clientinfo[fastClient].name, tmp, sizeof( tmp ) );
+		if ( lap ) Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 lap %d", tmp, lap );
+		else Q_strncpyz( mhEnd.awardName[k], tmp, sizeof( mhEnd.awardName[k] ) );
+		CG_ResultTime( fastest, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhPurple;
+		mhEnd.awardIcon[k] = mh.trophy;
+		mhEnd.fastest = fastClient;
+	}
+	if ( local && best > 0 && ( !cg.ghostPrevPersonalMs || best < cg.ghostPrevPersonalMs ) && e->awardCount < MH_END_AWARDS ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "PERSONAL BEST";
+		MH_Plain( cgs.clientinfo[me].name, tmp, sizeof( tmp ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 new ghost saved", tmp );
+		if ( cg.ghostPrevPersonalMs ) MH_EndSigned2( best - cg.ghostPrevPersonalMs, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		else Q_strncpyz( mhEnd.awardValue[k], "NEW", sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhSoft;
+		mhEnd.awardIcon[k] = mh.chevron;
+	}
 }
 
 static void MH_EndPrepare( void ) {
@@ -4043,12 +4396,14 @@ static void MH_EndPrepare( void ) {
 
 	mhEnd.teams = qfalse;
 	mhEnd.drag = qfalse;
-	mhEnd.sprint = MH_EndIsSprint();
+	mhEnd.sprint = MH_EndIsSprint() && cgs.gametype != GT_GHOST;
+	mhEnd.ghost = cgs.gametype == GT_GHOST;
 	mhEnd.posColor = mhWhite;
 	mhEnd.doneNoteColor = mhAccent;
 	if ( cgs.gametype == GT_TEAM_RACING ) MH_EndTeams( all, order, count, me, mine, place );
 	if ( cgs.gametype == GT_DRAG ) MH_EndDrag();
 	if ( mhEnd.sprint ) MH_EndSprint( all, order, count, me, mine, place, mapName );
+	if ( mhEnd.ghost ) MH_EndGhost( all, order, count, me, mine, mapName );
 	for ( i = 0; i < e->awardCount; i++ ) {
 		e->awardName[i] = mhEnd.awardName[i];
 		e->awardValue[i] = mhEnd.awardValue[i];
@@ -4096,12 +4451,19 @@ void CG_ModernHUD_DrawEnd( void ) {
 		qboolean foul = !Q_stricmp( e->lapValue[i], "foul" ) || !Q_stricmp( e->lapValue[i], "dnf" );
 		/* a sprint: the quickest of all in a sector in blue */
 		const float *bestBar = mhEnd.sprint ? mhFast : mhLapBest, *bestText = mhEnd.sprint ? mhFast : mhWhite;
-		MH_FillRect( &e->lapBar[i], foul ? mhAccent : isBest ? bestBar : mhLapBar, 1.0f );
-		MH_Str( &e->lapValueT[i], foul ? mhAccent : isBest ? bestText : mhLabel, 1.0f );
+		if ( e->lapDiverge ) {	/* a ghost race: gained up in blue, lost down in orange */
+			const float *c = e->lapFrac[i] <= 0.0f ? mhFast : mhAccent;
+			MH_FillRect( &e->lapAxis[i], mhDim, 1.0f );
+			MH_FillRect( &e->lapBar[i], c, 1.0f );
+			MH_Str( &e->lapValueT[i], c, 1.0f );
+		} else {
+			MH_FillRect( &e->lapBar[i], foul ? mhAccent : isBest ? bestBar : mhLapBar, 1.0f );
+			MH_Str( &e->lapValueT[i], foul ? mhAccent : isBest ? bestText : mhLabel, 1.0f );
+		}
 		MH_Str( &e->lapNameT[i], mhDim, 1.0f );
 		if ( e->lapPlace[i] ) {
 			MH_FillRect( &e->lapRule[i], mhLine, 1.0f );
-			MH_Str( &e->lapPlaceT[i], mhEnd.lapPlaceLit[i] ? mhWhite : mhDim, 1.0f );
+			MH_Str( &e->lapPlaceT[i], mhEnd.ghost ? mhEnd.lapPlaceColor[i] : mhEnd.lapPlaceLit[i] ? mhWhite : mhDim, 1.0f );
 		}
 	}
 	for ( i = 0; i < e->spreadCount; i++ ) {
@@ -4149,6 +4511,31 @@ void CG_ModernHUD_DrawEnd( void ) {
 			MH_Str( &e->podiumMemberPosT[k][i], mhMuted, 1.0f );
 			MH_Str( &e->podiumMemberNameT[k][i], mhEnd.memberMe[k][i] ? mhAccent : mhWhite, 1.0f );
 		}
+	}
+
+	/* a ghost race: you and the ghost; the ghost's car under a blue veil */
+	if ( e->duel ) {
+		static const vec4_t ghostDim = { 0.0f, 0.0f, 0.0f, 0.45f }, ghostTint = { 90 / 255.0f, 176 / 255.0f, 1.0f, 0.16f };
+		for ( k = 0; k < 2; k++ ) {
+			const wsRect_t *c = &e->duelCar[k];
+			MH_FillRect( &e->duelCard[k], mhPanel, 1.0f );
+			MH_Border( &e->duelCard[k], mhLine, 2.0f, k == 0 ? mhAccent : mhFast, 1.0f );
+			MH_FillRect( c, mhShowroom, 1.0f );
+			if ( mhEnd.duelCarValid[k] ) {
+				CG_DrawShowroomModel( MH_Snap( c->x ), MH_Snap( c->y ), MH_Snap( c->x + c->w ) - MH_Snap( c->x ),
+				                      MH_Snap( c->y + c->h ) - MH_Snap( c->y ), &mhEnd.duelCar[k],
+				                      AngleMod( 150.0f + k * 40.0f + cg.time * 0.018f ) );
+			}
+			if ( k == 1 ) {
+				MH_FillRect( c, ghostDim, 1.0f );
+				MH_FillRect( c, ghostTint, 1.0f );
+			}
+			MH_Str( &e->duelTagT[k], k == 0 ? mhAccent : mhFast, 1.0f );
+			MH_Str( &e->duelNameT[k], mhWhite, 1.0f );
+			MH_Str( &e->duelLapT[k], mhWhite, 1.0f );
+			MH_Str( &e->duelNoteT[k], mhEnd.duelNoteColor[k], 1.0f );
+		}
+		MH_Str( &e->vsT, mhDim, 1.0f );
 	}
 
 	/* a drag duel: the time slips */
@@ -4222,7 +4609,24 @@ void CG_ModernHUD_DrawEnd( void ) {
 		time.box.x += time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) );
 		best.box.x += best.box.w - WS_TextWidth( &best.style, best.text, strlen( best.text ) );
 		MH_Str( &time, mhValue, 1.0f );
-		MH_Str( &best, mhEnd.drag ? mhEnd.rowBestColor[i] : mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
+		MH_Str( &best, mhEnd.drag || mhEnd.ghost ? mhEnd.rowBestColor[i] : mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
+	}
+
+	/* a ghost race: the ladder, yours lit, the ghost raced marked */
+	if ( e->ladderCount ) {
+		MH_Panel( &e->ladder, qtrue, 1.0f );
+		MH_Str( &e->ladderTitleT, mhLabel, 1.0f );
+		MH_Str( &e->ladderRightT, mhMuted, 1.0f );
+		for ( i = 0; i < e->ladderCount; i++ ) {
+			mhText_t lap = e->ladderLapT[i], tag = e->ladderTagT[i];
+			if ( e->ladderMe[i] ) MH_FillRect( &e->ladderRow[i], mhMe, 1.0f );
+			MH_Str( &e->ladderPosT[i], e->ladderMe[i] ? mhWhite : mhMuted, 1.0f );
+			MH_Str( &e->ladderNameT[i], mhWhite, 1.0f );
+			lap.box.x += lap.box.w - WS_TextWidth( &lap.style, lap.text, strlen( lap.text ) );
+			tag.box.x += tag.box.w - WS_TextWidth( &tag.style, tag.text, strlen( tag.text ) );
+			MH_Str( &lap, e->ladderMe[i] ? mhValue : mhMuted, 1.0f );
+			MH_Str( &tag, mhFast, 1.0f );
+		}
 	}
 
 	for ( i = 0; i < 3; i++ ) {

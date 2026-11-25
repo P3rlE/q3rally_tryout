@@ -138,6 +138,30 @@ ends on the race's page set for the run (`EndSprint.dc.html`):
 The client keeps when each driver passed each checkpoint (`cpAt` in
 `cg_race_result.c`); the finish line's own split is no checkpoint.
 
+A ghost race (Ghost) ends on the race's page set for the duel with the
+recorded lap (`EndGhost.dc.html`):
+
+- At the left the margin to the ghost big (blue: beaten, orange: the ghost
+  wins), your best lap under it with the ghost's name and lap; where your
+  lap would rank on the ghost ladder, how it compares with your personal
+  best (NEW when it is one), top speed and the laps faster than the ghost.
+  In place of the laps your best lap against the ghost, checkpoint by
+  checkpoint (bars up from a line: gained, down: lost), the running gap
+  under each; past eight sectors in eight stretches.
+- In the middle you and the ghost side by side in place of the podium, the
+  ghost's car (its vehicle, your own for a personal or server ghost) under
+  a blue veil, its card saying where it comes from (LADDER #3, PERSONAL,
+  SERVER). Highlights: the biggest gain in a sector, the fastest lap, a
+  new personal best.
+- At the right everybody's best lap with the margin to their own ghost
+  (the server's `lghostresult`), under it the ghost ladder (when the list
+  is loaded), six rows around where your lap ranks, the ghost raced marked
+  VS. Without a ghost the race's podium and NO GHOST.
+
+The client keeps the splits of your best lap against the ghost
+(`cg.ghostBestSplit*`) and the personal best before the run's ghost
+replaced it (`cg.ghostPrevPersonalMs`).
+
 A drag race ends on its own page (`EndDrag.dc.html`), the duel:
 
 - At the left: the match ("2-1 / 3", the best of), whether you won it and
@@ -214,4 +238,4 @@ many drivers are ready in place of the clock.
 - Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
   orange. Under it the spectators and the server with how full it is.
 
-Still to come: the end screens of Ghost and the combat and team modes.
+Still to come: the end screens of the combat and team modes.
