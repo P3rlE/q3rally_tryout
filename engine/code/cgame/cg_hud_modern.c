@@ -2649,12 +2649,16 @@ static struct {
 	qboolean		tourney;			/* the drag tournament over */
 	cgShowroomCar_t	podCar[3];			/* its podium: the cars kept (their drivers may be gone) */
 	qboolean		podCarValid[3];
+	/* sprint */
+	qboolean		sprint;
+	char			lapPlace[MH_END_LAPS][8], avgHead[16];
+	qboolean		lapPlaceLit[MH_END_LAPS];	/* the place changed over the sector */
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
 	int i;
 	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
-	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_DRAG ) return qfalse;
+	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_SPRINT && cgs.gametype != GT_DRAG ) return qfalse;
 	if ( cgs.gametype == GT_DRAG ) return cgs.dragLog.count > 0;	/* the heats the client wrote down */
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( CG_RaceResult( i )->present && CG_RaceResult( i )->finishTime ) return qtrue;
@@ -3650,13 +3654,207 @@ void CG_ModernHUD_DrawTourney( void ) {
 	MH_BracketDraw();
 }
 
+/* ---------------------------------------------------------------------------
+   the end screen of a sprint (gen.py EndSprint): one run from A to B, also an
+   A to B course in a race. In place of the laps your sectors, checkpoint to
+   checkpoint and the last one to the finish: what each lost to the quickest
+   anybody drove there, your place at its end under it. The highlights: the
+   best sector, the closest finish, the biggest gain; the classification
+   with the average speed.
+   ------------------------------------------------------------------------- */
+
+#define MH_END_SPRINT_PARTS	8	/* the sector chart's columns */
+
+static qboolean MH_EndIsSprint( void ) {
+	return cgs.gametype == GT_SPRINT || ( cgs.gametype == GT_RACING && CG_IsSprintTrack() );
+}
+
+/* what a sector lost: "+0.42" "+12.4" "+1:02" */
+static void MH_EndSprintLost( int ms, char *out, int size ) {
+	if ( ms < 10000 ) Com_sprintf( out, size, "+%d.%02d", ms / 1000, ( ms % 1000 ) / 10 );
+	else if ( ms < 60000 ) Com_sprintf( out, size, "+%d.%d", ms / 1000, ( ms % 1000 ) / 100 );
+	else Com_sprintf( out, size, "+%d:%02d", ms / 60000, ( ms / 1000 ) % 60 );
+}
+
+/* a stretch of the run, sectors from .. to: ms, 0: not all driven */
+static int MH_EndSprintPart( const cgRaceResult_t *r, int from, int to, int cps ) {
+	int sct, sum = 0;
+	for ( sct = from; sct <= to; sct++ ) {
+		int t = CG_ResultSector( r, sct, cps );
+		if ( !t ) return 0;
+		sum += t;
+	}
+	return sum;
+}
+
+/* over the whole run, in the player's units; 0: not home or no length */
+static float MH_EndAvgSpeed( const cgRaceResult_t *r ) {
+	int total = CG_ResultTotal( r );
+	if ( total <= 0 || cgs.trackLength <= 0.0f ) return 0.0f;
+	return cgs.trackLength / ( total / 1000.0f ) * ( cg_metricUnits.integer ? 3.6f : 2.236936f );
+}
+
+static void MH_EndSprint( const cgRaceResult_t *all, const int *order, int count, int me, const cgRaceResult_t *mine, int place, const char *map ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	int cps = CG_ResultCheckpoints( all, MAX_CLIENTS ), sectors = cps + 1, quick[CG_RESULT_CPS + 1];
+	int parts = sectors < MH_END_SPRINT_PARTS ? sectors : MH_END_SPRINT_PARTS, partEnd[MH_END_SPRINT_PARTS + 1], partQuick[MH_END_SPRINT_PARTS];
+	int i, k, sct, worst = 0, quickest = 0, prev, best = 0, bestSct = 0, bestClient = -1;
+	int closest = 0, closeAt = -1, gain = 0, gainClient = -1;
+	char dist[16], name[40], other[40];
+	const char *speedUnit = cg_metricUnits.integer ? "KM/H" : "MPH";
+	float avg;
+
+	/* the header: the length, the checkpoints */
+	dist[0] = '\0';
+	if ( cgs.trackLength > 0.0f ) {
+		if ( cg_metricUnits.integer ) Com_sprintf( dist, sizeof( dist ), "%.2f KM", cgs.trackLength / 1000.0f );
+		else Com_sprintf( dist, sizeof( dist ), "%.2f MI", cgs.trackLength / 1609.344f );
+	}
+	e->title = "SPRINT RESULT";
+	Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s%s%s \xb7 %d CHECKPOINT%s \xb7 %d DRIVERS", map, dist[0] ? " \xb7 " : "", dist,
+	             cps, cps == 1 ? "" : "S", count );
+	if ( !mine->finishTime ) {
+		Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "OUT AFTER CP %d OF %d", CG_ResultReached( mine ), cps );
+	}
+
+	/* the quickest anybody drove each sector */
+	for ( sct = 1; sct <= sectors; sct++ ) {
+		quick[sct] = 0;
+		for ( i = 0; i < count; i++ ) {
+			int t = CG_ResultSector( &all[order[i]], sct, cps );
+			if ( t && ( !quick[sct] || t < quick[sct] ) ) quick[sct] = t;
+			if ( t && ( !best || t < best ) ) { best = t; bestSct = sct; bestClient = order[i]; }
+		}
+		if ( quick[sct] && CG_ResultSector( mine, sct, cps ) == quick[sct] ) quickest++;
+	}
+
+	/* the figures: the average speed and the sectors quickest in place of the laps */
+	avg = MH_EndAvgSpeed( mine );
+	e->statLabel[0] = "AVG SPEED";
+	if ( avg > 0.0f ) {
+		Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "%.1f", avg );
+		e->statUnit[0] = speedUnit;
+	} else {
+		Q_strncpyz( mhEnd.stat[0], "--", sizeof( mhEnd.stat[0] ) );
+		e->statUnit[0] = NULL;
+	}
+	e->statLabel[3] = "SECTORS QUICKEST";
+	Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d / %d", quickest, sectors );
+	mhEnd.statColor[3] = quickest > 0 ? mhFast : mhWhite;
+
+	/* your sectors: what each lost, your place at its end. Past eight the
+	 * run in eight stretches, named by the checkpoint they end at */
+	e->chartTitle = "YOUR SECTORS";
+	e->chartNote = "LOST TO THE QUICKEST \xb7 YOUR PLACE";
+	e->lapCount = 0;
+	partEnd[0] = 0;
+	for ( k = 1; k <= parts; k++ ) partEnd[k] = ( k * sectors + parts / 2 ) / parts;
+	for ( k = 0; k < parts; k++ ) {
+		int t = MH_EndSprintPart( mine, partEnd[k] + 1, partEnd[k + 1], cps );
+		partQuick[k] = 0;
+		for ( i = 0; i < count; i++ ) {
+			int q = MH_EndSprintPart( &all[order[i]], partEnd[k] + 1, partEnd[k + 1], cps );
+			if ( q && ( !partQuick[k] || q < partQuick[k] ) ) partQuick[k] = q;
+		}
+		if ( t && partQuick[k] && t - partQuick[k] > worst ) worst = t - partQuick[k];
+	}
+	prev = mine->grid;
+	for ( k = 0; k < parts; k++ ) {
+		int t = MH_EndSprintPart( mine, partEnd[k] + 1, partEnd[k + 1], cps ), at = CG_ResultPlaceAt( all, MAX_CLIENTS, me, partEnd[k + 1], cps );
+		sct = partEnd[k + 1];
+		e->lapCount++;
+		if ( !t ) {
+			Q_strncpyz( mhEnd.lap[k], "--", sizeof( mhEnd.lap[k] ) );
+			e->lapFrac[k] = 0.0f;
+		} else if ( t <= partQuick[k] ) {
+			Q_strncpyz( mhEnd.lap[k], "best", sizeof( mhEnd.lap[k] ) );
+			e->lapFrac[k] = 0.0f;
+		} else {
+			MH_EndSprintLost( t - partQuick[k], mhEnd.lap[k], sizeof( mhEnd.lap[k] ) );
+			e->lapFrac[k] = worst > 0 ? (float)( t - partQuick[k] ) / worst : 0.0f;
+		}
+		if ( sct > cps ) Q_strncpyz( mhEnd.lapName[k], "FIN", sizeof( mhEnd.lapName[k] ) );
+		else if ( parts < sectors ) Com_sprintf( mhEnd.lapName[k], sizeof( mhEnd.lapName[k] ), "CP%d", sct );
+		else Com_sprintf( mhEnd.lapName[k], sizeof( mhEnd.lapName[k] ), "S%d", sct );
+		if ( at ) Com_sprintf( mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ), "P%d", at );
+		else Q_strncpyz( mhEnd.lapPlace[k], "--", sizeof( mhEnd.lapPlace[k] ) );
+		mhEnd.lapPlaceLit[k] = at && at != prev;
+		if ( at ) prev = at;
+		e->lapValue[k] = mhEnd.lap[k];
+		e->lapName[k] = mhEnd.lapName[k];
+		e->lapPlace[k] = mhEnd.lapPlace[k];
+	}
+
+	/* the highlights */
+	e->awardCount = 0;
+	mhEnd.fastest = -1;
+	for ( i = 1; i < count; i++ ) {
+		const cgRaceResult_t *a = &all[order[i - 1]], *b = &all[order[i]];
+		if ( a->finishTime && b->finishTime && ( closeAt < 0 || b->finishTime - a->finishTime < closest ) ) {
+			closest = b->finishTime - a->finishTime;
+			closeAt = i;
+		}
+	}
+	for ( i = 0; i < count; i++ ) {
+		const cgRaceResult_t *r = &all[order[i]];
+		if ( r->finishTime && r->grid > 0 && r->grid - ( i + 1 ) > gain ) { gain = r->grid - ( i + 1 ); gainClient = order[i]; }
+	}
+	if ( bestClient >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "BEST SECTOR";
+		MH_Plain( cgs.clientinfo[bestClient].name, name, sizeof( name ) );
+		if ( bestSct > cps ) Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 to the finish", name );
+		else Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 S%d", name, bestSct );
+		CG_ResultTime( best, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.flag;
+	}
+	if ( closeAt > 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "CLOSEST FINISH";
+		MH_Plain( cgs.clientinfo[order[closeAt]].name, name, sizeof( name ) );
+		MH_Plain( cgs.clientinfo[order[closeAt - 1]].name, other, sizeof( other ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 behind %s", name, other );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d.%03d", closest / 1000, closest % 1000 );
+		mhEnd.awardColor[k] = mhPurple;
+		mhEnd.awardIcon[k] = mh.trophy;
+	}
+	if ( gainClient >= 0 && e->awardCount < MH_END_AWARDS ) {
+		int to = 0;
+		for ( i = 0; i < count; i++ ) if ( order[i] == gainClient ) to = i + 1;
+		k = e->awardCount++;
+		e->awardLabel[k] = "BIGGEST GAIN";
+		MH_Plain( cgs.clientinfo[gainClient].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 P%d to P%d", name, all[gainClient].grid, to );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "+%d", gain );
+		mhEnd.awardColor[k] = mhAccent;
+		mhEnd.awardIcon[k] = mh.chevron;
+	}
+
+	/* the classification: the average speed, or how far one got */
+	Com_sprintf( mhEnd.avgHead, sizeof( mhEnd.avgHead ), "AVG %s", speedUnit );
+	e->listHead[0] = "POS";
+	e->listHead[1] = "DRIVER";
+	e->listHead[2] = "TIME";
+	e->listHead[3] = mhEnd.avgHead;
+	Q_strncpyz( mhEnd.listRight, dist, sizeof( mhEnd.listRight ) );
+	for ( k = 0; k < e->rowCount; k++ ) {
+		const cgRaceResult_t *r = &all[mhEnd.rowClient[k]];
+		avg = MH_EndAvgSpeed( r );
+		if ( avg > 0.0f ) Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "%.1f", avg );
+		else if ( CG_ResultReached( r ) ) Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "CP %d", CG_ResultReached( r ) );
+		else Q_strncpyz( mhEnd.rowBest[k], "--", sizeof( mhEnd.rowBest[k] ) );
+	}
+	(void)place;
+}
+
 static void MH_EndPrepare( void ) {
 	mhEndLayout_t *e = &mhEnd.e;
 	const cgRaceResult_t *all = CG_RaceResult( 0 ), *mine, *winner;
 	int order[MAX_CLIENTS], count, n = 0, i, k, me, place = 0, best, bestSector = 0, sectorClient = -1, gainClient = -1, gain = 0;
 	int fastest = 0, first;
 	const char *map;
-	char name[40];
+	char name[40], mapName[40];
 	float viewWidth;
 
 	MH_Prepare();
@@ -3691,6 +3889,7 @@ static void MH_EndPrepare( void ) {
 	MH_Plain( map, name, sizeof( name ) );
 	COM_StripExtension( name, name, sizeof( name ) );
 	Q_strupr( name );
+	Q_strncpyz( mapName, name, sizeof( mapName ) );
 	e->title = "RACE RESULT";
 	if ( cgs.laplimit > 0 )
 		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 %d LAP%s \xb7 %d DRIVERS", name, cgs.laplimit, cgs.laplimit == 1 ? "" : "S", count );
@@ -3844,10 +4043,12 @@ static void MH_EndPrepare( void ) {
 
 	mhEnd.teams = qfalse;
 	mhEnd.drag = qfalse;
+	mhEnd.sprint = MH_EndIsSprint();
 	mhEnd.posColor = mhWhite;
 	mhEnd.doneNoteColor = mhAccent;
 	if ( cgs.gametype == GT_TEAM_RACING ) MH_EndTeams( all, order, count, me, mine, place );
 	if ( cgs.gametype == GT_DRAG ) MH_EndDrag();
+	if ( mhEnd.sprint ) MH_EndSprint( all, order, count, me, mine, place, mapName );
 	for ( i = 0; i < e->awardCount; i++ ) {
 		e->awardName[i] = mhEnd.awardName[i];
 		e->awardValue[i] = mhEnd.awardValue[i];
@@ -3893,9 +4094,15 @@ void CG_ModernHUD_DrawEnd( void ) {
 	for ( i = 0; i < e->lapCount; i++ ) {
 		qboolean isBest = !Q_stricmp( e->lapValue[i], "best" );
 		qboolean foul = !Q_stricmp( e->lapValue[i], "foul" ) || !Q_stricmp( e->lapValue[i], "dnf" );
-		MH_FillRect( &e->lapBar[i], foul ? mhAccent : isBest ? mhLapBest : mhLapBar, 1.0f );
-		MH_Str( &e->lapValueT[i], foul ? mhAccent : isBest ? mhWhite : mhLabel, 1.0f );
+		/* a sprint: the quickest of all in a sector in blue */
+		const float *bestBar = mhEnd.sprint ? mhFast : mhLapBest, *bestText = mhEnd.sprint ? mhFast : mhWhite;
+		MH_FillRect( &e->lapBar[i], foul ? mhAccent : isBest ? bestBar : mhLapBar, 1.0f );
+		MH_Str( &e->lapValueT[i], foul ? mhAccent : isBest ? bestText : mhLabel, 1.0f );
 		MH_Str( &e->lapNameT[i], mhDim, 1.0f );
+		if ( e->lapPlace[i] ) {
+			MH_FillRect( &e->lapRule[i], mhLine, 1.0f );
+			MH_Str( &e->lapPlaceT[i], mhEnd.lapPlaceLit[i] ? mhWhite : mhDim, 1.0f );
+		}
 	}
 	for ( i = 0; i < e->spreadCount; i++ ) {
 		const float *c = MH_TeamColor( TEAM_RED + mhEnd.team[i] );

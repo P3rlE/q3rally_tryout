@@ -85,6 +85,12 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- The end screen for sprints (also an A to B course in a race): your place
+  and time, the average speed, the sectors where you were the quickest;
+  your sectors as bars, what each lost to the quickest anybody drove there,
+  your place at every checkpoint under it; the podium, the best sector,
+  the closest finish and the biggest gain; the classification with the
+  average speed, or the last checkpoint reached.
 - Drag tournament: `/dragskip` (and `/dragskip all`) also works from the
   bracket between the matches, as the hint there says; the podium after
   the final shows every car, also those of bots that already left.

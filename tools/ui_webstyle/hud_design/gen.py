@@ -966,6 +966,90 @@ board('EndTeamRacing.dc.html', 'Team race result', None, [
 ])
 
 # ---------------------------------------------------------------------------
+# the end screen of a sprint: one run from A to B, no laps. In place of the
+# laps your sectors (what each lost to the quickest anybody drove there) with
+# your place at every checkpoint; the classification with the average speed.
+# ---------------------------------------------------------------------------
+
+def sector_chart(lost, places):
+    """lost: per sector the time lost to the quickest there (0: you were it); places: yours at its end."""
+    worst = max(lost)
+    cols = []
+    for i, (v, p) in enumerate(zip(lost, places)):
+        quickest = v == 0
+        bar_ = (f'<div style="width: 100%; height: {max(3, int(56 * v / worst))}px; '
+                f'background: {FAST if quickest else "#5a5a5a"}"></div>')
+        val = mono('best' if quickest else f'+{v:.2f}', 11, FAST if quickest else '#bbbbbb')
+        name = 'FIN' if i == len(lost) - 1 else f'S{i + 1}'
+        cols.append(f'<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px">'
+                    f'<div style="height: 56px; width: 100%; display: flex; align-items: flex-end">{bar_}</div>'
+                    f'{val}{lab(name, "#777777", 10)}'
+                    f'<div style="height: 1px; width: 100%; background: {LINE}"></div>'
+                    f'{mono(p, 12, "#ffffff" if p != places[i - 1] or i == 0 else "#777777")}</div>')
+    return f'<div style="display: flex; gap: 8px">{"".join(cols)}</div>'
+
+
+def sprint_classification(rows, right):
+    grid = 'display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">{lab("POS", "#999999", 11)}{lab("DRIVER", "#999999", 11)}'
+            f'<div style="text-align: right">{lab("TIME", "#999999", 11)}</div>'
+            f'<div style="text-align: right">{lab("AVG KM/H", "#999999", 11)}</div></div>')
+    out = []
+    for pos, name, gap, avg, me in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(pos, 14, ACC if pos == "01" else "#999999")}'
+                   f'{text(name, 16, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(gap, 14, "#dddddd")}</div>'
+                   f'<div style="text-align: right">{mono(avg, 14, "#999999")}</div></div>')
+    return panel(row(lab('Final classification'), lab(right, '#999999')) + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+SPRINT_M = 2980
+sprint_times = [('Sam', 87.260), ('Player', 88.402), ('Carla', 91.167), ('Tony', 91.381), ('Janine', 97.030),
+                ('Ivan', 99.264), ('Minori', 105.772)]
+
+
+def kmh(t):
+    return f'{SPRINT_M / t * 3.6:.1f}'
+
+
+sprint_rows = [(f'{i + 1:02d}', n, '1:27.260' if i == 0 else f'+{t - sprint_times[0][1]:.3f}', kmh(t), n == 'Player')
+               for i, (n, t) in enumerate(sprint_times)] + [('08', 'Bee', 'DNF', 'CP 5', False)]
+
+board('EndSprint.dc.html', 'Sprint result', None, [
+    blurred(BG['sprint']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Sprint result", ACC, 13)}{lab("Timber Run · 2.98 km · 7 checkpoints · 8 drivers", "#999999", 12)}</div>',
+    # your result
+    f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+    f'<div style="display: flex; align-items: baseline; gap: 14px">{big("P2", 168)}{big("/ 8", 48, "#777777")}</div>'
+    f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -18px">{lab("Finished")}'
+    f'{big("1:28.402", 44)}{lab("+1.142 to the winner", ACC, 12)}</div>'
+    + sep() +
+    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">'
+    f'{stat("Avg speed", kmh(88.402), "#ffffff", "km/h")}{stat("Top speed", "172", "#ffffff", "km/h")}'
+    f'{stat("Places gained", "+3", FAST)}{stat("Sectors quickest", "2 / 8", FAST)}</div>'
+    + sep() +
+    f'<div style="display: flex; flex-direction: column; gap: 12px">{row(lab("Your sectors"), lab("lost to the quickest · your place", "#777777", 11))}'
+    + sector_chart([0.42, 0.18, 0.0, 0.31, 0.12, 0.0, 0.27, 0.09], ['P4', 'P4', 'P3', 'P3', 'P3', 'P2', 'P2', 'P2']) + '</div></div>',
+    # the podium
+    f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; height: 410px; display: flex; gap: 12px; '
+    f'align-items: flex-end">'
+    + podium_card(2, 'Player', 'viper', '1:28.402', '+1.142', 192, 176, me=True)
+    + podium_card(1, 'Sam', 'murcielago', '1:27.260', '', 210, 236)
+    + podium_card(3, 'Carla', 'db12', '1:31.167', '+3.907', 192, 140) + '</div>',
+    f'<div style="position: absolute; left: 476px; top: 530px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{lab("Highlights")}'
+    + award('flag', 'Best sector', 'Player · S3', '0:09.814', FAST)
+    + award('trophy', 'Closest finish', 'Tony · behind Carla', '0.214', PURPLE)
+    + award('chevron', 'Biggest gain', 'Player · P5 to P2', '+3', ACC) + '</div>',
+    col('right: 56px; top: 92px', sprint_classification(sprint_rows, '2.98 km'), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+# ---------------------------------------------------------------------------
 # the end screen of a drag race: the duel. A time slip a lane, the deciding
 # heat line by line, the better figure of each line in blue; the heats on
 # the right.
@@ -1407,7 +1491,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html'],
         ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
-        ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndDrag.dc.html'],
+        ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndSprint.dc.html', 'EndDrag.dc.html'],
         ['Tourney.dc.html', 'Tourney16.dc.html', 'TourneyEnd.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
@@ -1416,7 +1500,7 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}

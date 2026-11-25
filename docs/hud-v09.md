@@ -119,6 +119,25 @@ them (`level.teamTimes`):
 - The classification with the teams' averages over it and each driver's
   team as a square.
 
+A sprint, one run from A to B (Sprint, and an A to B course in a race),
+ends on the race's page set for the run (`EndSprint.dc.html`):
+
+- At the left: the place and the time as in a race; the average speed
+  (the course's length over your time), top speed, places gained and in
+  how many sectors you were the quickest. In place of the laps your
+  sectors, checkpoint to checkpoint and the last one to the finish: what
+  each lost to the quickest anybody drove there (yours in blue), under a
+  rule your place at its end, lit where it changed. Past eight sectors the
+  run in eight stretches, named by the checkpoint they end at (CP3, CP6
+  .. FIN).
+- Highlights: the best sector, the closest finish between two drivers and
+  the biggest gain.
+- The classification with the average speed, or the last checkpoint
+  reached by those not home (CP 5).
+
+The client keeps when each driver passed each checkpoint (`cpAt` in
+`cg_race_result.c`); the finish line's own split is no checkpoint.
+
 A drag race ends on its own page (`EndDrag.dc.html`), the duel:
 
 - At the left: the match ("2-1 / 3", the best of), whether you won it and
@@ -195,4 +214,4 @@ many drivers are ready in place of the clock.
 - Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
   orange. Under it the spectators and the server with how full it is.
 
-Still to come: the end screens of Sprint, Ghost and the combat and team modes.
+Still to come: the end screens of Ghost and the combat and team modes.

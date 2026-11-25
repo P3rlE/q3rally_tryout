@@ -513,12 +513,12 @@ int main(void) {
 #undef B
         } else if (!strcmp(command, "hudend")) {
             /* hudend <view width>, then fields split by |, lists by ; and ~ */
-            static mhEndLayout_t e; static char line[4096]; static char *f[32]; char *r, *item, *more, *p[6];
+            static mhEndLayout_t e; static char line[4096]; static char *f[40]; char *r, *item, *more, *p[6];
             int n = 0, i, k;
             memset(&e, 0, sizeof(e));
             scanf("%f\n", &e.viewWidth);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            for (r = line; n < 32; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            for (r = line; n < 40; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
 #define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
 #define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
             e.title = f[0]; e.subtitle = f[1]; e.pos = f[2]; e.of = f[3]; e.doneLabel = f[4]; e.doneTime = f[5]; e.doneNote = f[6];
@@ -551,6 +551,8 @@ int main(void) {
             /* tournament: 29 path round~what~tag;.., 30 the list as matches */
             if (n > 29) EACH(f[29]) SPLIT(item, 3) i = e.pathCount++; e.pathRound[i] = p[0]; e.pathWhat[i] = p[1]; e.pathTag[i] = p[2]; }
             if (n > 30) e.listMatches = atoi(f[30]);
+            /* sprint: 31 the place under each sector p~p.. */
+            i = 0; if (n > 31) for (r = f[31]; r && *r && i < MH_END_LAPS; ) { e.lapPlace[i++] = r; r = strchr(r, '~'); if (r) *r++ = 0; }
             i = 0; if (n > 28) EACH(f[28]) char *v = item; for (k = 0; v && k < MH_END_SLIP_ROWS; k++) {
                 e.slipValue[i][k] = v; v = strchr(v, '~'); if (v) *v++ = 0; } i++; }
 #undef SPLIT
@@ -566,7 +568,9 @@ int main(void) {
                 sprintf(key, "statValue%d", i); T(key, e.statValueT[i]); }
             T("lapsTitle", e.lapsTitleT); T("lapsNote", e.lapsNoteT);
             for (i = 0; i < e.lapCount; i++) { char key[24]; sprintf(key, "lapSlot%d", i); rect(key, e.lapSlot[i]);
-                sprintf(key, "lapBar%d", i); rect(key, e.lapBar[i]); }
+                sprintf(key, "lapBar%d", i); rect(key, e.lapBar[i]); sprintf(key, "lapValue%d", i); T(key, e.lapValueT[i]);
+                sprintf(key, "lapName%d", i); T(key, e.lapNameT[i]);
+                if (e.lapPlace[i]) { sprintf(key, "lapRule%d", i); rect(key, e.lapRule[i]); sprintf(key, "lapPlace%d", i); T(key, e.lapPlaceT[i]); } }
             for (i = 0; i < e.podiumCount; i++) { char key[24]; sprintf(key, "podium%d", i); rect(key, e.podium[i]);
                 sprintf(key, "podiumCar%d", i); rect(key, e.podiumCar[i]); sprintf(key, "podiumPlace%d", i); T(key, e.podiumPlaceT[i]);
                 sprintf(key, "podiumName%d", i); T(key, e.podiumNameT[i]); sprintf(key, "podiumTag%d", i); T(key, e.podiumTagT[i]);

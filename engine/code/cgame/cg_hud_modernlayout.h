@@ -240,6 +240,7 @@ typedef struct {
 	int			lapCount;			/* the chart: the bars in 0..1, the line under each */
 	float		lapFrac[MH_END_LAPS];
 	const char	*lapValue[MH_END_LAPS], *lapName[MH_END_LAPS];
+	const char	*lapPlace[MH_END_LAPS];	/* a sprint: under a rule, your place at the sector's end (NULL: none) */
 	int			spreadCount;		/* team races, in place of the lap chart: a row per team, */
 	int			spreadDots[MH_END_TEAMS];	/* its drivers on the time axis (0..1), */
 	float		spreadDot[MH_END_TEAMS][MH_END_DOTS];
@@ -279,7 +280,8 @@ typedef struct {
 	wsRect_t	sep[2];
 	mhText_t	statLabelT[MH_END_STATS], statValueT[MH_END_STATS], statUnitT[MH_END_STATS];
 	mhText_t	lapsTitleT, lapsNoteT, lapValueT[MH_END_LAPS], lapNameT[MH_END_LAPS];
-	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS];
+	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS], lapRule[MH_END_LAPS];
+	mhText_t	lapPlaceT[MH_END_LAPS];
 	wsRect_t	podium[3], podiumCar[3], podiumRule[3];
 	mhText_t	pathTitleT, pathRoundT[MH_PATH_ROWS], pathWhatT[MH_PATH_ROWS], pathTagT[MH_PATH_ROWS];
 	mhText_t	slipTitleT, slipNoteT, slipLaneT[2], slipYouT[2], slipTagT[2], slipNameT[2];
