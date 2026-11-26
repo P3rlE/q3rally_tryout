@@ -1367,6 +1367,126 @@ board('EndElimination.dc.html', 'Elimination result', None, [
 ])
 
 # ---------------------------------------------------------------------------
+# the objective modes: the team deathmatch's page with what each team played
+# for. CTF the captures a minute, Domination the zones held a minute (four
+# teams: the podium the first three, the list all four), King of the Hill the
+# seconds on the hill a minute, Autoball the goals one by one.
+# ---------------------------------------------------------------------------
+
+def lead_colors(leads):
+    return [FAST if v.startswith('+') else ACC if v.startswith('-') else '#999999' for v in leads]
+
+
+def goal_list(goals):
+    """The goals one by one: the minute, who scored (his team's swatch), the shot, the score after it."""
+    out = []
+    for minute, team, name, kmh_, score in goals:
+        out.append(f'<div style="display: grid; grid-template-columns: 30px 10px 1fr 70px 44px; gap: 10px; align-items: center; height: 22px">'
+                   f'{mono(minute, 12, "#999999")}{swatch(TEAM[team], 10)}'
+                   f'{text(name, 14, "#ffffff", 700 if name == "Player" else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(kmh_ + " km/h", 12, "#999999")}</div>'
+                   f'<div style="text-align: right">{mono(score, 13, "#ffffff")}</div></div>')
+    return f'<div style="display: flex; flex-direction: column; gap: 2px">{"".join(out)}</div>'
+
+
+CTF_LEADS = ['-1', '0', '-1', '+1', '+2', '+1', '+2']
+board('EndCTF.dc.html', 'Capture the flag result', None, [
+    blurred(BG['team_dm']),
+    end_header('Capture the flag result', 'Capture in the Jungle · capturelimit 5 · 2 teams · 8 drivers'),
+    end_left('P1', '/ 2', TEAM['blue'], 'Team blue · captures', '5', 'won by 2', ACC,
+             [('Your captures', '2', FAST), ('Assists', '1'), ('Defends', '3'), ('Your frags', '9')],
+             'Team captures', 'a bar a minute · your team\'s lead',
+             minute_chart([0, 1, 0, 2, 1, 0, 1], [f'M{i}' for i in range(1, 8)], CTF_LEADS, lead_colors(CTF_LEADS)),
+             label_color=TEAM['blue']),
+    podium3([team_podium_card(2, 'red', 'viper', '3 caps', '-2', [('P1', 'Carla', False), ('P5', 'Tony', False),
+                                                                   ('P6', 'Janine', False), ('P8', 'Bee', False)], 192, 128),
+             team_podium_card(1, 'blue', 'murcielago', '5 caps', '', [('P2', 'Ivan', False), ('P3', 'Player', True),
+                                                                       ('P4', 'Sam', False), ('P7', 'Minori', False)], 210, 172, me=True)]),
+    end_awards([('flag', 'Most captures', 'Ivan · 3 captures', '3', FAST),
+                ('trophy', 'Best defender', 'Carla · 6 defends', '6', PURPLE),
+                ('chevron', 'Your nemesis', 'Carla · got you 3 times', '3', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'capturelimit 5', ['POS', 'DRIVER', 'SCORE', 'CAPS'], [
+        ('01', 'red', 'Carla', '41', '1', '#999999', False), ('02', 'blue', 'Ivan', '38', '3', '#999999', False),
+        ('03', 'blue', 'Player', '33', '2', '#999999', True), ('04', 'blue', 'Sam', '24', '0', '#999999', False),
+        ('05', 'red', 'Tony', '21', '2', '#999999', False), ('06', 'red', 'Janine', '15', '0', '#999999', False),
+        ('07', 'blue', 'Minori', '12', '0', '#999999', False), ('08', 'red', 'Bee', '6', '0', '#999999', False)],
+        teams=[('blue', '5'), ('red', '3')]), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+board('EndDomination.dc.html', 'Domination result', None, [
+    blurred(BG['koth']),
+    end_header('Domination result', 'Dominate the City · timelimit 8 · 4 teams · 8 drivers'),
+    end_left('P2', '/ 4', TEAM['blue'], 'Team blue · score', '131', '12 behind red', ACC,
+             [('Your captures', '4', FAST), ('Your frags', '8'), ('Deaths', '6'), ('Zones held', '2.1', '#ffffff', 'avg')],
+             'Zones held', 'a bar a minute · your team\'s place',
+             minute_chart([1, 2, 3, 2, 1, 2, 3, 3], [f'M{i}' for i in range(1, 9)], ['P3', 'P2', 'P1', 'P1', 'P2', 'P2', 'P2', 'P2']),
+             label_color=TEAM['blue']),
+    podium3([team_podium_card(2, 'blue', 'viper', '131 pts', '-12', [('P2', 'Player', True), ('P4', 'Kuro', False)], 192, 128, me=True),
+             team_podium_card(1, 'red', 'murcielago', '143 pts', '', [('P1', 'Dean', False), ('P3', 'Tanya', False)], 210, 172),
+             team_podium_card(3, 'green', 'db12', '64 pts', '-79', [('P5', 'Janine', False), ('P7', 'Ivan', False)], 192, 92)]),
+    end_awards([('hill', 'Longest hold', 'Red · zone C', '4:12', PURPLE),
+                ('gun', 'Most frags', 'Dean · 14 frags', '14', FAST),
+                ('chevron', 'Your nemesis', 'Dean · got you 3 times', '3', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'team score', ['POS', 'DRIVER', 'SCORE', 'K / D'], [
+        ('01', 'red', 'Dean', '41', '14 / 5', '#999999', False), ('02', 'blue', 'Player', '38', '8 / 6', '#999999', True),
+        ('03', 'red', 'Tanya', '30', '9 / 7', '#999999', False), ('04', 'blue', 'Kuro', '27', '7 / 9', '#999999', False),
+        ('05', 'green', 'Janine', '22', '6 / 8', '#999999', False), ('06', 'yellow', 'Carla', '17', '5 / 9', '#999999', False),
+        ('07', 'green', 'Ivan', '12', '3 / 10', '#999999', False), ('08', 'yellow', 'Bee', '9', '2 / 10', '#999999', False)],
+        teams=[('red', '143'), ('blue', '131'), ('green', '64'), ('yellow', '40')]), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+KOTH_LEADS = ['-3', '+2', '+9', '+13', '+18', '+16', '+22']
+board('EndKOTH.dc.html', 'King of the hill result', None, [
+    blurred(BG['koth']),
+    end_header('King of the hill result', 'Mesa King · timelimit 7 · 2 teams · 6 drivers'),
+    end_left('P1', '/ 2', TEAM['red'], 'Team red · score', '52', 'won by 22', ACC,
+             [('Hill time', '1:48'), ('Contested', '0:42'), ('Hill kills', '5', FAST), ('Your frags', '9')],
+             'Hill held', 'seconds a minute · your team\'s lead',
+             minute_chart([12, 38, 60, 44, 51, 20, 47], [f'M{i}' for i in range(1, 8)], KOTH_LEADS, lead_colors(KOTH_LEADS)),
+             label_color=TEAM['red']),
+    podium3([team_podium_card(2, 'blue', 'viper', '30 pts', '-22', [('P4', 'Paul', False), ('P5', 'Minori', False),
+                                                                     ('P6', 'Bee', False)], 192, 128),
+             team_podium_card(1, 'red', 'murcielago', '52 pts', '', [('P1', 'Ivan', False), ('P2', 'Tanya', False),
+                                                                      ('P3', 'Player', True)], 210, 172, me=True)]),
+    end_awards([('hill', 'King of the hill', 'Ivan · 2:41 on the hill', '2:41', PURPLE),
+                ('gun', 'Most hill kills', 'Tanya · 7 on the hill', '7', FAST),
+                ('chevron', 'Longest reign', 'Red · held it 1:52', '1:52', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'team score', ['POS', 'DRIVER', 'SCORE', 'HILL'], [
+        ('01', 'red', 'Ivan', '28', '2:41', '#999999', False), ('02', 'red', 'Tanya', '24', '2:05', '#999999', False),
+        ('03', 'red', 'Player', '19', '1:48', '#999999', True), ('04', 'blue', 'Paul', '11', '1:12', '#999999', False),
+        ('05', 'blue', 'Minori', '10', '0:58', '#999999', False), ('06', 'blue', 'Bee', '6', '0:31', '#999999', False)],
+        teams=[('red', '52'), ('blue', '30')]), 420),
+    footer('WAITING FOR 3 DRIVERS', 3, 6),
+])
+
+board('EndAutoball.dc.html', 'Autoball result', None, [
+    blurred(BG['autoball']),
+    end_header('Autoball result', 'Rooftop Arena · timelimit 8 · 2 teams · 6 drivers'),
+    end_left('P1', '/ 2', TEAM['blue'], 'Team blue · goals', '3', 'won 3:2', ACC,
+             [('Your goals', '1', FAST), ('Assists', '1'), ('Saves', '2'), ('Best shot', '112', '#ffffff', 'km/h')],
+             'Goals', 'minute · scorer · shot · red : blue',
+             goal_list([("2'", 'red', 'Vlad', '96', '1:0'), ("3'", 'blue', 'Player', '112', '1:1'),
+                        ("5'", 'blue', 'Steve', '88', '1:2'), ("6'", 'red', 'Vlad', '104', '2:2'),
+                        ("8'", 'blue', 'Steve', '91', '2:3')]),
+             label_color=TEAM['blue']),
+    podium3([team_podium_card(2, 'red', 'viper', '2 goals', '-1', [('P1', 'Vlad', False), ('P5', 'Jennifer', False),
+                                                                    ('P6', 'Kuro', False)], 192, 128),
+             team_podium_card(1, 'blue', 'murcielago', '3 goals', '', [('P2', 'Steve', False), ('P3', 'Player', True),
+                                                                        ('P4', 'Tanya', False)], 210, 172, me=True)]),
+    end_awards([('trophy', 'Man of the match', 'Steve · 2 goals, 1 save', '2', PURPLE),
+                ('chevron', 'Hardest shot', 'Player · 112 km/h', '112', FAST),
+                ('flag', 'Most saves', 'Jennifer · 4 saves', '4', ACC)]),
+    col('right: 56px; top: 92px', combat_list('Final classification', 'timelimit 8', ['POS', 'DRIVER', 'SCORE', 'G / A'], [
+        ('01', 'red', 'Vlad', '640', '2 / 0', '#999999', False), ('02', 'blue', 'Steve', '610', '2 / 0', '#999999', False),
+        ('03', 'blue', 'Player', '480', '1 / 1', '#999999', True), ('04', 'blue', 'Tanya', '260', '0 / 1', '#999999', False),
+        ('05', 'red', 'Jennifer', '240', '0 / 0', '#999999', False), ('06', 'red', 'Kuro', '120', '0 / 1', '#999999', False)],
+        teams=[('blue', '3'), ('red', '2')]), 420),
+    footer('WAITING FOR 3 DRIVERS', 3, 6),
+])
+
+# ---------------------------------------------------------------------------
 # the end screen of a drag race: the duel. A time slip a lane, the deciding
 # heat line by line, the better figure of each line in blue; the heats on
 # the right.
@@ -1810,6 +1930,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
         ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndSprint.dc.html', 'EndGhost.dc.html', 'EndDrag.dc.html'],
         ['EndDeathmatch.dc.html', 'EndDerby.dc.html', 'EndTeamDM.dc.html', 'EndRacingDM.dc.html', 'EndElimination.dc.html'],
+        ['EndCTF.dc.html', 'EndDomination.dc.html', 'EndKOTH.dc.html', 'EndAutoball.dc.html'],
         ['Tourney.dc.html', 'Tourney16.dc.html', 'TourneyEnd.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
@@ -1818,12 +1939,12 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'EndDeathmatch.dc.html': 'Endbildschirm Deathmatch', 'EndDerby.dc.html': 'Endbildschirm Derby (auch Last Car Standing)', 'EndTeamDM.dc.html': 'Endbildschirm Team Deathmatch', 'EndRacingDM.dc.html': 'Endbildschirm Racing DM (Team Racing DM: Team-Racing-Seite mit Frags)', 'EndElimination.dc.html': 'Endbildschirm Elimination', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndSprint.dc.html': 'Endbildschirm Sprint', 'EndGhost.dc.html': 'Endbildschirm Ghost Race', 'EndDrag.dc.html': 'Endbildschirm Drag Race', 'EndDeathmatch.dc.html': 'Endbildschirm Deathmatch', 'EndDerby.dc.html': 'Endbildschirm Derby (auch Last Car Standing)', 'EndTeamDM.dc.html': 'Endbildschirm Team Deathmatch', 'EndRacingDM.dc.html': 'Endbildschirm Racing DM (Team Racing DM: Team-Racing-Seite mit Frags)', 'EndElimination.dc.html': 'Endbildschirm Elimination', 'EndCTF.dc.html': 'Endbildschirm CTF (CTF4: vier Teams wie Domination)', 'EndDomination.dc.html': 'Endbildschirm Domination (vier Teams)', 'EndKOTH.dc.html': 'Endbildschirm King of the Hill', 'EndAutoball.dc.html': 'Endbildschirm Autoball', 'Tourney.dc.html': 'Drag-Turnier (8 Fahrer)', 'Tourney16.dc.html': 'Drag-Turnier (16 Fahrer)', 'TourneyEnd.dc.html': 'Drag-Turnier vorbei',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}
 rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen',
-               'Endbildschirme', 'Endbildschirme Kampf', 'Drag-Turnier', 'TAB-Tabelle']
+               'Endbildschirme', 'Endbildschirme Kampf', 'Endbildschirme Ziele', 'Drag-Turnier', 'TAB-Tabelle']
 boards, notes = {}, {}
 for r, names in enumerate(ROWS):
     for c, n in enumerate(names):

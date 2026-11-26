@@ -227,6 +227,7 @@ typedef struct {
 #define MH_END_SLIP_ROWS	6		/* a drag time slip: reaction, 60 ft .. trap */
 #define MH_PATH_ROWS		6		/* a tournament driver's way: a round a line */
 #define MH_END_LADDER		8		/* a ghost race: the ghost ladder's rows */
+#define MH_END_GOALS		6		/* Autoball: the goals in place of the chart (the last ones) */
 
 typedef struct {
 	/* inputs */
@@ -266,6 +267,8 @@ typedef struct {
 	qboolean	rowSwatch;			/* a square in the team's colour before each name */
 	const char	*listHead[4];		/* NULL: POS DRIVER TIME BEST */
 	qboolean	listMatches;		/* a tournament's matches: round, winner, heats (centred), beaten */
+	int			goalCount;			/* Autoball, in place of the chart: the goals one by one */
+	const char	*goalMinute[MH_END_GOALS], *goalName[MH_END_GOALS], *goalShot[MH_END_GOALS], *goalScore[MH_END_GOALS];
 	int			pathCount;			/* in place of the lap chart: your way through a tournament */
 	const char	*pathRound[MH_PATH_ROWS], *pathWhat[MH_PATH_ROWS], *pathTag[MH_PATH_ROWS];
 	int			slipCount;			/* a drag duel, in place of the podium: a time slip a lane */
@@ -300,6 +303,8 @@ typedef struct {
 	mhText_t	ladderTitleT, ladderRightT, ladderPosT[MH_END_LADDER], ladderNameT[MH_END_LADDER], ladderLapT[MH_END_LADDER], ladderTagT[MH_END_LADDER];
 	wsRect_t	podium[3], podiumCar[3], podiumRule[3];
 	mhText_t	pathTitleT, pathRoundT[MH_PATH_ROWS], pathWhatT[MH_PATH_ROWS], pathTagT[MH_PATH_ROWS];
+	mhText_t	goalMinuteT[MH_END_GOALS], goalNameT[MH_END_GOALS], goalShotT[MH_END_GOALS], goalScoreT[MH_END_GOALS];
+	wsRect_t	goalSwatch[MH_END_GOALS];
 	mhText_t	slipTitleT, slipNoteT, slipLaneT[2], slipYouT[2], slipTagT[2], slipNameT[2];
 	mhText_t	slipLabelT[2][MH_END_SLIP_ROWS], slipValueT[2][MH_END_SLIP_ROWS];
 	wsRect_t	slip[2], slipCar[2], slipRule[2][MH_END_SLIP_ROWS];

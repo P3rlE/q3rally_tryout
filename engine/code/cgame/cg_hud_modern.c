@@ -1520,8 +1520,15 @@ static const char *MH_KillWeapon( int mod ) {
 static cgCombatLog_t mhCombat;
 static int mhCombatStart = -1, mhCombatEnd;
 
+/* the objective modes: the team deathmatch's page with what the teams played for */
+static qboolean MH_EndIsObjective( void ) {
+	return cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH ||
+	       cgs.gametype == GT_AUTOBALL;
+}
+
 static qboolean MH_EndIsCombat( void ) {
-	return cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS;
+	return cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ||
+	       MH_EndIsObjective();
 }
 
 /* the kills are written down here too: the races with weapons */
@@ -1529,12 +1536,57 @@ static qboolean MH_CombatLogged( void ) {
 	return MH_EndIsCombat() || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_ELIMINATION;
 }
 
+/* Domination: the zones you took (the one you were taking became your team's) */
+static int mhDomCaptures, mhDomCapZone = -1, mhDomCapTeam, mhDomCapAt;
+
 /* a new match: a new log */
 static void MH_CombatCheck( void ) {
 	if ( mhCombatStart == cgs.levelStartTime ) return;
 	mhCombatStart = cgs.levelStartTime;
 	mhCombatEnd = 0;
 	CG_CombatReset( &mhCombat, cgs.levelStartTime );
+	mhDomCaptures = 0;
+	mhDomCapZone = -1;
+}
+
+/* every frame (cg_view.c): who holds the hill or the zones */
+void CG_ModernHUD_ObjectiveFrame( void ) {
+	int owner[CG_COMBAT_ZONES], zones = 0, i;
+	if ( cgs.gametype != GT_DOMINATION && cgs.gametype != GT_KOTH ) return;
+	if ( !cg.snap || cg.warmup || cg.snap->ps.pm_type == PM_INTERMISSION ) {
+		CG_CombatZonesPause( &mhCombat );
+		return;
+	}
+	MH_CombatCheck();
+	if ( cgs.gametype == GT_KOTH ) {
+		owner[0] = cgs.kothOwner >= TEAM_RED && cgs.kothOwner <= TEAM_BLUE ? cgs.kothOwner - TEAM_RED : -1;
+		zones = 1;
+	} else {
+		int pack = cg.snap->ps.stats[STAT_DOM_CAPTURE];
+		for ( i = 0; i < MAX_SIGILS && i < CG_COMBAT_ZONES; i++ ) {
+			owner[i] = cgs.sigil[i] >= SIGIL_ISRED && cgs.sigil[i] <= SIGIL_ISYELLOW ? cgs.sigil[i] - SIGIL_ISRED : -1;
+			if ( cgs.sigil[i] != SIGIL_NONE ) zones = i + 1;
+		}
+		/* the zone you were taking (within a second) went to your team: yours */
+		if ( mhDomCapZone >= 0 && mhDomCapZone < zones && cg.time - mhDomCapAt < 1500 &&
+		     owner[mhDomCapZone] == mhDomCapTeam && mhCombat.owner[mhDomCapZone] != mhDomCapTeam ) {
+			mhDomCaptures++;
+			mhDomCapZone = -1;
+		}
+		if ( pack && DOM_CAPTURE_TEAM( pack ) >= TEAM_RED ) {
+			mhDomCapZone = DOM_CAPTURE_POINT( pack );
+			mhDomCapTeam = DOM_CAPTURE_TEAM( pack ) - TEAM_RED;
+			mhDomCapAt = cg.time;
+		}
+	}
+	CG_CombatZones( &mhCombat, cg.time, owner, zones );
+}
+
+/* Autoball: a goal (cg_autoball.c), team TEAM_RED or TEAM_BLUE */
+void CG_ModernHUD_Goal( int team, int scorer, int speed ) {
+	if ( cgs.gametype != GT_AUTOBALL || !cg.snap || cg.warmup ) return;
+	MH_CombatCheck();
+	CG_CombatGoal( &mhCombat, cg.time, team - TEAM_RED, scorer, speed );
 }
 
 /* the scores came: keep them for the minute (cg_servercmds.c) */
@@ -2706,6 +2758,9 @@ static struct {
 	qboolean		combat;
 	qboolean		lapLit[MH_END_LAPS];		/* the best minute */
 	qboolean		racingDM;
+	/* Autoball: the goals */
+	char			goalMinute[MH_END_GOALS][8], goalName[MH_END_GOALS][40], goalShot[MH_END_GOALS][16], goalScore[MH_END_GOALS][8];
+	int				goalTeam[MH_END_GOALS];
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
@@ -4266,10 +4321,257 @@ static void MH_Clock( int ms, char *out, int size ) {
 static const char *mhTeamWord[4] = { "RED", "BLUE", "GREEN", "YELLOW" };
 static const char *mhTeamName[4] = { "Red", "Blue", "Green", "Yellow" };
 
+/* ---------------------------------------------------------------------------
+   the objective modes (gen.py EndCTF, EndDomination, EndKOTH, EndAutoball):
+   the team deathmatch's page with what the teams played for: the figures,
+   the chart (captures, zones or the hill a minute; Autoball the goals one
+   by one), the highlights and the last column.
+   ------------------------------------------------------------------------- */
+
+static qboolean MH_IsCTF( void ) {
+	return cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4;
+}
+
+/* a team's score at the end of a minute (the last one seen before) */
+static int MH_TeamAt( int t, int minute ) {
+	const cgCombatLog_t *log = &mhCombat;
+	if ( log->sampled <= 0 || minute < 0 ) return 0;
+	if ( minute >= log->sampled ) minute = log->sampled - 1;
+	return log->team[minute][t];
+}
+
+/* a stretch of minutes from..to for team t: the captures in it, the zones
+ * held on average, the seconds on the hill a minute */
+static int MH_ObjectivePart( int t, int from, int to, qboolean lastPart, int matchMs ) {
+	const cgCombatLog_t *log = &mhCombat;
+	int m, sum = 0, span, v;
+	if ( MH_IsCTF() ) {
+		v = ( lastPart ? cg.teamScores[t] : MH_TeamAt( t, to - 1 ) ) - ( from > 0 ? MH_TeamAt( t, from - 1 ) : 0 );
+		return v > 0 ? v : 0;
+	}
+	for ( m = from; m < to && m < CG_COMBAT_MINUTES; m++ ) sum += log->held[m][t];
+	span = lastPart ? matchMs - from * 60000 : ( to - from ) * 60000;
+	if ( span < 1000 ) span = 1000;
+	if ( cgs.gametype == GT_DOMINATION ) return ( sum + span / 2 ) / span;
+	v = ( sum * 60 + span / 2 ) / span;
+	return v > 60 ? 60 : v;
+}
+
+/* "3 caps", "131 pts", "1 goal" */
+static void MH_TeamScoreWord( int score, char *out, int size ) {
+	if ( MH_IsCTF() ) Com_sprintf( out, size, "%d cap%s", score, score == 1 ? "" : "s" );
+	else if ( cgs.gametype == GT_AUTOBALL ) Com_sprintf( out, size, "%d goal%s", score, score == 1 ? "" : "s" );
+	else if ( cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH ) Com_sprintf( out, size, "%d pts", score );
+	else Com_sprintf( out, size, "%d frags", score );
+}
+
+/* the four figures */
+static void MH_EndObjectiveStats( const score_t *sc, int me, int team, int matchMs ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	if ( MH_IsCTF() ) {
+		e->statLabel[0] = "YOUR CAPTURES";
+		Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "%d", sc->captures );
+		if ( sc->captures ) mhEnd.statColor[0] = mhFast;
+		e->statLabel[1] = "ASSISTS";
+		Com_sprintf( mhEnd.stat[1], sizeof( mhEnd.stat[1] ), "%d", sc->assistCount );
+		e->statLabel[2] = "DEFENDS";
+		Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d", sc->defendCount );
+		e->statLabel[3] = "YOUR FRAGS";
+		Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d", mhCombat.kills[me] );
+	} else if ( cgs.gametype == GT_DOMINATION ) {
+		int m, sum = 0;
+		e->statLabel[0] = "YOUR CAPTURES";
+		Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "%d", mhDomCaptures );
+		if ( mhDomCaptures ) mhEnd.statColor[0] = mhFast;
+		e->statLabel[1] = "YOUR FRAGS";
+		Com_sprintf( mhEnd.stat[1], sizeof( mhEnd.stat[1] ), "%d", mhCombat.kills[me] );
+		e->statLabel[2] = "DEATHS";
+		Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d", mhCombat.deaths[me] );
+		/* the zones your team held on average */
+		e->statLabel[3] = "ZONES HELD";
+		if ( team >= 0 && matchMs > 0 ) {
+			int tenths;
+			for ( m = 0; m < CG_COMBAT_MINUTES; m++ ) sum += mhCombat.held[m][team];
+			tenths = (int)( ( sum * 10.0f + matchMs * 0.5f ) / matchMs );
+			Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d.%d", tenths / 10, tenths % 10 );
+			e->statUnit[3] = "AVG";
+		} else Q_strncpyz( mhEnd.stat[3], "--", sizeof( mhEnd.stat[3] ) );
+	} else if ( cgs.gametype == GT_KOTH ) {
+		e->statLabel[0] = "HILL TIME";
+		MH_Clock( sc->kothHoldTimeMs, mhEnd.stat[0], sizeof( mhEnd.stat[0] ) );
+		e->statLabel[1] = "CONTESTED";
+		MH_Clock( sc->kothContestTimeMs, mhEnd.stat[1], sizeof( mhEnd.stat[1] ) );
+		e->statLabel[2] = "HILL KILLS";
+		Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d", sc->kothHillKills );
+		if ( sc->kothHillKills ) mhEnd.statColor[2] = mhFast;
+		e->statLabel[3] = "YOUR FRAGS";
+		Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d", mhCombat.kills[me] );
+	} else {
+		e->statLabel[0] = "YOUR GOALS";
+		Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "%d", sc->autoballGoals );
+		if ( sc->autoballGoals ) mhEnd.statColor[0] = mhFast;
+		e->statLabel[1] = "ASSISTS";
+		Com_sprintf( mhEnd.stat[1], sizeof( mhEnd.stat[1] ), "%d", sc->autoballAssists );
+		e->statLabel[2] = "SAVES";
+		Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), "%d", sc->autoballSaves );
+		e->statLabel[3] = "BEST SHOT";
+		if ( sc->autoballBestShot > 0 ) {
+			Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d", sc->autoballBestShot );
+			e->statUnit[3] = "KM/H";
+		} else Q_strncpyz( mhEnd.stat[3], "--", sizeof( mhEnd.stat[3] ) );
+	}
+}
+
+/* Autoball, in place of the chart: the goals one by one (the last ones),
+ * the score after each red : blue */
+static void MH_EndGoals( void ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	const cgCombatLog_t *log = &mhCombat;
+	int kept = log->goals < CG_COMBAT_GOALS ? log->goals : CG_COMBAT_GOALS, first, i, k, score[2];
+	e->chartTitle = "GOALS";
+	e->chartNote = kept ? "MINUTE \xb7 SCORER \xb7 SHOT \xb7 RED : BLUE" : "NO GOALS";
+	/* the score before the first one kept: the final one less those */
+	score[0] = cg.teamScores[0];
+	score[1] = cg.teamScores[1];
+	for ( i = 0; i < kept; i++ ) if ( log->goalTeam[i] < 2 ) score[log->goalTeam[i]]--;
+	if ( score[0] < 0 ) score[0] = 0;
+	if ( score[1] < 0 ) score[1] = 0;
+	first = kept > MH_END_GOALS ? kept - MH_END_GOALS : 0;
+	for ( i = 0; i < kept; i++ ) {
+		int t = log->goalTeam[i], c = log->goalScorer[i];
+		if ( t < 2 ) score[t]++;
+		if ( i < first ) continue;
+		k = e->goalCount++;
+		Com_sprintf( mhEnd.goalMinute[k], sizeof( mhEnd.goalMinute[k] ), "%d'", log->goalAt[i] / 60000 + 1 );
+		if ( c >= 0 && c < MAX_CLIENTS ) MH_Plain( cgs.clientinfo[c].name, mhEnd.goalName[k], sizeof( mhEnd.goalName[k] ) );
+		else Q_strncpyz( mhEnd.goalName[k], c == -2 ? "Own goal" : mhTeamName[t], sizeof( mhEnd.goalName[k] ) );
+		if ( log->goalSpeed[i] > 0 ) Com_sprintf( mhEnd.goalShot[k], sizeof( mhEnd.goalShot[k] ), "%d km/h", log->goalSpeed[i] );
+		else Q_strncpyz( mhEnd.goalShot[k], "--", sizeof( mhEnd.goalShot[k] ) );
+		Com_sprintf( mhEnd.goalScore[k], sizeof( mhEnd.goalScore[k] ), "%d:%d", score[0], score[1] );
+		mhEnd.goalTeam[k] = t;
+		e->goalMinute[k] = mhEnd.goalMinute[k];
+		e->goalName[k] = mhEnd.goalName[k];
+		e->goalShot[k] = mhEnd.goalShot[k];
+		e->goalScore[k] = mhEnd.goalScore[k];
+	}
+}
+
+/* a highlight more, -1: full */
+static int MH_EndAwardAdd( const char *label, qhandle_t icon, const float *color ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	int k;
+	if ( e->awardCount >= MH_END_AWARDS ) return -1;
+	k = e->awardCount++;
+	e->awardLabel[k] = label;
+	mhEnd.awardIcon[k] = icon;
+	mhEnd.awardColor[k] = color;
+	mhEnd.awardName[k][0] = mhEnd.awardValue[k][0] = '\0';
+	return k;
+}
+
+/* the client with the most of a figure (at least min), -1: nobody */
+#define MH_MOST( field, min, who, best ) do { int i_; ( who ) = -1; ( best ) = ( min ) - 1; \
+	for ( i_ = 0; i_ < count; i_++ ) { const score_t *s_ = &cg.scores[order[i_]]; \
+		if ( s_->field > ( best ) ) { ( best ) = s_->field; ( who ) = s_->client; } } } while ( 0 )
+
+static void MH_EndObjectiveAwards( const int *order, int count, int me ) {
+	int k, who, best, times, zone, team;
+	char name[40], tmp[24];
+#define NAME( c ) ( MH_Plain( cgs.clientinfo[c].name, name, sizeof( name ) ), name )
+	if ( MH_IsCTF() ) {
+		MH_MOST( captures, 1, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "MOST CAPTURES", mh.flag, mhFast ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d capture%s", NAME( who ), best, best == 1 ? "" : "s" );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		}
+		MH_MOST( defendCount, 1, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "BEST DEFENDER", mh.trophy, mhPurple ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d defend%s", NAME( who ), best, best == 1 ? "" : "s" );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		}
+	} else if ( cgs.gametype == GT_DOMINATION ) {
+		int ms = CG_CombatLongest( &mhCombat, mhCombatEnd, &zone, &team );
+		if ( ms >= 1000 && team >= 0 && ( k = MH_EndAwardAdd( "LONGEST HOLD", mh.hill, mhPurple ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 zone %c", mhTeamName[team], 'A' + zone );
+			MH_Clock( ms, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		}
+		for ( k = 0, who = -1, best = 0; k < count; k++ ) {
+			int c = cg.scores[order[k]].client;
+			if ( mhCombat.kills[c] > best ) { best = mhCombat.kills[c]; who = c; }
+		}
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "MOST FRAGS", mh.gun, mhFast ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d frag%s", NAME( who ), best, best == 1 ? "" : "s" );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		}
+	} else if ( cgs.gametype == GT_KOTH ) {
+		int ms;
+		MH_MOST( kothHoldTimeMs, 1000, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "KING OF THE HILL", mh.hill, mhPurple ) ) >= 0 ) {
+			MH_Clock( best, tmp, sizeof( tmp ) );
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %s on the hill", NAME( who ), tmp );
+			Q_strncpyz( mhEnd.awardValue[k], tmp, sizeof( mhEnd.awardValue[k] ) );
+		}
+		MH_MOST( kothHillKills, 1, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "MOST HILL KILLS", mh.gun, mhFast ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d on the hill", NAME( who ), best );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		}
+		ms = CG_CombatLongest( &mhCombat, mhCombatEnd, &zone, &team );
+		if ( ms >= 1000 && team >= 0 && ( k = MH_EndAwardAdd( "LONGEST REIGN", mh.chevron, mhAccent ) ) >= 0 ) {
+			MH_Clock( ms, tmp, sizeof( tmp ) );
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 held it %s", mhTeamName[team], tmp );
+			Q_strncpyz( mhEnd.awardValue[k], tmp, sizeof( mhEnd.awardValue[k] ) );
+		}
+		return;
+	} else {
+		MH_MOST( score, -99999, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "MAN OF THE MATCH", mh.trophy, mhPurple ) ) >= 0 ) {
+			const score_t *s = NULL;
+			int i;
+			for ( i = 0; i < count; i++ ) if ( cg.scores[order[i]].client == who ) s = &cg.scores[order[i]];
+			Q_strncpyz( mhEnd.awardName[k], NAME( who ), sizeof( mhEnd.awardName[k] ) );
+			if ( s && ( s->autoballGoals || s->autoballAssists || s->autoballSaves ) ) {
+				const char *sep = " \xb7 ";
+				if ( s->autoballGoals ) {
+					Q_strcat( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), va( "%s%d goal%s", sep, s->autoballGoals, s->autoballGoals == 1 ? "" : "s" ) );
+					sep = ", ";
+				}
+				if ( s->autoballAssists ) {
+					Q_strcat( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), va( "%s%d assist%s", sep, s->autoballAssists, s->autoballAssists == 1 ? "" : "s" ) );
+					sep = ", ";
+				}
+				if ( s->autoballSaves )
+					Q_strcat( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), va( "%s%d save%s", sep, s->autoballSaves, s->autoballSaves == 1 ? "" : "s" ) );
+			}
+			if ( s ) Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", s->autoballGoals );
+		}
+		MH_MOST( autoballBestShot, 1, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "HARDEST SHOT", mh.chevron, mhFast ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d km/h", NAME( who ), best );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		}
+		MH_MOST( autoballSaves, 1, who, best );
+		if ( who >= 0 && ( k = MH_EndAwardAdd( "MOST SAVES", mh.flag, mhAccent ) ) >= 0 ) {
+			Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 %d save%s", NAME( who ), best, best == 1 ? "" : "s" );
+			Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", best );
+		}
+		return;
+	}
+	/* CTF and Domination: your nemesis last */
+	who = CG_CombatNemesis( &mhCombat, me, &times );
+	if ( who >= 0 && times > 0 && ( k = MH_EndAwardAdd( "YOUR NEMESIS", mh.chevron, mhAccent ) ) >= 0 ) {
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 got you %d time%s", NAME( who ), times, times == 1 ? "" : "s" );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "%d", times );
+	}
+#undef NAME
+}
+#undef MH_MOST
+
 static void MH_EndCombat( void ) {
 	mhEndLayout_t *e = &mhEnd.e;
 	const cgCombatLog_t *log = &mhCombat;
-	qboolean teams = cgs.gametype == GT_TEAM, survival = cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS;
+	qboolean objective = MH_EndIsObjective(), teams = cgs.gametype == GT_TEAM || objective;
+	qboolean survival = cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS;
 	int order[MAX_CLIENTS], value[MH_END_SPRINT_PARTS], count = 0, i, k, me, mineAt = -1, matchMs, parts;
 	int partEnd[MH_END_SPRINT_PARTS + 1], teamOrder[4], teamCount = 0, myTeam = -1, top = 0, prevPlace = 0, best, who, times;
 	int stillIn = 0;	/* derby, LCS: more than one at the end: the time ran out */
@@ -4318,9 +4620,14 @@ static void MH_EndCombat( void ) {
 	COM_StripExtension( mapName, mapName, sizeof( mapName ) );
 	Q_strupr( mapName );
 	e->title = cgs.gametype == GT_TEAM ? "TEAM DEATHMATCH RESULT" : cgs.gametype == GT_DERBY ? "DERBY RESULT" :
-	           cgs.gametype == GT_LCS ? "LAST CAR STANDING RESULT" : "DEATHMATCH RESULT";
+	           cgs.gametype == GT_LCS ? "LAST CAR STANDING RESULT" : MH_IsCTF() ? "CAPTURE THE FLAG RESULT" :
+	           cgs.gametype == GT_DOMINATION ? "DOMINATION RESULT" : cgs.gametype == GT_KOTH ? "KING OF THE HILL RESULT" :
+	           cgs.gametype == GT_AUTOBALL ? "AUTOBALL RESULT" : "DEATHMATCH RESULT";
 	Q_strncpyz( mhEnd.sub, mapName, sizeof( mhEnd.sub ) );
-	if ( !survival && cgs.fraglimit > 0 ) Q_strcat( mhEnd.sub, sizeof( mhEnd.sub ), va( " \xb7 FRAGLIMIT %d", cgs.fraglimit ) );
+	if ( objective ) {
+		if ( MH_IsCTF() && cgs.capturelimit > 0 ) Q_strcat( mhEnd.sub, sizeof( mhEnd.sub ), va( " \xb7 CAPTURELIMIT %d", cgs.capturelimit ) );
+		else if ( cgs.timelimit > 0 ) Q_strcat( mhEnd.sub, sizeof( mhEnd.sub ), va( " \xb7 TIMELIMIT %d", cgs.timelimit ) );
+	} else if ( !survival && cgs.fraglimit > 0 ) Q_strcat( mhEnd.sub, sizeof( mhEnd.sub ), va( " \xb7 FRAGLIMIT %d", cgs.fraglimit ) );
 	if ( teams ) Q_strcat( mhEnd.sub, sizeof( mhEnd.sub ), va( " \xb7 %d TEAMS", teamCount ) );
 	Q_strcat( mhEnd.sub, sizeof( mhEnd.sub ), va( " \xb7 %d DRIVER%s", count, count == 1 ? "" : "S" ) );
 	e->subtitle = mhEnd.sub;
@@ -4333,12 +4640,15 @@ static void MH_EndCombat( void ) {
 		mhEnd.posColor = MH_TeamColor( TEAM_RED + teamOrder[myTeam] );
 		Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "P%d", myTeam + 1 );
 		Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", teamCount );
-		Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "TEAM %s \xb7 SCORE", mhTeamWord[teamOrder[myTeam]] );
+		Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "TEAM %s \xb7 %s", mhTeamWord[teamOrder[myTeam]],
+		             MH_IsCTF() ? "CAPTURES" : cgs.gametype == GT_AUTOBALL ? "GOALS" : "SCORE" );
 		Com_sprintf( mhEnd.doneTime, sizeof( mhEnd.doneTime ), "%d", mine );
 		if ( teamCount < 2 ) mhEnd.doneNote[0] = '\0';
+		else if ( cgs.gametype == GT_AUTOBALL )	/* a match: the score, yours first */
+			Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%s %d:%d", lead > 0 ? "WON" : lead < 0 ? "LOST" : "DRAW", mine, mine - lead );
 		else if ( lead == 0 ) Q_strncpyz( mhEnd.doneNote, "DRAW", sizeof( mhEnd.doneNote ) );
 		else if ( myTeam == 0 ) Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "WON BY %d", lead );
-		else Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%d BEHIND", -lead );
+		else Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%d BEHIND %s", -lead, mhTeamWord[teamOrder[0]] );
 	} else {
 		Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "P%d", mineAt + 1 );
 		Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", count );
@@ -4382,6 +4692,8 @@ static void MH_EndCombat( void ) {
 		MH_Thousands( SC( mineAt )->damageDealt, mhEnd.stat[2], sizeof( mhEnd.stat[2] ) );
 		e->statLabel[3] = "DAMAGE TAKEN";
 		MH_Thousands( SC( mineAt )->damageTaken, mhEnd.stat[3], sizeof( mhEnd.stat[3] ) );
+	} else if ( objective ) {
+		MH_EndObjectiveStats( SC( mineAt ), me, myTeam >= 0 ? teamOrder[myTeam] : -1, matchMs );
 	} else if ( teams ) {
 		e->statLabel[0] = "YOUR PLACE";
 		Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "P%d", mineAt + 1 );
@@ -4408,6 +4720,19 @@ static void MH_EndCombat( void ) {
 	parts = log->minutes < MH_END_SPRINT_PARTS ? log->minutes : MH_END_SPRINT_PARTS;
 	e->chartTitle = survival ? "YOUR DAMAGE" : "YOUR FRAGS";
 	e->chartNote = survival ? "A BAR A MINUTE \xb7 DRIVERS LEFT" : teams ? "A BAR A MINUTE \xb7 YOUR TEAM'S LEAD" : "A BAR A MINUTE \xb7 YOUR PLACE";
+	if ( objective && myTeam >= 0 ) {
+		if ( MH_IsCTF() ) e->chartTitle = "TEAM CAPTURES";
+		else if ( cgs.gametype == GT_DOMINATION ) {
+			e->chartTitle = "ZONES HELD";
+			e->chartNote = "A BAR A MINUTE \xb7 YOUR TEAM'S PLACE";
+		} else if ( cgs.gametype == GT_KOTH ) {
+			e->chartTitle = "HILL HELD";
+			e->chartNote = "SECONDS A MINUTE \xb7 YOUR TEAM'S LEAD";
+		} else {
+			MH_EndGoals();
+			parts = 0;
+		}
+	}
 	e->lapCount = 0;
 	partEnd[0] = 0;
 	for ( k = 1; k <= parts; k++ ) partEnd[k] = ( k * log->minutes + parts / 2 ) / parts;
@@ -4415,6 +4740,8 @@ static void MH_EndCombat( void ) {
 		int m, last = partEnd[k + 1] - 1;
 		value[k] = 0;
 		if ( survival ) value[k] = log->damage[last][me] - ( partEnd[k] > 0 ? log->damage[partEnd[k] - 1][me] : 0 );
+		else if ( objective && myTeam >= 0 )
+			value[k] = MH_ObjectivePart( teamOrder[myTeam], partEnd[k], partEnd[k + 1], k == parts - 1, matchMs );
 		else for ( m = partEnd[k]; m <= last; m++ ) value[k] += log->minuteKills[m][me];
 		if ( value[k] < 0 ) value[k] = 0;
 		if ( value[k] > top ) top = value[k];
@@ -4432,14 +4759,24 @@ static void MH_EndCombat( void ) {
 			mhEnd.lapPlaceColor[k] = k == 0 || left != prevPlace ? mhWhite : mhDim;
 			prevPlace = left;
 		} else if ( teams && myTeam >= 0 ) {
-			int mine = log->team[last][teamOrder[myTeam]], rival = mine, t, first = 1;
+			/* the teams' scores then: the last ones seen in the stretch, the final ones at the end */
+#define TEAM_THEN( t ) ( k == parts - 1 ? cg.teamScores[t] : MH_TeamAt( t, last ) )
+			int mine = TEAM_THEN( teamOrder[myTeam] ), rival = mine, t, first = 1, above = 0;
 			for ( t = 0; t < teamCount; t++ ) {
 				if ( t == myTeam ) continue;
-				if ( first || log->team[last][teamOrder[t]] > rival ) rival = log->team[last][teamOrder[t]];
+				if ( TEAM_THEN( teamOrder[t] ) > mine ) above++;
+				if ( first || TEAM_THEN( teamOrder[t] ) > rival ) rival = TEAM_THEN( teamOrder[t] );
 				first = 0;
 			}
-			Com_sprintf( mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ), mine > rival ? "+%d" : "%d", mine - rival );
-			mhEnd.lapPlaceColor[k] = mine > rival ? mhFast : mine < rival ? mhAccent : mhWhite;
+#undef TEAM_THEN
+			if ( cgs.gametype == GT_DOMINATION ) {	/* four teams: the place */
+				Com_sprintf( mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ), "P%d", above + 1 );
+				mhEnd.lapPlaceColor[k] = k == 0 || above + 1 != prevPlace ? mhWhite : mhDim;
+				prevPlace = above + 1;
+			} else {
+				Com_sprintf( mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ), mine > rival ? "+%d" : "%d", mine - rival );
+				mhEnd.lapPlaceColor[k] = mine > rival ? mhFast : mine < rival ? mhAccent : mhWhite;
+			}
 		} else {
 			int at = CG_CombatPlaceAt( log, me, last );
 			if ( at ) Com_sprintf( mhEnd.lapPlace[k], sizeof( mhEnd.lapPlace[k] ), "P%d", at );
@@ -4463,7 +4800,7 @@ static void MH_EndCombat( void ) {
 			mhEnd.podiumTeam[k] = t;
 			mhEnd.client[k] = -1;
 			Q_strncpyz( mhEnd.podName[k], mhTeamName[t], sizeof( mhEnd.podName[k] ) );
-			Com_sprintf( mhEnd.podTime[k], sizeof( mhEnd.podTime[k] ), "%d frags", cg.teamScores[t] );
+			MH_TeamScoreWord( cg.teamScores[t], mhEnd.podTime[k], sizeof( mhEnd.podTime[k] ) );
 			if ( k > 0 ) Com_sprintf( mhEnd.podGap[k], sizeof( mhEnd.podGap[k] ), "-%d", cg.teamScores[teamOrder[0]] - cg.teamScores[t] );
 			else mhEnd.podGap[k][0] = '\0';
 			for ( i = 0; i < count; i++ ) {
@@ -4516,6 +4853,10 @@ static void MH_EndCombat( void ) {
 
 	/* the highlights */
 	e->awardCount = 0;
+	if ( objective ) {
+		MH_EndObjectiveAwards( order, count, me );
+		goto awarded;
+	}
 	if ( survival && stillIn <= 1 ) {
 		k = e->awardCount++;
 		e->awardLabel[k] = "LAST CAR STANDING";
@@ -4575,6 +4916,7 @@ static void MH_EndCombat( void ) {
 			mhEnd.awardIcon[k] = mh.chevron;
 		}
 	}
+awarded:
 	for ( i = 0; i < e->awardCount; i++ ) {
 		e->awardName[i] = mhEnd.awardName[i];
 		e->awardValue[i] = mhEnd.awardValue[i];
@@ -4585,11 +4927,14 @@ static void MH_EndCombat( void ) {
 	e->listHead[0] = "POS";
 	e->listHead[1] = "DRIVER";
 	e->listHead[2] = "SCORE";
-	e->listHead[3] = survival ? "OUT" : "K / D";
+	e->listHead[3] = survival ? "OUT" : MH_IsCTF() ? "CAPS" : cgs.gametype == GT_KOTH ? "HILL" :
+	                 cgs.gametype == GT_AUTOBALL ? "G / A" : "K / D";
 	if ( survival ) {
 		MH_Clock( matchMs, tmp, sizeof( tmp ) );
 		Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "MATCH %s", tmp );
-	} else if ( teams ) Q_strncpyz( mhEnd.listRight, "TEAM SCORE", sizeof( mhEnd.listRight ) );
+	} else if ( MH_IsCTF() && cgs.capturelimit > 0 ) Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "CAPTURELIMIT %d", cgs.capturelimit );
+	else if ( cgs.gametype == GT_AUTOBALL && cgs.timelimit > 0 ) Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "TIMELIMIT %d", cgs.timelimit );
+	else if ( teams ) Q_strncpyz( mhEnd.listRight, "TEAM SCORE", sizeof( mhEnd.listRight ) );
 	else if ( cgs.fraglimit > 0 ) Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "FRAGLIMIT %d", cgs.fraglimit );
 	else mhEnd.listRight[0] = '\0';
 	e->listRight = mhEnd.listRight;
@@ -4609,7 +4954,10 @@ static void MH_EndCombat( void ) {
 				Q_strncpyz( mhEnd.rowBest[k], stillIn <= 1 ? "LAST" : "IN", sizeof( mhEnd.rowBest[k] ) );
 				if ( stillIn <= 1 ) mhEnd.rowBestColor[k] = mhAccent;
 			} else MH_Clock( mhCombat.outAt[c], mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ) );
-		} else Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "%d / %d", mhCombat.kills[c], mhCombat.deaths[c] );
+		} else if ( MH_IsCTF() ) Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "%d", sc->captures );
+		else if ( cgs.gametype == GT_KOTH ) MH_Clock( sc->kothHoldTimeMs, mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ) );
+		else if ( cgs.gametype == GT_AUTOBALL ) Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "%d / %d", sc->autoballGoals, sc->autoballAssists );
+		else Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "%d / %d", mhCombat.kills[c], mhCombat.deaths[c] );
 		mhEnd.rowMe[k] = c == cg.snap->ps.clientNum;
 		mhEnd.rowTeam[k] = cgs.clientinfo[c].team;
 		e->rowPos[k] = mhEnd.rowPos[k];
@@ -5166,6 +5514,18 @@ void CG_ModernHUD_DrawEnd( void ) {
 			MH_Str( &e->lapPlaceT[i], ( mhEnd.ghost || mhEnd.combat ) && mhEnd.lapPlaceColor[i] ? mhEnd.lapPlaceColor[i] :
 			        mhEnd.lapPlaceLit[i] ? mhWhite : mhDim, 1.0f );
 		}
+	}
+	for ( i = 0; i < e->goalCount; i++ ) {	/* Autoball: the goals */
+		mhText_t shot, score;
+		MH_Str( &e->goalMinuteT[i], mhMuted, 1.0f );
+		MH_FillRect( &e->goalSwatch[i], MH_TeamColor( TEAM_RED + mhEnd.goalTeam[i] ), 1.0f );
+		MH_Str( &e->goalNameT[i], mhWhite, 1.0f );
+		shot = e->goalShotT[i];	/* at the right of their columns */
+		score = e->goalScoreT[i];
+		shot.box.x += shot.box.w - WS_TextWidth( &shot.style, shot.text, strlen( shot.text ) );
+		score.box.x += score.box.w - WS_TextWidth( &score.style, score.text, strlen( score.text ) );
+		MH_Str( &shot, mhMuted, 1.0f );
+		MH_Str( &score, mhWhite, 1.0f );
 	}
 	for ( i = 0; i < e->spreadCount; i++ ) {
 		const float *c = MH_TeamColor( TEAM_RED + mhEnd.team[i] );

@@ -101,8 +101,10 @@ void CG_ParseAutoballStatus( void ) {
 	cgs.autoballGoalTeam = values[3];
 	cgs.autoballScorer = values[4];
 	cgs.autoballGoalSpeed = values[5];
-	if ( cgs.autoballState == AUTOBALL_STATE_GOAL && oldState != AUTOBALL_STATE_GOAL )
+	if ( cgs.autoballState == AUTOBALL_STATE_GOAL && oldState != AUTOBALL_STATE_GOAL ) {
 		cgs.autoballGoalTime = cg.time;
+		CG_ModernHUD_Goal( cgs.autoballGoalTeam, cgs.autoballScorer, cgs.autoballGoalSpeed );	/* the end screen's goals */
+	}
 
 	/* optional: goal centres (red x y z, blue x y z), intro end */
 	cgs.autoballHaveGoals = qfalse;

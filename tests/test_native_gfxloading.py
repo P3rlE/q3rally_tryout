@@ -561,6 +561,9 @@ int main(void) {
             if (n > 35 && *f[35]) { SPLIT(f[35], 2) e.ladderTitle = p[0]; e.ladderRight = p[1]; }
             if (n > 36) EACH(f[36]) SPLIT(item, 5) i = e.ladderCount++; e.ladderPos[i] = p[0]; e.ladderName[i] = p[1];
                 e.ladderLap[i] = p[2]; e.ladderTag[i] = p[3]; e.ladderMe[i] = atoi(p[4]); }
+            /* autoball: 37 goals minute~name~shot~score;.. */
+            if (n > 37) EACH(f[37]) SPLIT(item, 4) i = e.goalCount++; e.goalMinute[i] = p[0]; e.goalName[i] = p[1];
+                e.goalShot[i] = p[2]; e.goalScore[i] = p[3]; }
             i = 0; if (n > 28) EACH(f[28]) char *v = item; for (k = 0; v && k < MH_END_SLIP_ROWS; k++) {
                 e.slipValue[i][k] = v; v = strchr(v, '~'); if (v) *v++ = 0; } i++; }
 #undef SPLIT
@@ -600,6 +603,9 @@ int main(void) {
                 sprintf(key, "spreadValue%d", i); T(key, e.spreadValueT[i]);
                 for (k = 0; k < e.spreadDots[i]; k++) { sprintf(key, "spreadDot%d_%d", i, k); rect(key, e.spreadDotR[i][k]); } }
             if (e.slipCount) { T("slipTitle", e.slipTitleT); T("slipNote", e.slipNoteT); }
+            for (i = 0; i < e.goalCount; i++) { char key[24]; sprintf(key, "goalMinute%d", i); T(key, e.goalMinuteT[i]);
+                sprintf(key, "goalSwatch%d", i); rect(key, e.goalSwatch[i]); sprintf(key, "goalName%d", i); T(key, e.goalNameT[i]);
+                sprintf(key, "goalShot%d", i); T(key, e.goalShotT[i]); sprintf(key, "goalScore%d", i); T(key, e.goalScoreT[i]); }
             if (e.pathCount) T("pathTitle", e.pathTitleT);
             for (i = 0; i < e.pathCount; i++) { char key[24]; sprintf(key, "pathRound%d", i); T(key, e.pathRoundT[i]);
                 sprintf(key, "pathWhat%d", i); T(key, e.pathWhatT[i]); sprintf(key, "pathTag%d", i); T(key, e.pathTagT[i]); }

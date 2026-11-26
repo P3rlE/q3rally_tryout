@@ -85,6 +85,16 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- End screens for CTF, CTF4, Domination, King of the Hill and Autoball:
+  the team deathmatch's page with what the teams played for. CTF your
+  captures, assists and defends, the team's captures a minute, the most
+  captures and the best defender; Domination your captures, the zones your
+  team held (a bar a minute, under it the team's place) and the longest
+  hold; King of the Hill your time on the hill, contested and hill kills,
+  the seconds your team held it a minute, the king of the hill and the
+  longest reign; Autoball your goals, assists, saves and best shot, the
+  goals one by one with scorer, shot and score, the man of the match, the
+  hardest shot and the most saves.
 - End screens for Racing DM, Team Racing DM and Elimination: Racing DM
   and Team Racing DM on the race's and the team race's page with your
   frags and deaths, K / D in the classification, the most frags and your

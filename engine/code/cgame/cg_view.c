@@ -1126,6 +1126,9 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 	// (re)send ghost commands the server has not answered yet
 	CG_LadderGhost_NetFrame();
 
+	// the objective modes' end screen: who held the hill or the zones
+	CG_ModernHUD_ObjectiveFrame();
+
 	// this counter will be bumped for every valid scene we generate
 	cg.clientFrame++;
 

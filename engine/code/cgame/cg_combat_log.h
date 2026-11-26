@@ -27,6 +27,8 @@ the teams' scores. Pure C, tested by tests/test_combat_log.py.
 #define CG_COMBAT_MINUTES	30		/* longer matches: the last minute keeps counting */
 #define CG_COMBAT_TEAMS		4
 #define CG_COMBAT_NONE		-99999	/* a minute a driver was not there */
+#define CG_COMBAT_ZONES		8		/* Domination's zones; King of the Hill: the hill, one */
+#define CG_COMBAT_GOALS		16		/* Autoball: the goals one by one (more: the last ones) */
 
 typedef struct {
 	int		start;									/* the match's start (cg.time) */
@@ -38,9 +40,19 @@ typedef struct {
 	int		minuteKills[CG_COMBAT_MINUTES][CG_COMBAT_CLIENTS];
 	/* at the end of each minute: the last scores seen in it */
 	int		minutes;								/* the minutes seen */
+	int		sampled;								/* the minutes with scores in them */
 	int		score[CG_COMBAT_MINUTES][CG_COMBAT_CLIENTS];	/* CG_COMBAT_NONE: not there */
 	int		damage[CG_COMBAT_MINUTES][CG_COMBAT_CLIENTS];
 	int		team[CG_COMBAT_MINUTES][CG_COMBAT_TEAMS];
+	/* the objective modes: who held what how long */
+	int		held[CG_COMBAT_MINUTES][CG_COMBAT_TEAMS];	/* ms a team held the hill or a zone (zones add up) */
+	int		zones;									/* the zones seen */
+	int		owner[CG_COMBAT_ZONES], since[CG_COMBAT_ZONES];	/* a zone's team (-1: nobody) and since when */
+	int		heldTo;									/* held counted up to here, 0: not yet */
+	int		longestMs, longestZone, longestTeam;	/* the longest hold over (-1: none) */
+	/* Autoball: the goals (time, team 0..3, scorer -1: nobody, -2: own goal, km/h) */
+	int		goals;									/* all of them; the arrays keep the last */
+	int		goalAt[CG_COMBAT_GOALS], goalTeam[CG_COMBAT_GOALS], goalScorer[CG_COMBAT_GOALS], goalSpeed[CG_COMBAT_GOALS];
 } cgCombatLog_t;
 
 void CG_CombatReset( cgCombatLog_t *log, int start );
@@ -49,6 +61,16 @@ void CG_CombatKill( cgCombatLog_t *log, int attacker, int target, int time );
 /* the scores at time: score and damage of each client (score CG_COMBAT_NONE: not
  * there) and the teams' scores */
 void CG_CombatSample( cgCombatLog_t *log, int time, const int *score, const int *damage, const int *team );
+
+/* the objectives at time: a team (0..3, -1 nobody) a zone; the time since the
+ * last call counts for the teams that held a zone through it */
+void CG_CombatZones( cgCombatLog_t *log, int time, const int *owner, int zones );
+/* the objectives stop counting (a warmup, the intermission): the next call starts afresh */
+void CG_CombatZonesPause( cgCombatLog_t *log );
+/* the longest hold up to time, the open ones too: ms, 0: none */
+int  CG_CombatLongest( const cgCombatLog_t *log, int time, int *zone, int *team );
+/* a goal (Autoball) */
+void CG_CombatGoal( cgCombatLog_t *log, int time, int team, int scorer, int speed );
 
 int  CG_CombatMinute( const cgCombatLog_t *log, int time );	/* 0 .. CG_COMBAT_MINUTES - 1 */
 /* who killed this one most, -1: nobody; *times how often */
