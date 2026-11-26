@@ -50,12 +50,12 @@ static int CG_DerbyHitSegmentForDamage( int zone, int yawByte, int pitchByte ) {
 	float frontDot, rightDot;
 
 	switch ( zone ) {
-	/* Screen layout is rotated 90 degrees from vehicle space:
-	 * top=right, left=front, right=rear, bottom=left. */
-	case CAR_HIT_ZONE_FRONT: return 1;
-	case CAR_HIT_ZONE_LEFT: return 3;
-	case CAR_HIT_ZONE_RIGHT: return 0;
-	case CAR_HIT_ZONE_REAR: return 2;
+	/* The side of the car, as the HUD draws it from above with the front
+	 * up: 0 front, 1 left, 2 right, 3 rear (DERBY_HIT_SEG_*). */
+	case CAR_HIT_ZONE_FRONT: return DERBY_HIT_SEG_FRONT;
+	case CAR_HIT_ZONE_LEFT: return DERBY_HIT_SEG_LEFT;
+	case CAR_HIT_ZONE_RIGHT: return DERBY_HIT_SEG_RIGHT;
+	case CAR_HIT_ZONE_REAR: return DERBY_HIT_SEG_REAR;
 	case CAR_HIT_ZONE_ROOF:
 	case CAR_HIT_ZONE_UNDERBODY: return -2;
 	}
@@ -76,9 +76,9 @@ static int CG_DerbyHitSegmentForDamage( int zone, int yawByte, int pitchByte ) {
 	rightDot = DotProduct( sourceDir, vehicleRight );
 
 	if ( fabs( frontDot ) >= fabs( rightDot ) ) {
-		return frontDot >= 0.0f ? 1 : 2; /* front / rear */
+		return frontDot >= 0.0f ? DERBY_HIT_SEG_FRONT : DERBY_HIT_SEG_REAR;
 	}
-	return rightDot >= 0.0f ? 0 : 3; /* right / left */
+	return rightDot >= 0.0f ? DERBY_HIT_SEG_RIGHT : DERBY_HIT_SEG_LEFT;
 }
 
 static void CG_ApplyDerbyHitImpact( int damage, int zone, int yawByte, int pitchByte ) {

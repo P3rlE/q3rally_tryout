@@ -535,6 +535,14 @@ struct gclient_s {
 	int derbyDamageZoneDamage;
 	int derbyLastRamTime;
 	int derbyNoRamWarningSecond;
+	/* the hits this driver dealt, sent to him as "derbyHit" (the HUD's
+	 * notification), at most every DERBY_HIT_SEND_MS: hits on the same car in
+	 * between add up */
+	int derbyHitVictim;		/* -1: none pending */
+	int derbyHitZone;
+	int derbyHitDamage;
+	int derbyHitBonus;
+	int derbyHitSentTime;
 
 	// sum up damage over an entire frame, so
 	// shotgun blasts give a single big kick

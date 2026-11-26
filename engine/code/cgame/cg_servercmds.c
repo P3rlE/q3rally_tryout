@@ -2237,6 +2237,14 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	/* a hit we dealt: victim, the zone of his car, damage, ram bonus */
+	if ( !strcmp( cmd, "derbyHit" ) ) {
+		if ( cgs.gametype == GT_DERBY ) {
+			CG_QueueDerbyHitToast( atoi( CG_Argv( 1 ) ), atoi( CG_Argv( 2 ) ), atoi( CG_Argv( 3 ) ), atoi( CG_Argv( 4 ) ) != 0 );
+		}
+		return;
+	}
+
 	if ( !strcmp( cmd, "derbyIntegrity" ) ) {
 		CG_ParseDerbyIntegrity();
 		return;

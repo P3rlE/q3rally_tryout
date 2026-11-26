@@ -794,6 +794,18 @@ Changed:
 - q3r_mesaking: flag pole and the four marker posts on the mesa removed (the
   crown and the bollards replace them); AAS rebuilt from the proxy.
 
+- Derby: a notification for every hit you deal, as in the HUD design:
+  which side of whose car ("Rear hit on Josh"), the damage and RAM BONUS
+  when the hit earned fuel or NOS. The server sends it to the driver who
+  rammed (`derbyHit`, at most every 300 ms; hits on the same car add up,
+  bots get none). Damage points are shown, not score: Derby scores only
+  wrecks.
+- Derby: the zones of the car in the v0.9 HUD lit the wrong side (a hit on
+  the right lit the front, front the left, rear the right, left the rear).
+  The side of a hit now counts as the HUD draws the car, front up
+  (DERBY_HIT_SEG_*); the old HUD, which draws the car on its side, maps it
+  for itself.
+
 - q3r_david5 (Underground Battle Arena) rebuilt with the same concept: an
   octagonal car arena underground, the crowd all round, the rocket launcher
   for everybody on spawn and the plasma gun to fight over. The empty flat

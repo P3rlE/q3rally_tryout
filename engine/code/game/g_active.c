@@ -1318,12 +1318,59 @@ static qboolean G_DerbyRegisterImpactEvent( int client1, int client2 ) {
 	return isNewImpact;
 }
 
-static void G_DerbyAwardRamBonus( gentity_t *rammer ) {
+#define DERBY_HIT_SEND_MS	300
+
+/* send the hits pending for this driver: victim, the zone of the victim's car
+ * that was hit (carHitZone_t), the damage, whether a ram bonus came with it */
+static void G_DerbyFlushHit( gentity_t *ent ) {
+	gclient_t *cl = ent->client;
+	if ( !cl || cl->derbyHitDamage <= 0 || cl->derbyHitVictim < 0 ) {
+		return;
+	}
+	trap_SendServerCommand( ent - g_entities, va( "derbyHit %i %i %i %i", cl->derbyHitVictim,
+		cl->derbyHitZone, cl->derbyHitDamage, cl->derbyHitBonus ) );
+	cl->derbyHitVictim = -1;
+	cl->derbyHitDamage = 0;
+	cl->derbyHitBonus = 0;
+	cl->derbyHitSentTime = level.time;
+}
+
+/* a hit dealt by a ramming driver: sent now, or added to the pending one */
+static void G_DerbyNoteHit( gentity_t *attacker, gentity_t *victim, int zone, int damage, qboolean bonus ) {
+	gclient_t *cl = attacker->client;
+	if ( !cl || damage <= 0 || ( attacker->r.svFlags & SVF_BOT ) ) {
+		return;
+	}
+	if ( cl->derbyHitDamage > 0 && cl->derbyHitVictim != victim->s.number ) {
+		G_DerbyFlushHit( attacker );
+	}
+	cl->derbyHitVictim = victim->s.number;
+	cl->derbyHitZone = zone;
+	cl->derbyHitDamage += damage;
+	if ( bonus ) {
+		cl->derbyHitBonus = 1;
+	}
+	if ( level.time - cl->derbyHitSentTime >= DERBY_HIT_SEND_MS ) {
+		G_DerbyFlushHit( attacker );
+	}
+}
+
+/* every frame: what waited for the interval goes out */
+static void G_DerbyHitFrame( gentity_t *ent ) {
+	if ( ent->client && ent->client->derbyHitDamage > 0 &&
+		level.time - ent->client->derbyHitSentTime >= DERBY_HIT_SEND_MS ) {
+		G_DerbyFlushHit( ent );
+	}
+}
+
+/* qtrue: something was given (fuel or NOS) */
+static qboolean G_DerbyAwardRamBonus( gentity_t *rammer ) {
 	int turboValue, turboRemaining, turboBonus;
 	float fuelBonus;
+	qboolean given = qfalse;
 
 	if ( !rammer || !rammer->client )
-		return;
+		return qfalse;
 
 	fuelBonus = rammer->client->car.maxFuel *
 		g_derbyHitFuelReward.value / 100.0f;
@@ -1333,11 +1380,12 @@ static void G_DerbyAwardRamBonus( gentity_t *rammer ) {
 			rammer->client->car.fuel = rammer->client->car.maxFuel;
 		rammer->client->ps.stats[STAT_FUEL] =
 			(int)rammer->client->car.fuel;
+		given = qtrue;
 	}
 
 	turboBonus = g_derbyHitNosReward.integer;
 	if ( turboBonus <= 0 )
-		return;
+		return given;
 	turboValue = rammer->client->ps.powerups[PW_TURBO];
 	if ( turboValue > level.time )
 		turboRemaining = turboValue - level.time;
@@ -1352,6 +1400,7 @@ static void G_DerbyAwardRamBonus( gentity_t *rammer ) {
 		rammer->client->ps.powerups[PW_TURBO] = level.time + turboRemaining;
 	else
 		rammer->client->ps.powerups[PW_TURBO] = -turboRemaining;
+	return qtrue;
 }
 
 /* Derby damage follows the solver's actual normal impulse. Physics already
@@ -1364,6 +1413,7 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 	float selfZoneWeight, otherZoneWeight;
 	int selfDamageInt, otherDamageInt;
 	int selfAppliedDamage, otherAppliedDamage;
+	qboolean selfBonus = qfalse, otherBonus = qfalse;
 	vec3_t selfNormal, otherNormal, collisionPoint;
 
 	if ( g_gametype.integer != GT_DERBY || !level.startRaceTime ||
@@ -1398,14 +1448,14 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 			self->client->derbyNoRamWarningSecond = -1;
 			self->client->ps.stats[STAT_DERBY_NORAM] =
 				g_derbyNoRamTime.integer;
-			G_DerbyAwardRamBonus( self );
+			selfBonus = G_DerbyAwardRamBonus( self );
 		}
 		if ( contact->otherWasRamming ) {
 			other->client->derbyLastRamTime = level.time;
 			other->client->derbyNoRamWarningSecond = -1;
 			other->client->ps.stats[STAT_DERBY_NORAM] =
 				g_derbyNoRamTime.integer;
-			G_DerbyAwardRamBonus( other );
+			otherBonus = G_DerbyAwardRamBonus( other );
 		}
 	}
 
@@ -1511,6 +1561,14 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 			other->client->derbyDamageZone = contact->otherZone;
 			other->client->derbyDamageZoneDamage = appliedDamage;
 		}
+	}
+
+	/* the HUD's "Rear hit on Josh": for the one who rammed */
+	if ( contact->selfWasRamming ) {
+		G_DerbyNoteHit( self, other, contact->otherZone, otherAppliedDamage, selfBonus );
+	}
+	if ( contact->otherWasRamming ) {
+		G_DerbyNoteHit( other, self, contact->selfZone, selfAppliedDamage, otherBonus );
 	}
 
 	if ( g_derbyCollisionLog.integer ) {
@@ -2360,6 +2418,7 @@ void ClientThink_real( gentity_t *ent ) {
 	/* Convert this Pmove's strongest rigid-body contact into a single Derby
 	 * damage event, weighted by the struck zone on each vehicle. */
 	G_ApplyDerbyVehicleCollisionDamage( ent, &pm.vehicleCollision );
+	G_DerbyHitFrame( ent );
 	G_Autoball_VehicleContact( ent, &pm.vehicleCollision );
 	if ( g_derbyCollisionLog.integer && g_gametype.integer == GT_DERBY &&
 		pm.collisionDetected && !pm.vehicleCollision.valid ) {
