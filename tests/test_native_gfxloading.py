@@ -723,6 +723,10 @@ int main(void) {
                 more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
                 l.chatName[l.chatCount] = item; r = strchr(item, '~'); *r++ = 0; l.chatMessage[l.chatCount++] = r;
             }
+            if (n > 53 && *f[53]) {   /* typing: label~cursor~text */
+                l.chatInput = 1; l.chatInputLabel = f[53]; r = strchr(f[53], '~'); *r++ = 0;
+                l.chatInputCursor = atoi(r); r = strchr(r, '~'); *r++ = 0; l.chatInputText = r;
+            }
             if (n > 48 && *f[48]) {   /* scorebug: RED~2~3:41~2ND HALF~1~BLUE */
                 l.scorebug = 1; l.bugLeftLabel = f[48]; r = strchr(f[48], '~'); *r++ = 0;
                 l.bugLeft = r; r = strchr(r, '~'); *r++ = 0; l.bugClock = r; r = strchr(r, '~'); *r++ = 0;
@@ -773,6 +777,9 @@ int main(void) {
                 sprintf(k, "chatName%d", i); T(k, l.chatNameT[i]); sprintf(k, "chatMessage%d", i); T(k, l.chatMessageT[i]);
                 sprintf(k, "chatMore%d", i); T(k, l.chatMoreT[i]);
                 printf("\"chatText%d\":[\"%s\",\"%s\"],", i, l.chatMessageT[i].text, l.chatMoreT[i].text); }
+            if (l.chatInput) { rect("chatInput", l.chatInputBox); rect("chatInputBar", l.chatInputBar); rect("chatInputCaret", l.chatInputCaret);
+                T("chatInputLabel", l.chatInputLabelT); T("chatInputText", l.chatInputTextT);
+                printf("\"chatInputShown\":\"%s\",", l.chatInputTextT.text); }
             for (i = 0; i < l.killCount; i++) { char k[16]; sprintf(k, "kill%d", i); rect(k, l.killBox[i]);
                 sprintf(k, "killA%d", i); T(k, l.killAT[i]); sprintf(k, "killWeapon%d", i); T(k, l.killWeaponT[i]);
                 sprintf(k, "killB%d", i); T(k, l.killBT[i]); }

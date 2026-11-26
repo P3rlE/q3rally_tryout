@@ -921,7 +921,7 @@ static void MH_KillFeed( mhRaceLayout_t *l, float y ) {
  * its text at the left edge, padding 4px 10px, "Sam:" bold and the message
  * 6px apart. A message too long for MH_CHAT_W breaks at a space onto a
  * second row under it (that row cut with an ellipsis). */
-static void MH_Chat( mhRaceLayout_t *l, float y ) {
+static float MH_Chat( mhRaceLayout_t *l, float y ) {
 	wsTextStyle_t name, text;
 	float x = MH_SIDE, room;
 	int i;
@@ -971,6 +971,54 @@ static void MH_Chat( mhRaceLayout_t *l, float y ) {
 		MH_Place( more, m->box.x, m->box.y + m->box.h + 2.0f );
 		y += h + MH_COLUMN_GAP;
 	}
+	return y;
+}
+
+/* the line being typed, under the chat: MH_CHAT_W wide so it does not grow
+ * with the text, padding 6px 10px past a 3px bar in the mode's colour, the
+ * label ("SAY", "TEAM", "TO SAM") and 10px on the text, on one baseline. A
+ * text too long shows the part around the caret: the end while typing at it. */
+static float MH_ChatInput( mhRaceLayout_t *l, float y ) {
+	wsTextStyle_t label, text;
+	mhText_t *lt = &l->chatInputLabelT, *tt = &l->chatInputTextT;
+	const char *all = l->chatInputText ? l->chatInputText : "";
+	float x = MH_SIDE, room;
+	int len = strlen( all ), cursor = l->chatInputCursor, s, e;
+
+	MH_Label( &label, 11.0f );
+	MH_Text( &text, 14.0f );
+	if ( cursor < 0 ) cursor = 0;
+	if ( cursor > len ) cursor = len;
+	l->chatInputBox.x = x;
+	l->chatInputBox.y = y;
+	l->chatInputBox.w = MH_CHAT_W;
+	l->chatInputBox.h = 6.0f + text.lineHeight + 6.0f;
+	l->chatInputBar = l->chatInputBox;
+	l->chatInputBar.w = 3.0f;
+	MH_Set( lt, &label, l->chatInputLabel ? l->chatInputLabel : "" );
+	MH_Fit( lt, 140.0f );
+	lt->box.w = MH_Width( lt );
+	room = MH_CHAT_W - 3.0f - 10.0f - lt->box.w - 10.0f - 10.0f;
+	/* the most of the end that fits, moved back to the caret if it is before it */
+	for ( s = 0; s < len && WS_TextWidth( &text, all + s, len - s ) > room; s++ );
+	if ( cursor < s ) s = cursor;
+	for ( e = len; e > s && WS_TextWidth( &text, all + s, e - s ) > room; e-- );
+	if ( e - s > MH_TEXT_MAX - 1 ) {
+		if ( cursor - s > MH_TEXT_MAX - 1 ) s = cursor - ( MH_TEXT_MAX - 1 );
+		e = s + MH_TEXT_MAX - 1;
+	}
+	tt->style = text;
+	Q_strncpyz( tt->text, all + s, e - s + 1 );
+	tt->box.w = MH_Width( tt );
+	tt->box.h = text.lineHeight;
+	MH_Place( lt, x + 3.0f + 10.0f, 0.0f );
+	MH_Place( tt, lt->box.x + lt->box.w + 10.0f, y + 6.0f );
+	lt->box.y = tt->box.y + MH_Base( tt ) - MH_Base( lt );
+	l->chatInputCaret.x = tt->box.x + WS_TextWidth( &text, all + s, cursor - s );
+	l->chatInputCaret.y = tt->box.y;
+	l->chatInputCaret.w = 2.0f;
+	l->chatInputCaret.h = tt->box.h;
+	return l->chatInputBox.h;
 }
 
 /* drag: the tree under the standings (gen.py tree): the label, 12px, rows
@@ -1087,7 +1135,10 @@ void MH_RaceLayout( mhRaceLayout_t *l ) {
 	if ( l->standings ) MH_Order( l );
 	if ( l->tree ) MH_Tree( l, l->standings ? l->order.y + l->order.h + MH_COLUMN_GAP : MH_TOP );
 	if ( l->killCount ) MH_KillFeed( l, l->standings ? l->order.y + l->order.h + 8.0f : MH_TOP );
-	if ( l->chatCount ) MH_Chat( l, l->card.h > 0.0f ? l->card.y + l->card.h + MH_COLUMN_GAP : MH_TOP );
+	if ( l->chatCount || l->chatInput ) {
+		float y = MH_Chat( l, l->card.h > 0.0f ? l->card.y + l->card.h + MH_COLUMN_GAP : MH_TOP );
+		if ( l->chatInput ) MH_ChatInput( l, y );
+	}
 	MH_TopCentre( l );
 
 	bottom = MH_Vehicle( l, MH_DESIGN_HEIGHT - MH_BOTTOM ) - MH_COLUMN_GAP;

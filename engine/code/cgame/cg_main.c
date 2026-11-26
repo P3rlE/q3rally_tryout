@@ -2541,6 +2541,7 @@ Called before every level change or subsystem restart
 */
 void CG_Shutdown( void ) {
 	CG_Atmospheric_Shutdown();
+	CG_ModernHUD_ChatShutdown();	/* the engine draws the chat line again */
 
 	// some mods may need to do cleanup work here,
 	// like closing files or archiving session data

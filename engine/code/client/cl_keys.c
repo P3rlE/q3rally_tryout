@@ -789,6 +789,7 @@ void Message_Key( int key ) {
 	}
 
 	Field_KeyDownEvent( &chatField, key );
+	Con_ChatInputUpdate();	// Q3Rally
 }
 
 //============================================================================
@@ -1461,6 +1462,7 @@ void CL_CharEvent( int key ) {
 	else if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) 
 	{
 		Field_CharEvent( &chatField, key );
+		Con_ChatInputUpdate();	// Q3Rally
 	}
 	else if ( clc.state == CA_DISCONNECTED )
 	{

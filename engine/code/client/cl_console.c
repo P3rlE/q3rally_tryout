@@ -59,6 +59,9 @@ console_t	con;
 cvar_t		*con_conspeed;
 cvar_t		*con_autoclear;
 cvar_t		*con_notifytime;
+// Q3Rally Code Start
+cvar_t		*cl_chatInput;		/* the chat line being typed, for the cgame's HUD */
+// Q3Rally Code END
 
 #define	DEFAULT_CONSOLE_WIDTH	78
 
@@ -94,6 +97,31 @@ void Con_ToggleMenu_f( void ) {
 	CL_KeyEvent( K_ESCAPE, qfalse, Sys_Milliseconds() );
 }
 
+// Q3Rally Code Start
+/*
+================
+Con_ChatInputUpdate
+
+The line being typed for the cgame, which draws it itself when it sets
+cg_hudChatInput (the v0.9 HUD): cl_chatInput "<mode> <client> <cursor> <text>",
+mode 0 say, 1 say_team, 2 tell (client: to whom, else -1). Whether the line is
+open the cgame takes from the key catcher (KEYCATCH_MESSAGE).
+================
+*/
+void Con_ChatInputUpdate( void ) {
+	char	value[MAX_EDIT_LINE + 32];
+	int		mode = chat_playerNum != -1 ? 2 : chat_team ? 1 : 0;
+
+	if ( !cl_chatInput ) {
+		return;
+	}
+	Com_sprintf( value, sizeof( value ), "%d %d %d %s", mode, chat_playerNum, chatField.cursor, chatField.buffer );
+	if ( strcmp( value, cl_chatInput->string ) ) {
+		Cvar_Set( "cl_chatInput", value );
+	}
+}
+// Q3Rally Code END
+
 /*
 ================
 Con_MessageMode_f
@@ -104,6 +132,7 @@ void Con_MessageMode_f (void) {
 	chat_team = qfalse;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 30;
+	Con_ChatInputUpdate();
 
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
@@ -118,6 +147,7 @@ void Con_MessageMode2_f (void) {
 	chat_team = qtrue;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 25;
+	Con_ChatInputUpdate();
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
 
@@ -135,6 +165,7 @@ void Con_MessageMode3_f (void) {
 	chat_team = qfalse;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 30;
+	Con_ChatInputUpdate();
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
 
@@ -152,6 +183,7 @@ void Con_MessageMode4_f (void) {
 	chat_team = qfalse;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 30;
+	Con_ChatInputUpdate();
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
 
@@ -361,6 +393,7 @@ void Con_Init (void) {
 	con_notifytime = Cvar_Get ("con_notifytime", "3", 0);
 	con_conspeed = Cvar_Get ("scr_conspeed", "3", 0);
 	con_autoclear = Cvar_Get("con_autoclear", "1", CVAR_ARCHIVE);
+	cl_chatInput = Cvar_Get( "cl_chatInput", "", CVAR_ROM );	// Q3Rally
 
 	Field_Clear( &g_consoleField );
 	g_consoleField.widthInChars = g_console_field_width;
@@ -615,6 +648,12 @@ void Con_DrawNotify (void)
 	// draw the chat line
 	if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE )
 	{
+		// Q3Rally Code Start: the cgame's HUD draws it
+		Con_ChatInputUpdate();
+		if ( cgvm && Cvar_VariableIntegerValue( "cg_hudChatInput" ) ) {
+			return;
+		}
+		// Q3Rally Code END
 		if (chat_team)
 		{
 			SCR_DrawBigString (8, v, "say_team:", 1.0f, qfalse );

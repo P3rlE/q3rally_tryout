@@ -1128,6 +1128,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 
 	// the objective modes' end screen: who held the hill or the zones
 	CG_ModernHUD_ObjectiveFrame();
+	CG_ModernHUD_ChatInputFrame();
 
 	// this counter will be bumped for every valid scene we generate
 	cg.clientFrame++;
