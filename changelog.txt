@@ -794,6 +794,19 @@ Changed:
 - q3r_mesaking: flag pole and the four marker posts on the mesa removed (the
   crown and the bollards replace them); AAS rebuilt from the proxy.
 
+- q3r_david5 (Underground Battle Arena) rebuilt with the same concept: an
+  octagonal car arena underground, the crowd all round, the rocket launcher
+  for everybody on spawn and the plasma gun to fight over. The empty flat
+  octagon gets a layout: a low mound in the middle with ramps all round and
+  the plasma gun on top, four pillars with floodlights on the diagonals
+  (cover, sight breakers, fuel behind them), a banked strip along the foot
+  of the wall, and the four fake gates now lead into a tunnel ring under the
+  stands with health, armour and rocket ammo. The wall is 384 high instead of
+  830, so the crowd is in view; spawns face along the wall instead of all at
+  the middle, four more in the tunnel; much brighter. New AAS (bots use the
+  tunnel). Now also for Last Car Standing. Generator
+  tools/maptools/make_david5.py, docs/maps/david5/.
+
 - q3r_david4 (Jungle Opening) rebuilt with the same concept: CTF in a jungle
   clearing at night, flags on a cross of team-coloured ramps, "Save Ferris"
   water tower and oak grove with the Quad in the middle, same weapons. The

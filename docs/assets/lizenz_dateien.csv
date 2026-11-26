@@ -399,7 +399,7 @@ levelshots/q3r_ctf4_03.jpg,173838,Karte q3r_ctf4_03,Karten,eigen (generiert),too
 levelshots/q3r_ctf_01.jpg,758110,Karte q3r_ctf_01,Karten,unbekannt,,F
 levelshots/q3r_ctf_04.jpg,116246,Karte q3r_ctf_04,Karten,unbekannt,,
 levelshots/q3r_david4.jpg,290672,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
-levelshots/q3r_david5.jpg,591764,Karte q3r_david5,Karten,unbekannt,,F
+levelshots/q3r_david5.jpg,191841,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_dd_02.jpg,480995,Karte q3r_dd_02,Karten,unbekannt,,F
 levelshots/q3r_demobowl.jpg,857397,Karte q3r_demobowl,Karten,unbekannt,,F
 levelshots/q3r_dirtyfun.jpg,815155,Karte q3r_dirtyfun,Karten,unbekannt,,F
@@ -467,9 +467,9 @@ maps/q3r_david4.aas,2885736,Karte q3r_david4,Karten,eigen (generiert),tools/mapt
 maps/q3r_david4.bsp,11699232,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 maps/q3r_david4.map,5965809,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 maps/q3r_david4_index.pcx,5151,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
-maps/q3r_david5.aas,15992,Karte q3r_david5,Karten,unbekannt,,F
-maps/q3r_david5.bsp,1358568,Karte q3r_david5,Karten,unbekannt,,F
-maps/q3r_david5.map,238422,Karte q3r_david5,Karten,unbekannt,,F
+maps/q3r_david5.aas,154332,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
+maps/q3r_david5.bsp,1017996,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
+maps/q3r_david5.map,134678,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
 maps/q3r_dd_02.aas,241556,Karte q3r_dd_02,Karten,unbekannt,,F
 maps/q3r_dd_02.bsp,2470012,Karte q3r_dd_02,Karten,unbekannt,,F
 maps/q3r_dd_02.map,837437,Karte q3r_dd_02,Karten,unbekannt,,F
@@ -3276,7 +3276,7 @@ scripts/q3r_ctf_04.shader,5297,Karte q3r_ctf_04,Karten,unbekannt,,F
 scripts/q3r_ctf_bot_test.arena,502,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 scripts/q3r_david4.arena,512,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_david4.shader,20670,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
-scripts/q3r_david5.arena,511,Karte q3r_david5,Karten,unbekannt,,F
+scripts/q3r_david5.arena,587,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_dd_02.arena,195,Karte q3r_dd_02,Karten,unbekannt,,F
 scripts/q3r_demobowl.arena,518,Karte q3r_demobowl,Karten,unbekannt,,F
 scripts/q3r_dirtyfun.arena,614,Karte q3r_dirtyfun,Karten,unbekannt,,F
