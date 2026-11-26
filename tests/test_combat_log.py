@@ -41,6 +41,21 @@ int main(void) {
             printf("%d %d %d %d %d %d\n", log_.minutes, log_.minuteKills[m][c], log_.score[m][c], log_.damage[m][c],
                    CG_CombatPlaceAt(&log_, c, m), CG_CombatLeftAt(&log_, m)); }
         else if (!strcmp(cmd, "team")) { scanf("%d", &m); printf("%d %d\n", log_.team[m][0], log_.team[m][1]); }
+        /* zones <time> <n> owner..; held <minute>; longest <time>; goal <time> <team> <scorer> <km/h>; goals */
+        else if (!strcmp(cmd, "zones")) { int own[CG_COMBAT_ZONES]; scanf("%d %d", &time, &n);
+            for (i = 0; i < n; i++) { scanf("%d", &own[i]); }
+            CG_CombatZones(&log_, time, own, n); }
+        else if (!strcmp(cmd, "pause")) CG_CombatZonesPause(&log_);
+        else if (!strcmp(cmd, "held")) { scanf("%d", &m);
+            printf("%d %d %d %d\n", log_.minutes, log_.held[m][0], log_.held[m][1], log_.held[m][2]); }
+        else if (!strcmp(cmd, "longest")) { int z, tm; scanf("%d", &time); n = CG_CombatLongest(&log_, time, &z, &tm);
+            printf("%d %d %d\n", n, z, tm); }
+        else if (!strcmp(cmd, "goal")) { int tm, sc, sp; scanf("%d %d %d %d", &time, &tm, &sc, &sp);
+            CG_CombatGoal(&log_, time, tm, sc, sp); }
+        else if (!strcmp(cmd, "goals")) { printf("%d", log_.goals);
+            for (i = 0; i < CG_COMBAT_GOALS && i < log_.goals; i++) { printf(" %d:%d:%d:%d", log_.goalAt[i], log_.goalTeam[i],
+                log_.goalScorer[i], log_.goalSpeed[i]); }
+            printf("\n"); }
     }
     return 0;
 }
@@ -83,3 +98,32 @@ def test_the_minutes_the_place_and_who_is_left():
                            '3 0 3 400 1 1',
                            '3 0 2 300 2 1',
                            '2 0', '2 3']
+
+
+def test_the_hill_held_minute_by_minute_and_the_longest_reign():
+    # red takes the hill at 0:00 (the match starts at 1000), blue at 1:30, nobody at 2:00
+    script = ['zones 1000 1 0', 'zones 31000 1 0', 'zones 91000 1 1', 'zones 121000 1 -1',
+              'held 0', 'held 1', 'longest 121000']
+    assert run(script) == ['2 60000 0 0', '2 30000 30000 0', '90000 0 0']
+
+
+def test_an_open_hold_counts_for_the_longest_and_a_pause_stops_the_clock():
+    # blue holds zone B from 0:10; a warmup pause between 0:20 and 0:40 does not count
+    script = ['zones 1000 2 0 -1', 'zones 11000 2 0 1', 'zones 21000 2 0 1', 'pause', 'zones 41000 2 0 1',
+              'zones 51000 2 0 1', 'held 0', 'longest 51000']
+    # red: 0..20 and 40..50 = 30 s, blue: 10..20 and 40..50 = 20 s; the longest: red's zone A, still open
+    assert run(script) == ['1 30000 20000 0', '50000 0 0']
+
+
+def test_the_scores_carry_on_over_minutes_the_hill_already_counted():
+    # the hill pushes the minutes on; a sample in minute 3 still fills 1 and 2 with minute 0's score
+    script = ['sample 20000 1 1 5 0 4 2', 'zones 1000 1 0', 'zones 200000 1 0', 'sample 190000 1 1 9 0 7 3',
+              'team 1', 'team 2', 'team 3']
+    assert run(script) == ['4 2', '4 2', '7 3']
+
+
+def test_the_goals_the_last_ones_kept():
+    script = [f'goal {1000 + i * 30000} {i % 2} {i} {80 + i}' for i in range(17)] + ['goals']
+    out = run(script)[0].split()
+    assert out[0] == '17'
+    assert out[1] == '30000:1:1:81' and out[-1] == '480000:0:16:96' and len(out) == 17

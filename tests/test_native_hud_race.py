@@ -27,6 +27,8 @@ END_COMBAT = {n: json.loads((ROOT / f'tests/fixtures/hud_end_{n}_layout.json').r
 END_SPRINT = json.loads((ROOT / 'tests/fixtures/hud_end_sprint_layout.json').read_text())['els']
 END_RACINGDM = json.loads((ROOT / 'tests/fixtures/hud_end_racingdm_layout.json').read_text())['els']
 END_ELIM = json.loads((ROOT / 'tests/fixtures/hud_end_elimination_layout.json').read_text())['els']
+END_OBJECTIVE = {n: json.loads((ROOT / f'tests/fixtures/hud_end_{n}_layout.json').read_text())['els']
+                 for n in ('ctf', 'domination', 'koth', 'autoball')}
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
@@ -1285,4 +1287,91 @@ def test_native_combat_end_screens_match_the_design():
             (END_TDM_MODEL, 'teamdm', combat_pairs(6, 8, ((0, 1), (1, 0)), team=True, members=(4, 4)))):
         mine, = layouts(end_command(model))
         problems = check_all(mine, END_COMBAT[name], pairs)
+        assert not problems, (name, problems)
+
+
+def team_model(title, sub, pos, label, value, note, stats, bars, podium, awards, right, rows, waiting, ready, chart,
+               members, cells, last, places='', goals=''):
+    return [title, sub, pos[0], pos[1], label, value, note, stats, bars, podium, awards, 'FINAL CLASSIFICATION', right, 0,
+            ROWS6(rows), FOOTER, waiting, ready, chart, '', 'YOUR TEAM', members, cells, 1,
+            f'POS~DRIVER~SCORE~{last}', '', '', '', '', '', '0', places, '', '', '', '', '', goals]
+
+
+CTF_LEADS = ['-1', '0', '-1', '+1', '+2', '+1', '+2']
+END_CTF_MODEL = team_model(
+    'CAPTURE THE FLAG RESULT', 'CAPTURE IN THE JUNGLE · CAPTURELIMIT 5 · 2 TEAMS · 8 DRIVERS', ('P1', '/ 2'),
+    'TEAM BLUE · CAPTURES', '5', 'WON BY 2', 'YOUR CAPTURES~2~;ASSISTS~1~;DEFENDS~3~;YOUR FRAGS~9~',
+    minute_bars([0, 1, 0, 2, 1, 0, 1], [f'M{i}' for i in range(1, 8)]),
+    'Blue~5 caps~~WINNER~1;Red~3 caps~-2~SECOND~0',
+    'MOST CAPTURES~Ivan · 3 captures~3;BEST DEFENDER~Carla · 6 defends~6;YOUR NEMESIS~Carla · got you 3 times~3',
+    'CAPTURELIMIT 5',
+    [('01', 'Carla', '41', '1'), ('02', 'Ivan', '38', '3'), ('03', 'Player', '33', '2'), ('04', 'Sam', '24', '0'),
+     ('05', 'Tony', '21', '2'), ('06', 'Janine', '15', '0'), ('07', 'Minori', '12', '0'), ('08', 'Bee', '6', '0')],
+    'WAITING FOR 5 DRIVERS', '3 / 8 READY', "TEAM CAPTURES~A BAR A MINUTE · YOUR TEAM'S LEAD",
+    'P2:Ivan,P3:Player,P4:Sam,P7:Minori;P1:Carla,P5:Tony,P6:Janine,P8:Bee', 'BLUE~5;RED~3', 'CAPS', '~'.join(CTF_LEADS))
+
+END_DOM_MODEL = team_model(
+    'DOMINATION RESULT', 'DOMINATE THE CITY · TIMELIMIT 8 · 4 TEAMS · 8 DRIVERS', ('P2', '/ 4'),
+    'TEAM BLUE · SCORE', '131', '12 BEHIND RED', 'YOUR CAPTURES~4~;YOUR FRAGS~8~;DEATHS~6~;ZONES HELD~2.1~AVG',
+    minute_bars([1, 2, 3, 2, 1, 2, 3, 3], [f'M{i}' for i in range(1, 9)]),
+    'Red~143 pts~~WINNER~0;Blue~131 pts~-12~SECOND~1;Green~64 pts~-79~THIRD~0',
+    'LONGEST HOLD~Red · zone C~4:12;MOST FRAGS~Dean · 14 frags~14;YOUR NEMESIS~Dean · got you 3 times~3',
+    'TEAM SCORE',
+    [('01', 'Dean', '41', '14 / 5'), ('02', 'Player', '38', '8 / 6'), ('03', 'Tanya', '30', '9 / 7'), ('04', 'Kuro', '27', '7 / 9'),
+     ('05', 'Janine', '22', '6 / 8'), ('06', 'Carla', '17', '5 / 9'), ('07', 'Ivan', '12', '3 / 10'), ('08', 'Bee', '9', '2 / 10')],
+    'WAITING FOR 5 DRIVERS', '3 / 8 READY', "ZONES HELD~A BAR A MINUTE · YOUR TEAM'S PLACE",
+    'P1:Dean,P3:Tanya;P2:Player,P4:Kuro;P5:Janine,P7:Ivan', 'RED~143;BLUE~131;GREEN~64;YELLOW~40', 'K / D',
+    '~'.join(['P3', 'P2', 'P1', 'P1', 'P2', 'P2', 'P2', 'P2']))
+
+KOTH_LEADS = ['-3', '+2', '+9', '+13', '+18', '+16', '+22']
+END_KOTH_MODEL = team_model(
+    'KING OF THE HILL RESULT', 'MESA KING · TIMELIMIT 7 · 2 TEAMS · 6 DRIVERS', ('P1', '/ 2'),
+    'TEAM RED · SCORE', '52', 'WON BY 22', 'HILL TIME~1:48~;CONTESTED~0:42~;HILL KILLS~5~;YOUR FRAGS~9~',
+    minute_bars([12, 38, 60, 44, 51, 20, 47], [f'M{i}' for i in range(1, 8)]),
+    'Red~52 pts~~WINNER~1;Blue~30 pts~-22~SECOND~0',
+    'KING OF THE HILL~Ivan · 2:41 on the hill~2:41;MOST HILL KILLS~Tanya · 7 on the hill~7;'
+    'LONGEST REIGN~Red · held it 1:52~1:52',
+    'TEAM SCORE',
+    [('01', 'Ivan', '28', '2:41'), ('02', 'Tanya', '24', '2:05'), ('03', 'Player', '19', '1:48'), ('04', 'Paul', '11', '1:12'),
+     ('05', 'Minori', '10', '0:58'), ('06', 'Bee', '6', '0:31')],
+    'WAITING FOR 3 DRIVERS', '3 / 6 READY', "HILL HELD~SECONDS A MINUTE · YOUR TEAM'S LEAD",
+    'P1:Ivan,P2:Tanya,P3:Player;P4:Paul,P5:Minori,P6:Bee', 'RED~52;BLUE~30', 'HILL', '~'.join(KOTH_LEADS))
+
+AUTOBALL_GOALS = [("2'", 'Vlad', '96', '1:0'), ("3'", 'Player', '112', '1:1'), ("5'", 'Steve', '88', '1:2'),
+                  ("6'", 'Vlad', '104', '2:2'), ("8'", 'Steve', '91', '2:3')]
+END_AUTOBALL_MODEL = team_model(
+    'AUTOBALL RESULT', 'ROOFTOP ARENA · TIMELIMIT 8 · 2 TEAMS · 6 DRIVERS', ('P1', '/ 2'),
+    'TEAM BLUE · GOALS', '3', 'WON 3:2', 'YOUR GOALS~1~;ASSISTS~1~;SAVES~2~;BEST SHOT~112~KM/H', '',
+    'Blue~3 goals~~WINNER~1;Red~2 goals~-1~SECOND~0',
+    'MAN OF THE MATCH~Steve · 2 goals, 1 save~2;HARDEST SHOT~Player · 112 km/h~112;MOST SAVES~Jennifer · 4 saves~4',
+    'TIMELIMIT 8',
+    [('01', 'Vlad', '640', '2 / 0'), ('02', 'Steve', '610', '2 / 0'), ('03', 'Player', '480', '1 / 1'),
+     ('04', 'Tanya', '260', '0 / 1'), ('05', 'Jennifer', '240', '0 / 0'), ('06', 'Kuro', '120', '0 / 1')],
+    'WAITING FOR 3 DRIVERS', '3 / 6 READY', 'GOALS~MINUTE · SCORER · SHOT · RED : BLUE',
+    'P2:Steve,P3:Player,P4:Tanya;P1:Vlad,P5:Jennifer,P6:Kuro', 'BLUE~3;RED~2', 'G / A',
+    goals=';'.join(f'{m}~{n}~{v} km/h~{s}' for m, n, v, s in AUTOBALL_GOALS))
+
+
+def objective_pairs(bars, rows, podium, members, cells=2, goals=0):
+    pairs = combat_pairs(bars, rows, podium, team=True, members=members)
+    lst = '/div:6/div:0'
+    pairs += [(f'teamCell{c}', lst + f'/div:1/div:{c}') for c in range(2, cells)]
+    chart = '/div:3/div:5/div:1'
+    for i in range(goals):
+        g = chart + f'/div:{i}'
+        pairs += [(f'goalMinute{i}', g + '/div:0'), (f'goalSwatch{i}', g + '/div:1'), (f'goalName{i}', g + '/div:2'),
+                  (f'goalShot{i}', g + '/div:3/div:0'), (f'goalScore{i}', g + '/div:4/div:0')]
+    return pairs
+
+
+def test_native_objective_end_screens_match_the_design():
+    # the team deathmatch's page with what the teams played for; Domination with four teams,
+    # Autoball with the goals in place of the chart
+    for model, name, pairs in (
+            (END_CTF_MODEL, 'ctf', objective_pairs(7, 8, ((0, 1), (1, 0)), (4, 4))),
+            (END_DOM_MODEL, 'domination', objective_pairs(8, 8, ((0, 1), (1, 0), (2, 2)), (2, 2, 2), cells=4)),
+            (END_KOTH_MODEL, 'koth', objective_pairs(7, 6, ((0, 1), (1, 0)), (3, 3))),
+            (END_AUTOBALL_MODEL, 'autoball', objective_pairs(0, 6, ((0, 1), (1, 0)), (3, 3), goals=5))):
+        mine, = layouts(end_command(model))
+        problems = check_all(mine, END_OBJECTIVE[name], pairs)
         assert not problems, (name, problems)

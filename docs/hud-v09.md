@@ -208,6 +208,34 @@ The race variants (`EndRacingDM`, `EndElimination` on the canvas):
   home wins (the server sends no event then), the ones still in follow in
   the race's order (IN), and the laps count against the winner's.
 
+The objective modes (`EndCTF`, `EndDomination`, `EndKOTH`, `EndAutoball` on
+the canvas) end on the team deathmatch's page: the team's place and score
+at the left, the teams on the podium (four teams: the first three, all four
+in the list's team cells), the classification with team squares.
+
+- CTF and CTF4: TEAM X · CAPTURES; your captures, assists, defends and
+  frags (the server's scoreboard); TEAM CAPTURES a bar a minute, under it
+  your team's lead; MOST CAPTURES, BEST DEFENDER, YOUR NEMESIS; the last
+  column CAPS.
+- Domination: your captures (the zone you were taking went to your team
+  within a second: counted on the client, the server tells nobody else's),
+  frags, deaths and ZONES HELD on average; ZONES HELD a bar a minute (the
+  average), under it your team's place; LONGEST HOLD (a team, a zone),
+  MOST FRAGS, YOUR NEMESIS; the last column K / D.
+- King of the Hill: hill time, contested, hill kills (the scoreboard) and
+  frags; HILL HELD in seconds a minute, under it your team's lead; KING OF
+  THE HILL (the most time on it), MOST HILL KILLS, LONGEST REIGN; the last
+  column HILL.
+- Autoball: TEAM X · GOALS, "WON 3:2"; your goals, assists, saves and best
+  shot (the server's `abStats`); in place of the chart the goals one by
+  one (the last six): the minute, the scorer with the team's square (an own
+  goal: "Own goal"), the shot, the score red : blue after it; MAN OF THE
+  MATCH, HARDEST SHOT, MOST SAVES; the last column G / A.
+
+The client writes down every frame who holds the hill or the zones
+(`CG_CombatZones` in `cg_combat_log.c`: the ms a team held them a minute,
+the longest hold) and every goal from the Autoball status (`CG_CombatGoal`).
+
 A drag race ends on its own page (`EndDrag.dc.html`), the duel:
 
 - At the left: the match ("2-1 / 3", the best of), whether you won it and

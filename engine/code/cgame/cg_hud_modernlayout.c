@@ -1252,6 +1252,34 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 	MH_Set( &e->lapsNoteT, &label11, e->chartNote ? e->chartNote : "LOST TO YOUR BEST" );
 	y += MH_BaselineRow( &e->lapsTitleT, &e->lapsNoteT, x, y, w ) + 12.0f;
 
+	/* Autoball: a goal a row 22 high, 2 apart: the minute (30), the square
+	 * (10), the scorer, the shot (70) and the score (44) at the right, 10
+	 * apart, each in the row's middle */
+	for ( i = 0; i < e->goalCount && i < MH_END_GOALS; i++ ) {
+		wsTextStyle_t mono12, mono13, text14;
+		MH_Mono( &mono12, 12.0f );
+		MH_Mono( &mono13, 13.0f );
+		MH_Text( &text14, 14.0f );
+		MH_Set( &e->goalMinuteT[i], &mono12, e->goalMinute[i] ? e->goalMinute[i] : "" );
+		MH_Set( &e->goalNameT[i], &text14, e->goalName[i] ? e->goalName[i] : "" );
+		MH_Set( &e->goalShotT[i], &mono12, e->goalShot[i] ? e->goalShot[i] : "" );
+		MH_Set( &e->goalScoreT[i], &mono13, e->goalScore[i] ? e->goalScore[i] : "" );
+		MH_Fit( &e->goalNameT[i], w - 194.0f );
+		MH_Place( &e->goalMinuteT[i], x, y + ( 22.0f - e->goalMinuteT[i].box.h ) * 0.5f );
+		e->goalMinuteT[i].box.w = 30.0f;	/* the column */
+		e->goalSwatch[i].x = x + 40.0f;
+		e->goalSwatch[i].y = y + 6.0f;
+		e->goalSwatch[i].w = e->goalSwatch[i].h = 10.0f;
+		MH_Place( &e->goalNameT[i], x + 60.0f, y + ( 22.0f - e->goalNameT[i].box.h ) * 0.5f );
+		e->goalNameT[i].box.w = w - 194.0f;
+		/* the shot and the score: their columns (the text at the right of them) */
+		MH_Place( &e->goalShotT[i], x + w - 124.0f, y + ( 22.0f - e->goalShotT[i].box.h ) * 0.5f );
+		e->goalShotT[i].box.w = 70.0f;
+		MH_Place( &e->goalScoreT[i], x + w - 44.0f, y + ( 22.0f - e->goalScoreT[i].box.h ) * 0.5f );
+		e->goalScoreT[i].box.w = 44.0f;
+		y += 22.0f + 2.0f;
+	}
+
 	/* team races: a row a team 20 high, 10 apart: the square (in 22), the
 	 * axis, the gap (62 wide), 10px apart */
 	for ( i = 0; i < e->spreadCount && i < MH_END_TEAMS; i++ ) {
