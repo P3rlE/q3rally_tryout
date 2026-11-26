@@ -188,6 +188,26 @@ writes the match down (`cg_combat_log.c`, tested in
 out when, and each minute's scores. Who joins later sees it from then on.
 Past eight minutes the chart shows eight stretches.
 
+The race variants (`EndRacingDM`, `EndElimination` on the canvas):
+
+- Racing DM: the race's page with frags and deaths in place of the last
+  two figures, K / D in place of the best lap in the classification, and
+  the fastest lap, the most frags and your nemesis as highlights. The
+  kills are written down as in the combat modes.
+- Team Racing DM: the team race's page with the same swaps (your frags and
+  deaths in place of the team figures, K / D in the classification).
+- Elimination: the order is who lasted longest (from the server's
+  `elim_event`: the round each went out in, the winner one past the last).
+  SURVIVED with your time in the race and the lap you went out in (OUT IN
+  THE LAST LAP, OUT IN LAP 4) and who won; best lap, top speed, LAPS
+  SURVIVED ("6 / 7") and places gained; under every lap how many drivers
+  were left after it. The podium with the laps each made and when they
+  went out; the fastest lap, who went out first and the biggest gain; the
+  classification with OUT (WINNER, LAP n) and the best lap.
+  If the race ends on the lap limit before the last one is out, the first
+  home wins (the server sends no event then), the ones still in follow in
+  the race's order (IN), and the laps count against the winner's.
+
 A drag race ends on its own page (`EndDrag.dc.html`), the duel:
 
 - At the left: the match ("2-1 / 3", the best of), whether you won it and

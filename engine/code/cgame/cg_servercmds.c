@@ -1818,6 +1818,7 @@ void CG_ResetEliminationTimeline( void ) {
 
         memset( cg.elimTimelineEvents, 0, sizeof( cg.elimTimelineEvents ) );
         cg.elimTimelineCount = 0;
+	CG_ModernHUD_ElimReset();	/* the end screen's record */
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		cg_entities[i].eliminationOut = qfalse;
 	}
@@ -1848,6 +1849,7 @@ void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, in
                 cg.elimTimelineCount = ELIM_TIMELINE_MAX_EVENTS - 1;
         }
 
+        CG_ModernHUD_ElimEvent( clientNum, round, timestamp );	/* all of them, for the end screen */
         index = cg.elimTimelineCount;
         cg.elimTimelineEvents[index].clientNum = clientNum;
         cg.elimTimelineEvents[index].round = round;
@@ -1894,6 +1896,9 @@ static void CG_ParseEliminationStatus( void ) {
         }
 	if ( eventType == 1 && clientNum >= 0 && clientNum < MAX_CLIENTS ) {
 		cg_entities[clientNum].eliminationOut = qtrue;
+	}
+	if ( eventType == 2 ) {
+		CG_ModernHUD_ElimWinner( clientNum );	/* the end screen's order */
 	}
 
         if ( cg.snap && clientNum == cg.snap->ps.clientNum ) {
