@@ -78,7 +78,8 @@ def command(model, width=1600):
               ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
               m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', ''), m.get('headerRow', 0),
               ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', ''), m.get('scorebug', ''),
-              m.get('labelRow', ''), m.get('tree', ''), m.get('tach', '')]
+              m.get('labelRow', ''), m.get('tree', ''), m.get('tach', ''),
+              ';'.join(f'{n}~{t}' for n, t in m.get('chat', []))]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -407,7 +408,7 @@ def test_native_deathmatch_hud_matches_the_design():
                  kv=[('TIME LEFT', '6:12'), ('LEADER', 'Chloe \u00b7 14')], orderTitle='Frag order', orderRight='Frags',
                  rows=[('01', 'Chloe', '14'), ('02', 'Player', '12'), ('03', 'Paul', '9'), ('04', 'Sam', '7'), ('05', 'Vlad', '3')],
                  kills=[('Player', 'RAIL', 'Vlad'), ('Chloe', 'ROCKET', 'Sam'), ('Paul', 'MG', 'Player')],
-                 mirror=0, toast=0, jukebox=0)
+                 chat=[('Sam', 'nice shot'), ('Vlad', 'gg')], mirror=0, toast=0, jukebox=0)
     mine, = layouts(command(model))
     card, order = '/div:0/div:0', '/div:1/div:0'
     pairs = [('card', card), ('pos', card + '/div:1/div:0/div:0'), ('of', card + '/div:1/div:0/div:1'),
@@ -415,12 +416,29 @@ def test_native_deathmatch_hud_matches_the_design():
              ('order', order)] \
         + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(2)] \
         + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(2)] \
-        + [(f'kill{i}', f'/div:1/div:{1 + i}') for i in range(3)]
+        + [(f'kill{i}', f'/div:1/div:{1 + i}') for i in range(3)] \
+        + [p for i in range(2) for p in ((f'chat{i}', f'/div:0/div:{1 + i}'), (f'chatName{i}', f'/div:0/div:{1 + i}/div:0'),
+                                         (f'chatMessage{i}', f'/div:0/div:{1 + i}/div:1'))]
     for i in range(5):
         row = order + f'/div:1/div:{i}'
         pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowName{i}', row + '/div:1'), (f'rowValue{i}', row + '/div:2')]
     problems = check_all(mine, DEATHMATCH, pairs)
     assert not problems, problems
+
+
+# a long chat message breaks once at a space, the rest under it, and the line stays in MH_CHAT_W (460)
+def test_native_chat_wraps_once_inside_its_width():
+    long = 'meet at the bridge after this round and bring the rockets, they camp on the north ramp again'
+    model = dict(RACE_MODEL, chat=[('Sam', 'gg'), ('Vlad', long)], mirror=0, toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    short, wrapped = mine['chat0'], mine['chat1']
+    assert mine['chatText0'] == ['gg', ''] and short[3] == 25
+    first, rest = mine['chatText1']
+    assert rest and long.startswith(first + ' ') and long[len(first) + 1:].startswith(rest.rstrip('.\u2026'))
+    assert wrapped[2] <= 460 + 0.5 and wrapped[3] > short[3]
+    assert wrapped[1] == short[1] + short[3] + 10
+    message, more = mine['chatMessage1'], mine['chatMore1']
+    assert more[0] == message[0] and more[1] > message[1] and more[0] + more[2] <= wrapped[0] + wrapped[2]
 
 
 # the team deathmatch board: your team and frags, the team frag order with the teams over it

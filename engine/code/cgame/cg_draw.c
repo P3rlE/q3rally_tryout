@@ -4527,6 +4527,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	CG_DrawKOTH_RespawnWave_Internal();
 	CG_DrawKOTH_LossFlash();
 	CG_Autoball_Draw2D();
+	if ( CG_ModernHUD_Active() ) CG_ModernHUD_DrawChat();	/* the chat under the card */
 
 	if ( cgs.gametype >= GT_TEAM ) {
 #ifndef MISSIONPACK

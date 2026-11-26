@@ -2431,6 +2431,8 @@ void CG_ModernHUD_ElimReset( void );
 void CG_ModernHUD_ElimEvent( int client, int round, int time );
 void CG_ModernHUD_ElimWinner( int client );
 void CG_ModernHUD_ObjectiveFrame( void );
+qboolean CG_ModernHUD_Chat( const char *raw, qboolean team );
+void CG_ModernHUD_DrawChat( void );
 void CG_ModernHUD_Goal( int team, int scorer, int speed );
 void CG_ModernHUD_Eliminated( int clientNum, int remaining );
 void CG_ModernHUD_DrawAmmoWarning( const char *text, qboolean out );

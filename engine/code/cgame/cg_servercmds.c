@@ -1938,6 +1938,7 @@ Cmd_Argc() / Cmd_Argv()
 static void CG_ServerCommand( void ) {
 	const char	*cmd;
 	char		text[MAX_SAY_TEXT];
+	qboolean	shown;
 // Q3Rally Code Start
 	int			i1, i2;
 // END
@@ -2201,17 +2202,20 @@ static void CG_ServerCommand( void ) {
 
 		trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
 		Q_strncpyz( text, CG_Argv(1), MAX_SAY_TEXT );
+		/* the v0.9 HUD shows it under the card: then not in the notify lines too */
+		shown = CG_ModernHUD_Chat( text, qfalse );
 		CG_RemoveChatEscapeChar( text );
-		CG_Printf( "%s\n", text );
+		CG_Printf( shown ? "[skipnotify]%s\n" : "%s\n", text );
 		return;
 	}
 
 	if ( !strcmp( cmd, "tchat" ) ) {
 		trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
 		Q_strncpyz( text, CG_Argv(1), MAX_SAY_TEXT );
+		shown = CG_ModernHUD_Chat( text, qtrue );
 		CG_RemoveChatEscapeChar( text );
 		CG_AddToTeamChat( text );
-		CG_Printf( "%s\n", text );
+		CG_Printf( shown ? "[skipnotify]%s\n" : "%s\n", text );
 		return;
 	}
 

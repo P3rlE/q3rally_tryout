@@ -76,6 +76,24 @@ and whom it shows. FIRE goes to the next driver, the rear attack key
 follow, track cameras, free camera, follow. A driver who has finished skips
 the free camera.
 
+## Chat
+
+In every mode with the new HUD the chat is drawn under the mode's card at
+the top left (the Deathmatch board of the design): a dark line a message,
+up to four, the oldest at the top. The name is bold in the accent, for team
+chat in your team's colour and for a private message (`tell`) in violet;
+the message in light grey. A message wider than 460px breaks once at a
+space, the rest cut with "…". A message stays 8 s, the last second fading.
+It also shows while you are dead or watching (in the same place) but not
+over the TAB table, the end screen or the intro camera.
+
+While the HUD shows a message it goes into the console with
+`[skipnotify]`, so the engine's notify lines at the top left do not show it
+twice; otherwise (TAB, end screen, `cg_drawStatus 0`, `cg_hudStyle 0`) it
+prints as before. The input line ("say:") is drawn by the engine and stays
+where it was. Code: `CG_ModernHUD_Chat` (cg_servercmds.c "chat"/"tchat"),
+`MH_Chat` in cg_hud_modernlayout.c, `CG_ModernHUD_DrawChat` (cg_draw.c).
+
 ## End screens
 
 The race (Racing) ends on its own screen in the intermission (the
@@ -312,4 +330,3 @@ many drivers are ready in place of the clock.
 - Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
   orange. Under it the spectators and the server with how full it is.
 
-Still to come: the end screens of the team objective modes (CTF, Domination, KOTH, Autoball) and Racing DM / Elimination.

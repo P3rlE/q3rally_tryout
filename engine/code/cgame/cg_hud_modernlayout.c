@@ -917,6 +917,62 @@ static void MH_KillFeed( mhRaceLayout_t *l, float y ) {
 	}
 }
 
+/* the chat (gen.py chat): under the card 10px apart, each line as wide as
+ * its text at the left edge, padding 4px 10px, "Sam:" bold and the message
+ * 6px apart. A message too long for MH_CHAT_W breaks at a space onto a
+ * second row under it (that row cut with an ellipsis). */
+static void MH_Chat( mhRaceLayout_t *l, float y ) {
+	wsTextStyle_t name, text;
+	float x = MH_SIDE, room;
+	int i;
+
+	MH_Text( &name, 14.0f );
+	name.font = WS_BODY_BOLD;
+	MH_Text( &text, 14.0f );
+	for ( i = 0; i < l->chatCount; i++ ) {
+		mhText_t *n = &l->chatNameT[i], *m = &l->chatMessageT[i], *more = &l->chatMoreT[i];
+		char who[MH_TEXT_MAX];
+		float w, h;
+		Com_sprintf( who, sizeof( who ), "%s:", l->chatName[i] ? l->chatName[i] : "" );
+		MH_Set( n, &name, who );
+		MH_Fit( n, 140.0f );
+		n->box.w = MH_Width( n );
+		room = MH_CHAT_W - 20.0f - n->box.w - 6.0f;
+		MH_Set( m, &text, l->chatMessage[i] ? l->chatMessage[i] : "" );
+		MH_Set( more, &text, "" );
+		if ( m->box.w > room ) {
+			/* the last space that still fits; none: cut the word */
+			char whole[256];
+			int cut, len;
+			WS_Transform( &text, l->chatMessage[i], whole, sizeof( whole ) );
+			len = strlen( whole );
+			for ( cut = len; cut > 0; cut-- ) {
+				if ( whole[cut] != ' ' && whole[cut] != '\0' ) continue;
+				if ( WS_TextWidth( &m->style, whole, cut ) <= room ) break;
+			}
+			if ( cut <= 0 ) {
+				for ( cut = len; cut > 1 && WS_TextWidth( &m->style, whole, cut ) > room; cut-- );
+			}
+			Q_strncpyz( m->text, whole, cut + 1 < (int)sizeof( m->text ) ? cut + 1 : (int)sizeof( m->text ) );
+			m->box.w = MH_Width( m );
+			while ( whole[cut] == ' ' ) cut++;
+			Q_strncpyz( more->text, whole + cut, sizeof( more->text ) );
+			MH_Fit( more, room );
+			more->box.w = MH_Width( more );
+		}
+		w = 10.0f + n->box.w + 6.0f + ( m->box.w > more->box.w ? m->box.w : more->box.w ) + 10.0f;
+		h = 4.0f + n->box.h + ( more->text[0] ? 2.0f + more->box.h : 0.0f ) + 4.0f;
+		l->chatBox[i].x = x;
+		l->chatBox[i].y = y;
+		l->chatBox[i].w = w;
+		l->chatBox[i].h = h;
+		MH_Place( n, x + 10.0f, y + 4.0f );
+		MH_Place( m, x + 10.0f + n->box.w + 6.0f, y + 4.0f + MH_Base( n ) - MH_Base( m ) );
+		MH_Place( more, m->box.x, m->box.y + m->box.h + 2.0f );
+		y += h + MH_COLUMN_GAP;
+	}
+}
+
 /* drag: the tree under the standings (gen.py tree): the label, 12px, rows
  * 8px apart of two 20px lamps 10px apart and a label 10px on */
 static void MH_Tree( mhRaceLayout_t *l, float top ) {
@@ -1031,6 +1087,7 @@ void MH_RaceLayout( mhRaceLayout_t *l ) {
 	if ( l->standings ) MH_Order( l );
 	if ( l->tree ) MH_Tree( l, l->standings ? l->order.y + l->order.h + MH_COLUMN_GAP : MH_TOP );
 	if ( l->killCount ) MH_KillFeed( l, l->standings ? l->order.y + l->order.h + 8.0f : MH_TOP );
+	if ( l->chatCount ) MH_Chat( l, l->card.h > 0.0f ? l->card.y + l->card.h + MH_COLUMN_GAP : MH_TOP );
 	MH_TopCentre( l );
 
 	bottom = MH_Vehicle( l, MH_DESIGN_HEIGHT - MH_BOTTOM ) - MH_COLUMN_GAP;
