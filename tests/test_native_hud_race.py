@@ -79,7 +79,8 @@ def command(model, width=1600):
               m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', ''), m.get('headerRow', 0),
               ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', ''), m.get('scorebug', ''),
               m.get('labelRow', ''), m.get('tree', ''), m.get('tach', ''),
-              ';'.join(f'{n}~{t}' for n, t in m.get('chat', []))]
+              ';'.join(f'{n}~{t}' for n, t in m.get('chat', [])),
+              '~'.join(str(v) for v in m['chatInput']) if m.get('chatInput') else '']
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -439,6 +440,31 @@ def test_native_chat_wraps_once_inside_its_width():
     assert wrapped[1] == short[1] + short[3] + 10
     message, more = mine['chatMessage1'], mine['chatMore1']
     assert more[0] == message[0] and more[1] > message[1] and more[0] + more[2] <= wrapped[0] + wrapped[2]
+
+
+# the line being typed: under the chat at the full chat width, the caret where the cursor is, a long
+# text scrolled so the caret stays in the box (the end while typing at it, the start with the cursor there)
+def test_native_chat_input_under_the_chat():
+    text = 'see you at the ramp'
+    long = 'see you at the ramp and then we go around the canyon twice and take the rockets from the bridge before they do'
+    base = dict(RACE_MODEL, chat=[('Sam', 'gg')], mirror=0, toast=0, jukebox=0)
+    short, end, start, alone = layouts(command(dict(base, chatInput=('SAY', 5, text))),
+                                       command(dict(base, chatInput=('SAY', len(long), long))),
+                                       command(dict(base, chatInput=('SAY', 0, long))),
+                                       command(dict(base, chat=[], chatInput=('TEAM', 0, ''))))
+    box, chat = short['chatInput'], short['chat0']
+    assert box[0] == chat[0] and box[1] == chat[1] + chat[3] + 10 and box[2] == 460 and box[3] == 29
+    assert short['chatInputBar'] == [box[0], box[1], 3, box[3]]
+    label, typed, caret = short['chatInputLabel'], short['chatInputText'], short['chatInputCaret']
+    assert short['chatInputShown'] == text and label[0] == box[0] + 13 and typed[0] == label[0] + label[2] + 10
+    assert typed[0] < caret[0] < typed[0] + typed[2] and caret[1] == typed[1] and caret[3] == typed[3]
+    for m in (end, start):
+        right = m['chatInput'][0] + m['chatInput'][2] - 10 + 0.5
+        assert m['chatInputText'][0] + m['chatInputText'][2] <= right and m['chatInputCaret'][0] <= right
+    assert long.endswith(end['chatInputShown']) and end['chatInputShown'] != long
+    assert abs(end['chatInputCaret'][0] - (end['chatInputText'][0] + end['chatInputText'][2])) < 0.01
+    assert long.startswith(start['chatInputShown']) and start['chatInputCaret'][0] == start['chatInputText'][0]
+    assert alone['chatInput'][1] == short['chat0'][1] and alone['chatInputShown'] == ''
 
 
 # the team deathmatch board: your team and frags, the team frag order with the teams over it
