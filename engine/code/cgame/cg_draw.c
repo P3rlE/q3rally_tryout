@@ -775,6 +775,50 @@ void CG_QueueHeatToast( const char *title, const char *sub ) {
 	if ( toast ) Com_sprintf( toast->message, sizeof( toast->message ), "%s\n%s", title, sub );
 }
 
+/* "Rear hit on Josh": the zone of his car, the damage dealt. Hits on the
+ * same car while its card is still up add up on that card. */
+void CG_QueueDerbyHitToast( int client, int zone, int damage, qboolean bonus ) {
+	cgHudToast_t *toast;
+	int shown;
+
+	if ( client < 0 || client >= MAX_CLIENTS || damage <= 0 ) {
+		return;
+	}
+	if ( cg.hudToastQueueCount > 0 ) {
+		toast = &cg.hudToastQueue[cg.hudToastQueueCount - 1];
+		if ( toast->type == CG_HUD_TOAST_DERBY_HIT && toast->hitClient == client &&
+		     cg.time < toast->startTime + toast->duration - HUD_TOAST_FADE_TIME ) {
+			toast->hitZone = zone;
+			toast->hitDamage += damage;
+			if ( bonus ) toast->hitBonus = qtrue;
+			/* the card showing: stays up a while from this hit on */
+			shown = cg.time - toast->startTime;
+			if ( shown > 0 ) toast->duration = shown + HUD_TOAST_DISPLAY_TIME + 300;
+			return;
+		}
+	}
+	toast = CG_AddHudToastEntry( CG_HUD_TOAST_DERBY_HIT, HUD_TOAST_DISPLAY_TIME + 300 );
+	if ( !toast ) {
+		return;
+	}
+	toast->hitClient = client;
+	toast->hitZone = zone;
+	toast->hitDamage = damage;
+	toast->hitBonus = bonus;
+}
+
+static const char *CG_DerbyHitZoneWord( int zone ) {
+	switch ( zone ) {
+	case CAR_HIT_ZONE_FRONT: return "Front hit";
+	case CAR_HIT_ZONE_REAR: return "Rear hit";
+	case CAR_HIT_ZONE_LEFT: return "Left side hit";
+	case CAR_HIT_ZONE_RIGHT: return "Right side hit";
+	case CAR_HIT_ZONE_ROOF: return "Roof hit";
+	case CAR_HIT_ZONE_UNDERBODY: return "Underbody hit";
+	default: return "Hit";
+	}
+}
+
 static const char *CG_GetRewardToastLabel( qhandle_t icon ) {
 	if ( icon == cgs.media.medalImpressive ) return "IMPRESSIVE";
 	if ( icon == cgs.media.medalImpressiveTelefrag ) return "TELEFRAG";
@@ -959,6 +1003,16 @@ static void CG_DrawHudToast( void ) {
 		}
 		hasIcon = qfalse;
 		break;
+	case CG_HUD_TOAST_DERBY_HIT:
+		if ( cgs.clientinfo[toast->hitClient].infoValid )
+			Com_sprintf( message, sizeof( message ), "%s on %s^7  %d DAMAGE%s", CG_DerbyHitZoneWord( toast->hitZone ),
+			             cgs.clientinfo[toast->hitClient].name, toast->hitDamage, toast->hitBonus ? " + BONUS" : "" );
+		else
+			Com_sprintf( message, sizeof( message ), "%s  %d DAMAGE%s", CG_DerbyHitZoneWord( toast->hitZone ),
+			             toast->hitDamage, toast->hitBonus ? " + BONUS" : "" );
+		Q_strupr( message );
+		hasIcon = qfalse;
+		break;
 	default:
 		CG_ShiftHudToastQueue();
 		return;
@@ -1141,6 +1195,15 @@ qboolean CG_HudToastView( cgHudToastView_t *view ) {
 			}
 		}
 		view->tone = toast->type == CG_HUD_TOAST_HEAT ? 3 : 2;	/* 3: the message icon in blue */
+		break;
+	case CG_HUD_TOAST_DERBY_HIT:
+		Q_strncpyz( view->tag, "Hit", sizeof( view->tag ) );
+		if ( cgs.clientinfo[toast->hitClient].infoValid )
+			Com_sprintf( view->title, sizeof( view->title ), "%s on %s", CG_DerbyHitZoneWord( toast->hitZone ),
+			             cgs.clientinfo[toast->hitClient].name );
+		else
+			Q_strncpyz( view->title, CG_DerbyHitZoneWord( toast->hitZone ), sizeof( view->title ) );
+		Com_sprintf( view->sub, sizeof( view->sub ), "%d DAMAGE%s", toast->hitDamage, toast->hitBonus ? " \xb7 RAM BONUS" : "" );
 		break;
 	default:
 		CG_ShiftHudToastQueue();
@@ -1416,20 +1479,22 @@ static void CG_DrawRallyTelemetryHud( void ) {
 				zoneColor[2] = 0.08f;
 				zoneColor[3] = derbyHitAlpha;
 				Vector4Copy( zoneColor, hitLabelColor );
+				/* this car lies on its side, the front at the left: the right
+				 * side at the top, the left side at the bottom */
 				switch ( cg.derbyHitFxDir ) {
-				case 0:
+				case DERBY_HIT_SEG_RIGHT:
 					CG_FillRect( centerX + 11, centerY, 40, 7, zoneColor );
 					derbyHitLabel = "RIGHT HIT";
 					break;
-				case 1:
+				case DERBY_HIT_SEG_FRONT:
 					CG_FillRect( centerX, centerY + 7, 8, 19, zoneColor );
 					derbyHitLabel = "FRONT HIT";
 					break;
-				case 2:
+				case DERBY_HIT_SEG_REAR:
 					CG_FillRect( centerX + 54, centerY + 7, 8, 19, zoneColor );
 					derbyHitLabel = "REAR HIT";
 					break;
-				case 3:
+				case DERBY_HIT_SEG_LEFT:
 					CG_FillRect( centerX + 11, centerY + 26, 40, 7, zoneColor );
 					derbyHitLabel = "LEFT HIT";
 					break;

@@ -66,6 +66,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	ATTACKER_HEAD_TIME	10000
 #define ACHIEVEMENT_LOCKED_TIME         650
 #define HUD_TOAST_QUEUE_SIZE            12
+/* the side of our car a Derby hit came from, as the HUD draws the car from
+ * above with the front up (cg.derbyHitFxDir) */
+#define DERBY_HIT_SEG_FRONT		0
+#define DERBY_HIT_SEG_LEFT		1
+#define DERBY_HIT_SEG_RIGHT		2
+#define DERBY_HIT_SEG_REAR		3
+
 #define HUD_TOAST_DISPLAY_TIME          1100
 #define HUD_TOAST_FADE_TIME             300
 #define HUD_TOAST_ANNOUNCEMENT_TIME     2200
@@ -90,7 +97,8 @@ typedef enum {
     CG_HUD_TOAST_ACHIEVEMENT,
     CG_HUD_TOAST_RANK,
     CG_HUD_TOAST_MESSAGE,
-    CG_HUD_TOAST_HEAT			/* drag: "Heat 2 of 3", the score under it */
+    CG_HUD_TOAST_HEAT,			/* drag: "Heat 2 of 3", the score under it */
+    CG_HUD_TOAST_DERBY_HIT		/* derby: "Rear hit on Josh", the damage under it */
 } cgHudToastType_t;
 
 typedef struct {
@@ -109,6 +117,8 @@ typedef struct {
     qboolean rankUp;
     char name[PROFILE_MAX_NAME];
     char message[128];
+    int hitClient, hitZone, hitDamage;	/* CG_HUD_TOAST_DERBY_HIT */
+    qboolean hitBonus;
 } cgHudToast_t;
 
 
@@ -928,7 +938,7 @@ typedef struct {
 	int			derbyHitFxTime;
 	int			derbyHitFxLevel;
 	int			derbyHitFxDamage;
-	int			derbyHitFxDir;		/* 0=top/right 1=left/front 2=right/rear 3=bottom/left */
+	int			derbyHitFxDir;		/* DERBY_HIT_SEG_*: the side hit; -1 unknown, -2 roof or underbody */
 	int			derbyLastDamageTaken;	/* previous STAT_DAMAGE_TAKEN for delta detection */
 
 	// status bar head
@@ -2385,6 +2395,7 @@ void CG_QueueAchievementToast( bgAchievementCategory_t category, int tierIndex )
 void CG_QueueRankToast( int rankIndex, const char *name, qboolean rankUp );
 void CG_QueueMessageToast( const char *message );
 void CG_QueueHeatToast( const char *title, const char *sub );
+void CG_QueueDerbyHitToast( int client, int zone, int damage, qboolean bonus );
 /* the HUD's notification and jukebox, for the v0.9 HUD (cg_hud_modern.c) */
 typedef struct {
 	char		tag[32];		/* "Pickup", "Reward", ... */

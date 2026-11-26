@@ -1852,6 +1852,9 @@ trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
 	client->derbyLastRamTime = 0;
 	client->derbyNoRamWarningSecond = -1;
 	client->ps.stats[STAT_DERBY_NORAM] = 0;
+	client->derbyHitVictim = -1;
+	client->derbyHitDamage = 0;
+	client->derbyHitBonus = 0;
 
 //	PM_InitializeVehicle(&client->car, client->ps.origin, spawn_angles /*client->ps.viewangles*/, vec3_origin, car_frontweight_dist.value );
 	if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) ) {

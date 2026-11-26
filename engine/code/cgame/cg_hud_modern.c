@@ -1176,7 +1176,13 @@ static void MH_Drag( mhRaceLayout_t *l, const playerState_t *ps ) {
  * car out, and the car from above. The server has one integrity for the
  * car; the zones show where the hits landed (cg_playerstate.c works out
  * the zone of each hit), added up here since the car was whole. */
+/* in DERBY_HIT_SEG_* order, as cg.derbyHitFxDir: front, left, right, rear */
 static const char *mhZoneName[4] = { "FRONT", "LEFT", "RIGHT", "REAR" };
+
+/* the zone of our car a hit lit, -1: no side (all four) */
+static int MH_DerbyZoneOfDir( int dir ) {
+	return dir >= DERBY_HIT_SEG_FRONT && dir <= DERBY_HIT_SEG_REAR ? dir : -1;
+}
 
 static int MH_DerbyZoneState( int zone, int maxHealth ) {
 	if ( mh.derbyZone[zone] * 100 >= maxHealth * 30 ) return 2;	/* critical */
@@ -1204,7 +1210,7 @@ static void MH_Derby( mhRaceLayout_t *l, const playerState_t *ps, const centity_
 	if ( ps->stats[STAT_HEALTH] >= maxHealth || ps->pm_type == PM_SPECTATOR ) memset( mh.derbyZone, 0, sizeof( mh.derbyZone ) );
 	if ( cg.derbyHitFxTime && cg.derbyHitFxTime != mh.derbyHitSeen ) {
 		mh.derbyHitSeen = cg.derbyHitFxTime;
-		if ( cg.derbyHitFxDir >= 0 && cg.derbyHitFxDir < 4 ) mh.derbyZone[cg.derbyHitFxDir] += cg.derbyHitFxDamage;
+		if ( MH_DerbyZoneOfDir( cg.derbyHitFxDir ) >= 0 ) mh.derbyZone[MH_DerbyZoneOfDir( cg.derbyHitFxDir )] += cg.derbyHitFxDamage;
 		else for ( zone = 0; zone < 4; zone++ ) mh.derbyZone[zone] += cg.derbyHitFxDamage / 4;
 	}
 	for ( zone = 0; zone < 4; zone++ ) {
@@ -1233,7 +1239,7 @@ static void MH_Outline( const wsRect_t *r, const float *color, float width ) {
 
 /* the car from above, in the design's 110x170 view box */
 static void MH_DrawDerbyCar( const mhRaceLayout_t *l ) {
-	static const float zones[4][4] = { { 31, 14, 48, 16 }, { 13, 40, 10, 90 }, { 87, 40, 10, 90 }, { 31, 140, 48, 16 } };
+	static const float zones[4][4] = { { 31, 14, 48, 16 }, { 13, 40, 10, 90 }, { 87, 40, 10, 90 }, { 31, 140, 48, 16 } };	/* DERBY_HIT_SEG_* */
 	static const vec4_t worn = { 122 / 255.0f, 122 / 255.0f, 122 / 255.0f, 1.0f };	/* #7a7a7a */
 	static const vec4_t line = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };		/* #5a5a5a */
 	const wsRect_t *c = &l->derbyCar;
@@ -1249,7 +1255,8 @@ static void MH_DrawDerbyCar( const mhRaceLayout_t *l ) {
 		float alpha = 1.0f;
 		r.x = c->x + zones[zone][0]; r.y = c->y + zones[zone][1]; r.w = zones[zone][2]; r.h = zones[zone][3];
 		/* the zone just hit blinks for two seconds */
-		if ( cg.derbyHitFxTime && hitAge >= 0 && hitAge < 2200 && ( cg.derbyHitFxDir == zone || cg.derbyHitFxDir < 0 ) )
+		if ( cg.derbyHitFxTime && hitAge >= 0 && hitAge < 2200 &&
+		     ( MH_DerbyZoneOfDir( cg.derbyHitFxDir ) == zone || MH_DerbyZoneOfDir( cg.derbyHitFxDir ) < 0 ) )
 			alpha = ( ( cg.time / 150 ) & 1 ) ? 0.35f : 1.0f;
 		MH_FillRect( &r, legend[MH_DerbyZoneState( zone, mh.derbyMaxHealth )], alpha );
 	}
