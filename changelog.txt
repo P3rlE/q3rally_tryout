@@ -805,6 +805,13 @@ Changed:
   The side of a hit now counts as the HUD draws the car, front up
   (DERBY_HIT_SEG_*); the old HUD, which draws the car on its side, maps it
   for itself.
+- Chat in the v0.9 HUD: messages show at the top left under the mode's card
+  as in the HUD design, a line each (up to four, a long one breaks once),
+  the name in the accent, in your team's colour for team chat and in violet
+  for a private message (tell); gone after 8 s, the last second fading. They
+  still go into the console, but not into the notify lines at the top left
+  while the HUD shows them (TAB, end screen, cg_drawStatus 0 and cg_hudStyle
+  0 keep the old lines). The input line ("say:") is still the engine's.
 
 - q3r_david5 (Underground Battle Arena) rebuilt with the same concept: an
   octagonal car arena underground, the crowd all round, the rocket launcher

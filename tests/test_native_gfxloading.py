@@ -719,6 +719,10 @@ int main(void) {
                 l.tach = 1; r = f[51];
                 for (i = 0; i < 8; i++) { *t[i] = r; r = strchr(r, '~'); if (!r) break; *r++ = 0; }
             }
+            for (item = n > 52 ? f[52] : ""; *item && l.chatCount < MH_CHAT_MAX; item = more) {   /* chat: name~message;.. */
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.chatName[l.chatCount] = item; r = strchr(item, '~'); *r++ = 0; l.chatMessage[l.chatCount++] = r;
+            }
             if (n > 48 && *f[48]) {   /* scorebug: RED~2~3:41~2ND HALF~1~BLUE */
                 l.scorebug = 1; l.bugLeftLabel = f[48]; r = strchr(f[48], '~'); *r++ = 0;
                 l.bugLeft = r; r = strchr(r, '~'); *r++ = 0; l.bugClock = r; r = strchr(r, '~'); *r++ = 0;
@@ -765,6 +769,10 @@ int main(void) {
             for (i = 0; i < l.rowCount; i++) { char k[16]; sprintf(k, "row%d", i); rect(k, l.row[i]);
                 sprintf(k, "rowPos%d", i); T(k, l.rowPosT[i]); sprintf(k, "rowName%d", i); T(k, l.rowNameT[i]);
                 sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); sprintf(k, "rowSwatch%d", i); rect(k, l.rowSwatchBox[i]); sprintf(k, "rowBar%d", i); rect(k, l.rowBar[i]); }
+            for (i = 0; i < l.chatCount; i++) { char k[16]; sprintf(k, "chat%d", i); rect(k, l.chatBox[i]);
+                sprintf(k, "chatName%d", i); T(k, l.chatNameT[i]); sprintf(k, "chatMessage%d", i); T(k, l.chatMessageT[i]);
+                sprintf(k, "chatMore%d", i); T(k, l.chatMoreT[i]);
+                printf("\"chatText%d\":[\"%s\",\"%s\"],", i, l.chatMessageT[i].text, l.chatMoreT[i].text); }
             for (i = 0; i < l.killCount; i++) { char k[16]; sprintf(k, "kill%d", i); rect(k, l.killBox[i]);
                 sprintf(k, "killA%d", i); T(k, l.killAT[i]); sprintf(k, "killWeapon%d", i); T(k, l.killWeaponT[i]);
                 sprintf(k, "killB%d", i); T(k, l.killBT[i]); }

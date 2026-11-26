@@ -70,6 +70,7 @@ static struct {
 	const float		*lapColor;					/* the right of the place line, NULL: label/white */
 	int				derbyZone[4];				/* damage taken per zone: front, left, right, rear */
 	int				derbyHitSeen, derbyMaxHealth;
+	int				chatLine[MH_CHAT_MAX];	/* the layout's chat lines: which of mhChat */
 	const float		*derbyStatusColor;
 	char			elimValue[24], elimCaption[48];
 	float			elimFrac;
@@ -1643,6 +1644,75 @@ void CG_ModernHUD_Obituary( int target, int attacker, int mod ) {
 	}
 }
 
+/* ---------------------------------------------------------------------------
+   the chat (gen.py chat): under the card, a line a message, the name in the
+   accent (team chat: the team's colour, a private message: violet), gone after
+   MH_CHAT_TIME. While the HUD shows them they stay out of the console's
+   notify lines at the top left (they still go into the console).
+   ------------------------------------------------------------------------- */
+
+#define MH_CHAT_TIME	8000
+#define MH_CHAT_FADE	1000
+
+static struct {
+	char	name[40];
+	char	message[160];
+	int		time;
+	int		mode;		/* 0 everyone, 1 team, 2 to you */
+} mhChat[MH_CHAT_MAX];
+
+/* the v0.9 HUD is up and will show them (CG_ModernHUD_DrawChat) */
+static qboolean MH_ChatShown( void ) {
+	return cg.snap && CG_ModernHUD_Active() && cg_drawStatus.integer && !cg.showScores &&
+	       cg.snap->ps.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
+}
+
+/* "Sam^7\x19: ^2nice shot", "\x19(Sam^7\x19) (Base)\x19: ^5go",
+ * "\x19[Sam^7\x19]\x19: ^3hi" (g_cmds.c G_Say); the server's own "server: hi" */
+static void MH_ChatSplit( const char *raw, char *name, int nameSize, char *message, int messageSize, int *mode ) {
+	char who[128];
+	const char *sep = NULL, *p, *text;
+	char *open, *close;
+	for ( p = raw; ( p = strstr( p, "\x19: " ) ) != NULL; p++ ) sep = p;
+	if ( sep ) text = sep + 3;
+	else if ( ( sep = strstr( raw, ": " ) ) != NULL ) text = sep + 2;
+	else { sep = raw; text = raw; }
+	Q_strncpyz( who, raw, sep - raw + 1 < (int)sizeof( who ) ? sep - raw + 1 : (int)sizeof( who ) );
+	MH_Plain( who, who, sizeof( who ) );
+	/* team: "(Sam) (Base)", private: "[Sam]" */
+	if ( ( who[0] == '(' && ( close = strchr( who, ')' ) ) != NULL ) || ( who[0] == '[' && ( close = strchr( who, ']' ) ) != NULL ) ) {
+		if ( who[0] == '[' ) *mode = 2;
+		*close = '\0';
+		open = who + 1;
+		Q_strncpyz( name, open, nameSize );
+	} else Q_strncpyz( name, who, nameSize );
+	MH_Plain( text, message, messageSize );
+}
+
+qboolean CG_ModernHUD_Chat( const char *raw, qboolean team ) {
+	int i, mode = team ? 1 : 0;
+	if ( !raw || !raw[0] ) return qfalse;
+	for ( i = 0; i < MH_CHAT_MAX - 1; i++ ) mhChat[i] = mhChat[i + 1];
+	i = MH_CHAT_MAX - 1;
+	MH_ChatSplit( raw, mhChat[i].name, sizeof( mhChat[i].name ), mhChat[i].message, sizeof( mhChat[i].message ), &mode );
+	mhChat[i].mode = mode;
+	mhChat[i].time = cg.time;
+	return MH_ChatShown();
+}
+
+static void MH_Chats( mhRaceLayout_t *l ) {
+	int i;
+	l->chatCount = 0;
+	if ( !MH_ChatShown() ) return;
+	/* where the card is, also when it is not drawn (watching, dead): the chat does not jump */
+	for ( i = 0; i < MH_CHAT_MAX; i++ ) {
+		if ( !mhChat[i].time || mhChat[i].time > cg.time || cg.time - mhChat[i].time > MH_CHAT_TIME ) continue;
+		mh.chatLine[l->chatCount] = i;
+		l->chatName[l->chatCount] = mhChat[i].name;
+		l->chatMessage[l->chatCount++] = mhChat[i].message;
+	}
+}
+
 static void MH_Kills( mhRaceLayout_t *l ) {
 	int i;
 	l->killCount = 0;
@@ -2005,6 +2075,7 @@ static void MH_Prepare( void ) {
 	/* three slots need the wider card (the boards: 330 with three, 300 with two) */
 	if ( l->slotCount >= 3 ) l->vehicleWidth = 330.0f;
 	MH_Kills( l );
+	MH_Chats( l );
 
 	/* bottom right */
 	l->minimap = cg_drawMMap.integer && MH_Views() && !l->tach;	/* drag: the tachometer in its place */
@@ -2151,6 +2222,31 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 }
 
 static const vec4_t mhKillBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.62f };
+
+static void MH_DrawChat( const mhRaceLayout_t *l ) {
+	static const vec4_t chatBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.55f };
+	static const vec4_t chatText = { 230 / 255.0f, 230 / 255.0f, 230 / 255.0f, 1.0f };	/* #e6e6e6 */
+	int i;
+	for ( i = 0; i < l->chatCount; i++ ) {
+		int k = mh.chatLine[i], left = MH_CHAT_TIME - ( cg.time - mhChat[k].time );
+		float a = left < MH_CHAT_FADE ? left / (float)MH_CHAT_FADE : 1.0f;
+		static const vec4_t chatPrivate = { 214 / 255.0f, 128 / 255.0f, 1.0f, 1.0f };	/* to you: violet, apart from the teams */
+		const float *nameColor = mhChat[k].mode == 2 ? chatPrivate :
+		                         mhChat[k].mode == 1 && cg.snap ? MH_TeamColor( cg.snap->ps.persistant[PERS_TEAM] ) : mhAccent;
+		if ( mhChat[k].mode == 1 && nameColor == mhMuted ) nameColor = mhAccent;
+		MH_FillRect( &l->chatBox[i], chatBack, a );
+		MH_Str( &l->chatNameT[i], nameColor, a );
+		MH_Str( &l->chatMessageT[i], chatText, a );
+		if ( l->chatMoreT[i].text[0] ) MH_Str( &l->chatMoreT[i], chatText, a );
+	}
+}
+
+/* alive, dead or watching: cg_draw.c CG_Draw2D, whenever the v0.9 HUD is on */
+void CG_ModernHUD_DrawChat( void ) {
+	if ( !MH_ChatShown() ) return;
+	MH_Prepare();
+	MH_DrawChat( &mh.l );
+}
 
 static void MH_DrawKillFeed( const mhRaceLayout_t *l ) {
 	int i;

@@ -32,6 +32,8 @@ so a test can hold it against what Chrome reports for the design
 #define MH_SLOTS_MAX		3		/* front, rear, item */
 #define MH_TEAMS_MAX		4
 #define MH_KILLS_MAX		3		/* the kill feed under the standings */
+#define MH_CHAT_MAX			4		/* the chat under the card */
+#define MH_CHAT_W			460.0f	/* a chat line at most this wide; longer messages wrap once */
 #define MH_FLAGS_MAX		4		/* CTF: a line per flag */
 #define MH_ZONES_MAX		5		/* Domination: a tile per control point */
 #define MH_TREE_ROWS		6		/* Drag: PRE, STAGE, three ambers, GO */
@@ -81,6 +83,8 @@ typedef struct {
 	const char	*teamName[MH_TEAMS_MAX], *teamValue[MH_TEAMS_MAX];
 	qboolean	rowSwatch;			/* a square in the driver's team colour before the name */
 	qboolean	rowBars;			/* name, a bar, a value 40px wide at the right (no place) */
+	int			chatCount;			/* the chat under the card, oldest first: "Sam" "nice shot" */
+	const char	*chatName[MH_CHAT_MAX], *chatMessage[MH_CHAT_MAX];
 	int			killCount;			/* the kill feed, oldest first: "Player" "ROCKET" "Paul" */
 	const char	*killA[MH_KILLS_MAX], *killWeapon[MH_KILLS_MAX], *killB[MH_KILLS_MAX];	/* killB "": none */
 	int			rowCount;
@@ -144,6 +148,8 @@ typedef struct {
 	mhText_t	rowPosT[MH_ROWS_MAX], rowNameT[MH_ROWS_MAX], rowValueT[MH_ROWS_MAX];
 	wsRect_t	teamCell[MH_TEAMS_MAX], rowSwatchBox[MH_ROWS_MAX], rowBar[MH_ROWS_MAX];
 	mhText_t	teamNameT[MH_TEAMS_MAX], teamValueT[MH_TEAMS_MAX];
+	wsRect_t	chatBox[MH_CHAT_MAX];
+	mhText_t	chatNameT[MH_CHAT_MAX], chatMessageT[MH_CHAT_MAX], chatMoreT[MH_CHAT_MAX];	/* chatMoreT: the wrapped rest, "" none */
 	wsRect_t	killBox[MH_KILLS_MAX];
 	mhText_t	killAT[MH_KILLS_MAX], killWeaponT[MH_KILLS_MAX], killBT[MH_KILLS_MAX];
 
