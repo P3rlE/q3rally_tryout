@@ -1830,10 +1830,6 @@ qboolean CG_GetRaceSplitGap( int aheadClient, int behindClient, int *gapMs ) {
 	                   cg.snap ? cg.snap->serverTime : cg.time, gapMs ) ? qtrue : qfalse;
 }
 
-qboolean CG_RaceOrderIsActive( void ) {
-	return s_raceOrderActive;
-}
-
 /* a new best lap of ours: keep its splits against the ghost for the end
  * screen (those of the lap just done, before the next one starts) */
 static void CG_GhostKeepBestSplits( const centity_t *cent, int lapMs ) {
@@ -2051,51 +2047,6 @@ int CG_DragStartLightState( int *reds, qboolean *green, int *greenTime ) {
 		}
 	}
 	return heat;
-}
-
-void CG_DrawRaceCountDown( void ){
-	float	f, scale;
-	int		x, y, w, h;
-	vec4_t	color;
-
-	if ( cgs.gametype == GT_DRAG && cg.snap ) {
-		centity_t *driver = &cg_entities[cg.snap->ps.clientNum];
-		int light, amberCount, greenTime, heat;
-		qboolean green;
-		qboolean fault = driver->dragPhase == DRAG_FALSE_START;
-		const char *label;
-		vec4_t dark = { 0.08f, 0.08f, 0.08f, 0.95f };
-		vec4_t amber = { 1.0f, 0.65f, 0.05f, 1.0f };
-		vec4_t go = { 0.2f, 1.0f, 0.3f, 1.0f };
-		vec4_t red = { 1.0f, 0.15f, 0.1f, 1.0f };
-		heat = CG_DragStartLightState( &amberCount, &green, &greenTime );
-		if ( !heat || ( greenTime && cg.time > greenTime + 1500 ) ) return;
-		label = fault ? "FALSE START" : ( green ? "SHIFT INTO 1ST" : "HOLD REVS IN N" );
-		CG_FillRect( 250, 174, 140, 40, dark );
-		for ( light = 0; light < 4; light++ ) {
-			CG_FillRect( 258 + light * 32, 182, 24, 24,
-				fault ? red : ( green ? (light == 3 ? go : dark) : (light < amberCount ? amber : dark) ) );
-		}
-		CG_DrawBigString( 320 - strlen(label) * BIGCHAR_WIDTH / 2, 224, label, 1.0f );
-		return;
-	}
-
-	if (cg.countDownEnd + 1000 < cg.time || cg.countDownPrint[0] == 0)
-		return;
-
-	f = cg.countDownEnd < cg.time ? 0.0f : (cg.countDownEnd - cg.time) / 3000.0f;
-
-	color[0] = 1.0f * f;
-	color[1] = 1.0f * (1-f);
-	color[2] = 0;
-	color[3] = 1.0f;
-
-	scale = cg.countDownEnd < cg.time ? 0.8f : ((cg.countDownEnd - cg.time) % 1000) / 1000.0f;
-	w = 3*GIANTCHAR_WIDTH * scale;
-	h = 3*GIANTCHAR_HEIGHT * scale;
-	x = 320 - (strlen(cg.countDownPrint) * w) / 2;
-	y = 240 - h/2;
-	CG_DrawStringExt( x, y, cg.countDownPrint, color, qfalse, qtrue, w, h, 0 );
 }
 
 void CG_RaceCountDown( const char *str, int secondsLeft ){

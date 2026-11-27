@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 //
-// cg_drawtools.c -- helper functions called by cg_draw, cg_scoreboard, cg_info, etc
+// cg_drawtools.c -- helper functions called by cg_draw, cg_info, etc
 #include "cg_local.h"
 
 static screenPlacement_e cg_horizontalPlacement = PLACE_CENTER;
@@ -328,13 +328,6 @@ void CG_DrawSmallString( int x, int y, const char *s, float alpha ) {
 // Q3Rally Code Start
 //	CG_DrawStringExt( x, y, s, color, qfalse, qfalse, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
 	CG_DrawStringExt( x, y, s, color, qfalse, qfalse, SMALLCHAR_WIDTH+2, SMALLCHAR_HEIGHT, 0 );
-// Q3Rally Code END
-}
-
-void CG_DrawSmallStringColor( int x, int y, const char *s, vec4_t color ) {
-// Q3Rally Code Start
-//	CG_DrawStringExt( x, y, s, color, qtrue, qfalse, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
-	CG_DrawStringExt( x, y, s, color, qtrue, qfalse, SMALLCHAR_WIDTH+2, SMALLCHAR_HEIGHT, 0 );
 // Q3Rally Code END
 }
 

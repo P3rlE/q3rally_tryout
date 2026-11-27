@@ -16,6 +16,9 @@ License:
 
 Changed:
 
+- Last Car Standing: in the "Still in" list the drivers out are in the
+  order they went out, the latest first, each with the match time
+  ("OUT 1:12").
 - New in-game HUD in the look of the menus (docs/hud-v09.md), one game mode
   at a time, starting with the race: panels in the corners instead of the
   strip along the bottom, the centre of the screen kept free. The mode's
@@ -23,7 +26,7 @@ Changed:
   rear view and the notifications at the top, the car (integrity, trunk
   items) and the jukebox at the bottom left, minimap, slipstream and the
   cockpit (speed, gear, revs, NOS, fuel) at the bottom right. It scales
-  with the screen height; cg_hudStyle 0 brings the old HUD back.
+  with the screen height.
 - The new HUD in the sprint: the card shows the way to the finish
   ("1,252 m"), a progress bar with the checkpoints passed and the total
   time instead of the lap.
@@ -303,6 +306,15 @@ Changed:
 
 Removed:
 
+- The old HUD: the v0.9 HUD is the only one, in every mode (no cg_hudStyle
+  any more). Gone with it: the strip along the bottom, the old order and
+  score panels, the old scoreboard and end screens (and the drag bracket
+  drawn the old way), the old Derby panel and its pictures, the KOTH hill
+  and respawn panels, the LCS elimination timeline (it only ever worked in
+  Elimination). The HUD options lose the toggles that did nothing any more:
+  Distance to Finish, Scores Panel, Derby Vehicle State, KOTH Hill Status,
+  KOTH Respawn Wave and Elim. Timeline. Derby: turning the vehicle panel
+  off no longer swallows the pickup and hit notifications.
 - CI: the Build workflow no longer builds the web version (Emscripten) and
   the Linux ARM64 dedicated server; neither is shipped.
 - The embedded browser frontend (WebUI over CEF, Windows only) is gone:
@@ -810,8 +822,8 @@ Changed:
   the name in the accent, in your team's colour for team chat and in violet
   for a private message (tell); gone after 8 s, the last second fading. They
   still go into the console, but not into the notify lines at the top left
-  while the HUD shows them (TAB, end screen, cg_drawStatus 0 and cg_hudStyle
-  0 keep the old lines).
+  while the HUD shows them (TAB, end screen and cg_drawStatus 0 keep the
+  old lines).
 - Chat input in the v0.9 HUD: the line you type is drawn under the chat in
   the same style instead of the engine's "say:" line: the mode as a label
   (SAY, TEAM, TO <name>) in its colour, a blinking caret, a long text

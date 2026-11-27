@@ -156,18 +156,6 @@ void CG_DrawSmallDigitalStringColor( int x, int y, const char *s, vec4_t color )
 	CG_DrawDigitalStringExt( x, y, s, color, qtrue, qfalse, SMALLCHAR_WIDTH+2, SMALLCHAR_HEIGHT, 0 );
 }
 
-void CG_DrawTinyDigitalString( int x, int y, const char *s, float alpha ) {
-	float	color[4];
-
-	color[0] = color[1] = color[2] = 1.0;
-	color[3] = alpha;
-	CG_DrawDigitalStringExt( x, y, s, color, qfalse, qfalse, TINYCHAR_WIDTH+2, TINYCHAR_HEIGHT, 0 );
-}
-
-void CG_DrawTinyDigitalStringColor( int x, int y, const char *s, vec4_t color ) {
-	CG_DrawDigitalStringExt( x, y, s, color, qtrue, qfalse, TINYCHAR_WIDTH+2, TINYCHAR_HEIGHT, 0 );
-}
-
 void CG_DrawTinyString( int x, int y, const char *s, float alpha ) {
 	float	color[4];
 
@@ -467,9 +455,4 @@ void CG_DrawIngameString( int x, int y, const char *text, int style,
 		cursorX += (int)( advance * scale + 0.5f );
 	}
 	trap_R_SetColor( NULL );
-}
-
-void CG_DrawIngameSmallString( int x, int y, const char *text,
-	                            const float *color ) {
-	CG_DrawIngameString( x, y, text, UI_SMALLFONT, 0.75f, color );
 }

@@ -917,23 +917,6 @@ void CG_GhostRace_ReportOpponent( void ) {
 	CG_GhostCmd_Set( GHOSTCMD_OPP, va( "ghostopp %d \"%s\" %d", lapMs, name, ladderEntry ) );
 }
 
-/* Result of one driver from the server; the local driver falls back to
- * the own evaluation until the server result arrives. */
-qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won ) {
-	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || cgs.gametype != GT_GHOST ) {
-		return qfalse;
-	}
-	if ( cg.ghostRaceResults[clientNum].valid ) {
-		*won = cg.ghostRaceResults[clientNum].won;
-		return qtrue;
-	}
-	if ( cg.snap && clientNum == cg.snap->ps.clientNum && cg.ghostResultValid ) {
-		*won = cg.ghostResultWon;
-		return qtrue;
-	}
-	return qfalse;
-}
-
 /* Called from CG_StartRace: forget all results, report the ghost again. */
 void CG_GhostRace_ResetRace( void ) {
 	memset( cg.ghostRaceResults, 0, sizeof( cg.ghostRaceResults ) );

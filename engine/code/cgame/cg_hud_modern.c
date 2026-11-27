@@ -12,8 +12,7 @@ or (at your option) any later version.
 
 The in-game HUD of v0.9, in the look of the menus: panels in the corners,
 the centre of the screen kept free (design: tools/ui_webstyle/hud_design).
-It takes over a game mode at a time; the others keep the old HUD.
-cg_hudStyle 0 brings the old one back everywhere.
+It is the only HUD: every mode, the TAB table and the end screens.
 
 The layout (cg_hud_modernlayout.c) works in design pixels, 900 to the
 screen height; this file scales them to the screen and fills in the game.
@@ -66,7 +65,7 @@ static struct {
 	qboolean		rowMe[MH_ROWS_MAX];
 	const float		*rowColor[MH_ROWS_MAX];		/* NULL: #ddd */
 	const float		*rowNameColor[MH_ROWS_MAX];	/* NULL: white */
-	float			rowFrac[MH_ROWS_MAX];
+	float			rowFrac[MH_ROWS_MAX];	/* the bar; < 0: none */
 	qboolean		rowLow[MH_ROWS_MAX];			/* under 35: the bar in the accent */
 	const float		*lapColor;					/* the right of the place line, NULL: label/white */
 	int				derbyZone[4];				/* damage taken per zone: front, left, right, rear */
@@ -236,16 +235,6 @@ static int MH_RaceOrder( int at[MAX_CLIENTS + 1], int *local ) {
 	return last;
 }
 
-qboolean CG_ModernHUD_Active( void ) {
-	return cg_hudStyle.integer && cg.snap &&
-	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
-	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
-	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
-	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
-	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH ||
-	         cgs.gametype == GT_AUTOBALL || cgs.gametype == GT_DRAG );
-}
-
 /* the gaps to the leader for every place (-1: none yet). The order is the
  * server's, by the way still to go; the gaps are taken at the checkpoints.
  * Where they disagree (just overtaken), a place is shown no closer than the
@@ -395,6 +384,27 @@ static int MH_LastCarIntegrity( int client ) {
 		if ( cg.scores[i].client == client ) return cg.scores[i].integrity;
 	}
 	return -1;
+}
+
+/* last car standing: the match time each driver went out at (0: not seen,
+ * e.g. out before we joined), for the "Still in" list. One life per match,
+ * so it holds until the next match starts. */
+static int mhLcsOut[MAX_CLIENTS], mhLcsStart;
+
+static void MH_LcsMatch( int start ) {
+	if ( start && start != mhLcsStart ) {
+		memset( mhLcsOut, 0, sizeof( mhLcsOut ) );
+		mhLcsStart = start;
+	}
+}
+
+static void MH_LcsOut( int client ) {
+	int start = cg_entities[client].startRaceTime;
+	if ( !start ) start = cg_entities[cg.snap->ps.clientNum].startRaceTime;
+	MH_LcsMatch( start );
+	/* not in the warmup, and the first death counts */
+	if ( !start || cg.time <= start || mhLcsOut[client] ) return;
+	mhLcsOut[client] = cg.time - start;
 }
 
 /* how many are still in, not counting `except` (-1: none) */
@@ -1289,6 +1299,20 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 			if ( !pass ) alive++;
 		}
 	}
+	/* last car standing: those out by when, the latest first; those we did
+	 * not see go out after them */
+	if ( cgs.gametype == GT_LCS ) {
+		MH_LcsMatch( cent->startRaceTime );
+		for ( i = alive + 1; i < count; i++ ) {
+			int j = i;
+			client = order[i];
+			while ( j > alive && mhLcsOut[order[j - 1]] < mhLcsOut[client] ) {
+				order[j] = order[j - 1];
+				j--;
+			}
+			order[j] = client;
+		}
+	}
 
 	l->progress = qfalse;
 	l->kvCount = 0;
@@ -1336,10 +1360,14 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 		qboolean out = row >= alive;
 		mh.rowPos[row][0] = '\0';
 		MH_Plain( cgs.clientinfo[order[row]].name, mh.rowName[row], sizeof( mh.rowName[0] ) );
-		if ( out ) Q_strncpyz( mh.rowValue[row], "OUT", sizeof( mh.rowValue[0] ) );
+		if ( out && cgs.gametype == GT_LCS && mhLcsOut[order[row]] )
+			Com_sprintf( mh.rowValue[row], sizeof( mh.rowValue[0] ), "OUT %d:%02d",
+				mhLcsOut[order[row]] / 60000, mhLcsOut[order[row]] / 1000 % 60 );
+		else if ( out ) Q_strncpyz( mh.rowValue[row], "OUT", sizeof( mh.rowValue[0] ) );
 		else if ( integrity < 0 ) Q_strncpyz( mh.rowValue[row], "--", sizeof( mh.rowValue[0] ) );
 		else Com_sprintf( mh.rowValue[row], sizeof( mh.rowValue[0] ), "%d%%", integrity );
 		mh.rowFrac[row] = out || integrity < 0 ? 0.0f : WS_Clamp( 0.0f, integrity / 100.0f, 1.0f );
+		if ( out && cgs.gametype == GT_LCS && mhLcsOut[order[row]] ) mh.rowFrac[row] = -1.0f;	/* the time in its place */
 		mh.rowLow[row] = integrity >= 0 && integrity < 28;	/* the design's 35 of 125 */
 		mh.rowColor[row] = out ? mhMuted : NULL;
 		mh.rowNameColor[row] = out ? outName : NULL;
@@ -1625,9 +1653,10 @@ void CG_ModernHUD_Obituary( int target, int attacker, int mod ) {
 		CG_CombatKill( &mhCombat, attacker >= 0 && attacker < MAX_CLIENTS ? attacker : -1, target, cg.time );
 	}
 	/* last car standing and derby: one life, so every death is someone out */
-	if ( ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) && cg.snap && CG_ModernHUD_Active() ) {
+	if ( ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) && cg.snap ) {
 		char name[40];
 		int left = MH_LastCarAlive( target );
+		if ( cgs.gametype == GT_LCS ) MH_LcsOut( target );
 		MH_Plain( cgs.clientinfo[target].name, name, sizeof( name ) );
 		if ( target == cg.snap->ps.clientNum && !( cg.snap->ps.pm_flags & PMF_FOLLOW ) )
 			CG_CenterPrint( va( "You are out\n%d left", left ), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
@@ -1667,7 +1696,7 @@ static struct {
 
 /* the v0.9 HUD is up and will show them (CG_ModernHUD_DrawChat) */
 static qboolean MH_ChatShown( void ) {
-	return cg.snap && CG_ModernHUD_Active() && cg_drawStatus.integer && !cg.showScores &&
+	return cg.snap && cg_drawStatus.integer && !cg.showScores &&
 	       cg.snap->ps.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
 }
 
@@ -2407,7 +2436,7 @@ void CG_ModernHUD_DrawStandings( void ) {
 		if ( l->rowBars ) {
 			/* integrity: orange when low; the value at the right of its column */
 			mhText_t value = l->rowValueT[i];
-			MH_Bar( &l->rowBar[i], mh.rowFrac[i], mh.rowLow[i] ? mhAccent : mhSoft, mhTrack, 1.0f );
+			if ( mh.rowFrac[i] >= 0.0f ) MH_Bar( &l->rowBar[i], mh.rowFrac[i], mh.rowLow[i] ? mhAccent : mhSoft, mhTrack, 1.0f );
 			value.box.x += value.box.w - WS_TextWidth( &value.style, value.text, strlen( value.text ) );
 			MH_Str( &value, mh.rowColor[i] ? mh.rowColor[i] : mhValue, 1.0f );
 			continue;
@@ -2866,7 +2895,7 @@ void CG_ModernHUD_Eliminated( int clientNum, int remaining ) {
 	static const char *suffix[4] = { "TH", "ST", "ND", "RD" };
 	char name[40];
 	int me, place;
-	if ( !cg.snap || clientNum < 0 || clientNum >= MAX_CLIENTS || !CG_ModernHUD_Active() ) return;
+	if ( !cg.snap || clientNum < 0 || clientNum >= MAX_CLIENTS ) return;
 	MH_Plain( cgs.clientinfo[clientNum].name, name, sizeof( name ) );
 	me = cg.snap->ps.clientNum;
 	place = cg_entities[me].currentPosition;
@@ -2966,7 +2995,7 @@ static struct {
 
 qboolean CG_ModernHUD_EndActive( void ) {
 	int i;
-	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
+	if ( !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
 	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_SPRINT && cgs.gametype != GT_GHOST &&
 	     cgs.gametype != GT_DRAG && cgs.gametype != GT_RACING_DM && cgs.gametype != GT_TEAM_RACING_DM &&
 	     cgs.gametype != GT_ELIMINATION && !MH_EndIsCombat() ) return qfalse;
@@ -5192,6 +5221,8 @@ awarded:
 static int mhElimRound[MAX_CLIENTS], mhElimAt[MAX_CLIENTS], mhElimWinner = -1;
 
 void CG_ModernHUD_ElimReset( void ) {
+	memset( mhLcsOut, 0, sizeof( mhLcsOut ) );	/* last car standing's "Still in" */
+	mhLcsStart = 0;
 	memset( mhElimRound, 0, sizeof( mhElimRound ) );
 	memset( mhElimAt, 0, sizeof( mhElimAt ) );
 	mhElimWinner = -1;
