@@ -90,9 +90,25 @@ over the TAB table, the end screen or the intro camera.
 While the HUD shows a message it goes into the console with
 `[skipnotify]`, so the engine's notify lines at the top left do not show it
 twice; otherwise (TAB, end screen, `cg_drawStatus 0`, `cg_hudStyle 0`) it
-prints as before. The input line ("say:") is drawn by the engine and stays
-where it was. Code: `CG_ModernHUD_Chat` (cg_servercmds.c "chat"/"tchat"),
-`MH_Chat` in cg_hud_modernlayout.c, `CG_ModernHUD_DrawChat` (cg_draw.c).
+prints as before. Code: `CG_ModernHUD_Chat` (cg_servercmds.c
+"chat"/"tchat"), `MH_Chat` in cg_hud_modernlayout.c, `CG_ModernHUD_DrawChat`
+(cg_draw.c).
+
+The line you type (messagemode, messagemode2, messagemode3/4 for `tell`) is
+drawn under the chat in the same style: a darker box as wide as the chat
+(460px), a 3px bar at the left and the label in the mode's colour ("SAY" in
+the accent, "TEAM" in your team's colour, "TO SAM" in violet), the text in
+white and a blinking caret in the accent. A text too long for the box
+scrolls so the caret stays in view. While you type, the last messages stay
+and do not fade.
+
+The engine knows the line, the cgame draws it: while the HUD shows the chat
+the cgame sets `cg_hudChatInput 1`, and the engine (client/cl_console.c)
+then leaves out its "say:" line and puts what is typed into the read-only
+cvar `cl_chatInput` ("<mode> <client> <cursor> <text>", mode 0 say, 1 team,
+2 tell). Whether the line is open the cgame takes from the key catcher
+(`KEYCATCH_MESSAGE`). An older engine never sets `cl_chatInput` and keeps
+drawing its own line; an older cgame never sets `cg_hudChatInput`.
 
 ## End screens
 

@@ -51,6 +51,7 @@ static const vec4_t mhOnTeam    = { 17 / 255.0f, 17 / 255.0f, 17 / 255.0f, 1.0f 
 static const vec4_t mhTickOpen  = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };	/* #5a5a5a */
 static const vec4_t mhZoneFree  = { 58 / 255.0f, 58 / 255.0f, 58 / 255.0f, 1.0f };	/* #3a3a3a: a point nobody holds */
 
+#define MH_CHAT_INPUT_MAX	256		/* the engine's MAX_EDIT_LINE */
 static struct {
 	int				time;			/* the frame this was laid out for */
 	qboolean		ready;
@@ -71,6 +72,9 @@ static struct {
 	int				derbyZone[4];				/* damage taken per zone: front, left, right, rear */
 	int				derbyHitSeen, derbyMaxHealth;
 	int				chatLine[MH_CHAT_MAX];	/* the layout's chat lines: which of mhChat */
+	qboolean		chatTyping;
+	int				chatInputMode;
+	char			chatInputLabel[48], chatInputText[MH_CHAT_INPUT_MAX];
 	const float		*derbyStatusColor;
 	char			elimValue[24], elimCaption[48];
 	float			elimFrac;
@@ -1700,13 +1704,62 @@ qboolean CG_ModernHUD_Chat( const char *raw, qboolean team ) {
 	return MH_ChatShown();
 }
 
+/* the line being typed (client/cl_console.c Con_ChatInputUpdate): the
+ * engine leaves it to us while cg_hudChatInput is 1 */
+static int mhChatInputOwned = -1;
+
+void CG_ModernHUD_ChatInputFrame( void ) {
+	int want = MH_ChatShown() ? 1 : 0;
+	if ( want == mhChatInputOwned ) return;
+	mhChatInputOwned = want;
+	trap_Cvar_Set( "cg_hudChatInput", want ? "1" : "0" );
+}
+
+void CG_ModernHUD_ChatShutdown( void ) {
+	mhChatInputOwned = -1;
+	trap_Cvar_Set( "cg_hudChatInput", "0" );
+}
+
+/* "<mode> <client> <cursor> <text>": mode 0 say, 1 say_team, 2 tell */
+static qboolean MH_ChatTyping( mhRaceLayout_t *l ) {
+	char value[MH_CHAT_INPUT_MAX + 32];
+	const char *p = value;
+	int mode, client = -1, cursor = 0, k;
+	if ( !( trap_Key_GetCatcher() & KEYCATCH_MESSAGE ) || mhChatInputOwned != 1 ) return qfalse;
+	trap_Cvar_VariableStringBuffer( "cl_chatInput", value, sizeof( value ) );
+	if ( !value[0] ) return qfalse;		/* an engine without it draws its own line */
+	mode = atoi( p );
+	for ( k = 0; k < 3; k++ ) {
+		if ( k == 1 ) client = atoi( p );
+		if ( k == 2 ) cursor = atoi( p );
+		while ( *p && *p != ' ' ) p++;
+		if ( *p ) p++;
+	}
+	Q_strncpyz( mh.chatInputText, p, sizeof( mh.chatInputText ) );
+	if ( mode == 2 && client >= 0 && client < MAX_CLIENTS && cgs.clientinfo[client].infoValid ) {
+		char name[40];
+		MH_Plain( cgs.clientinfo[client].name, name, sizeof( name ) );
+		Com_sprintf( mh.chatInputLabel, sizeof( mh.chatInputLabel ), "To %s", name );
+	} else Q_strncpyz( mh.chatInputLabel, mode == 1 ? "Team" : mode == 2 ? "Tell" : "Say", sizeof( mh.chatInputLabel ) );
+	mh.chatInputMode = mode;
+	l->chatInput = 1;
+	l->chatInputLabel = mh.chatInputLabel;
+	l->chatInputText = mh.chatInputText;
+	l->chatInputCursor = cursor;
+	return qtrue;
+}
+
 static void MH_Chats( mhRaceLayout_t *l ) {
 	int i;
 	l->chatCount = 0;
+	mh.chatTyping = qfalse;
 	if ( !MH_ChatShown() ) return;
+	/* while typing, the last messages stay (and do not fade) */
+	mh.chatTyping = MH_ChatTyping( l );
 	/* where the card is, also when it is not drawn (watching, dead): the chat does not jump */
 	for ( i = 0; i < MH_CHAT_MAX; i++ ) {
-		if ( !mhChat[i].time || mhChat[i].time > cg.time || cg.time - mhChat[i].time > MH_CHAT_TIME ) continue;
+		if ( !mhChat[i].time || mhChat[i].time > cg.time ) continue;
+		if ( cg.time - mhChat[i].time > MH_CHAT_TIME && !mh.chatTyping ) continue;
 		mh.chatLine[l->chatCount] = i;
 		l->chatName[l->chatCount] = mhChat[i].name;
 		l->chatMessage[l->chatCount++] = mhChat[i].message;
@@ -2229,7 +2282,7 @@ static void MH_DrawChat( const mhRaceLayout_t *l ) {
 	int i;
 	for ( i = 0; i < l->chatCount; i++ ) {
 		int k = mh.chatLine[i], left = MH_CHAT_TIME - ( cg.time - mhChat[k].time );
-		float a = left < MH_CHAT_FADE ? left / (float)MH_CHAT_FADE : 1.0f;
+		float a = left < MH_CHAT_FADE && !mh.chatTyping ? left / (float)MH_CHAT_FADE : 1.0f;
 		static const vec4_t chatPrivate = { 214 / 255.0f, 128 / 255.0f, 1.0f, 1.0f };	/* to you: violet, apart from the teams */
 		const float *nameColor = mhChat[k].mode == 2 ? chatPrivate :
 		                         mhChat[k].mode == 1 && cg.snap ? MH_TeamColor( cg.snap->ps.persistant[PERS_TEAM] ) : mhAccent;
@@ -2238,6 +2291,19 @@ static void MH_DrawChat( const mhRaceLayout_t *l ) {
 		MH_Str( &l->chatNameT[i], nameColor, a );
 		MH_Str( &l->chatMessageT[i], chatText, a );
 		if ( l->chatMoreT[i].text[0] ) MH_Str( &l->chatMoreT[i], chatText, a );
+	}
+	if ( l->chatInput ) {
+		static const vec4_t inputBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.82f };
+		static const vec4_t chatPrivate = { 214 / 255.0f, 128 / 255.0f, 1.0f, 1.0f };
+		const float *bar = mh.chatInputMode == 2 ? chatPrivate :
+		                   mh.chatInputMode == 1 && cg.snap ? MH_TeamColor( cg.snap->ps.persistant[PERS_TEAM] ) : mhAccent;
+		if ( bar == mhMuted ) bar = mhAccent;
+		MH_FillRect( &l->chatInputBox, inputBack, 1.0f );
+		MH_Border( &l->chatInputBox, mhLine, 1.0f, NULL, 1.0f );
+		MH_FillRect( &l->chatInputBar, bar, 1.0f );
+		MH_Str( &l->chatInputLabelT, bar, 1.0f );
+		MH_Str( &l->chatInputTextT, mhWhite, 1.0f );
+		if ( ( trap_Milliseconds() / 500 ) % 2 == 0 ) MH_FillRect( &l->chatInputCaret, mhAccent, 1.0f );
 	}
 }
 

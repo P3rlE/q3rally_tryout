@@ -811,7 +811,13 @@ Changed:
   for a private message (tell); gone after 8 s, the last second fading. They
   still go into the console, but not into the notify lines at the top left
   while the HUD shows them (TAB, end screen, cg_drawStatus 0 and cg_hudStyle
-  0 keep the old lines). The input line ("say:") is still the engine's.
+  0 keep the old lines).
+- Chat input in the v0.9 HUD: the line you type is drawn under the chat in
+  the same style instead of the engine's "say:" line: the mode as a label
+  (SAY, TEAM, TO <name>) in its colour, a blinking caret, a long text
+  scrolling with it; the last messages stay while you type. The engine
+  hands the line to the cgame in the read-only cvar cl_chatInput and leaves
+  out its own while the cgame sets cg_hudChatInput (needs the new exe).
 
 - q3r_david5 (Underground Battle Arena) rebuilt with the same concept: an
   octagonal car arena underground, the crowd all round, the rocket launcher

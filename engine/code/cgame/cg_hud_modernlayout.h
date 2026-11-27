@@ -85,6 +85,9 @@ typedef struct {
 	qboolean	rowBars;			/* name, a bar, a value 40px wide at the right (no place) */
 	int			chatCount;			/* the chat under the card, oldest first: "Sam" "nice shot" */
 	const char	*chatName[MH_CHAT_MAX], *chatMessage[MH_CHAT_MAX];
+	int			chatInput;			/* typing: the line under the chat, "SAY" "hello wor|ld" */
+	const char	*chatInputLabel, *chatInputText;
+	int			chatInputCursor;	/* the caret before this character of chatInputText */
 	int			killCount;			/* the kill feed, oldest first: "Player" "ROCKET" "Paul" */
 	const char	*killA[MH_KILLS_MAX], *killWeapon[MH_KILLS_MAX], *killB[MH_KILLS_MAX];	/* killB "": none */
 	int			rowCount;
@@ -150,6 +153,8 @@ typedef struct {
 	mhText_t	teamNameT[MH_TEAMS_MAX], teamValueT[MH_TEAMS_MAX];
 	wsRect_t	chatBox[MH_CHAT_MAX];
 	mhText_t	chatNameT[MH_CHAT_MAX], chatMessageT[MH_CHAT_MAX], chatMoreT[MH_CHAT_MAX];	/* chatMoreT: the wrapped rest, "" none */
+	wsRect_t	chatInputBox, chatInputBar, chatInputCaret;	/* the bar: the mode's colour at the left edge */
+	mhText_t	chatInputLabelT, chatInputTextT;	/* the text: the part that fits, around the caret */
 	wsRect_t	killBox[MH_KILLS_MAX];
 	mhText_t	killAT[MH_KILLS_MAX], killWeaponT[MH_KILLS_MAX], killBT[MH_KILLS_MAX];
 
