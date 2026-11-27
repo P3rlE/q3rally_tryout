@@ -442,6 +442,17 @@ def test_native_chat_wraps_once_inside_its_width():
     assert more[0] == message[0] and more[1] > message[1] and more[0] + more[2] <= wrapped[0] + wrapped[2]
 
 
+# a line of the server or the game among the chat: no name, the text where the name would start
+def test_native_chat_system_line_has_no_name():
+    mine, = layouts(command(dict(RACE_MODEL, chat=[('Sam', 'gg'), ('', 'Tobias entered the game')],
+                                 mirror=0, toast=0, jukebox=0)))
+    line, chat = mine['chat1'], mine['chat0']
+    assert mine['chatName1'][2] == 0 and mine['chatText1'] == ['Tobias entered the game', '']
+    message = mine['chatMessage1']
+    assert message[0] == line[0] + 10 and line[2] == 10 + message[2] + 10
+    assert message[1] == mine['chatMessage0'][1] + line[1] - chat[1] and line[3] == chat[3]
+
+
 # the line being typed: under the chat at the full chat width, the caret where the cursor is, a long
 # text scrolled so the caret stays in the box (the end while typing at it, the start with the cursor there)
 def test_native_chat_input_under_the_chat():

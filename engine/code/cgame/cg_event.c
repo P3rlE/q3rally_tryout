@@ -120,6 +120,19 @@ const char *CG_GetTeamNameWithColor(team_t team) {
 CG_Obituary
 =============
 */
+/* the v0.9 HUD shows a death in the kill feed or as a line under the card:
+ * then it goes into the console without the notify lines at the top left */
+static void QDECL CG_ObituaryPrint( const char *fmt, ... ) __attribute__ ((format (printf, 1, 2)));
+static void QDECL CG_ObituaryPrint( const char *fmt, ... ) {
+	va_list		argptr;
+	char		text[256];
+
+	va_start( argptr, fmt );
+	Q_vsnprintf( text, sizeof( text ), fmt, argptr );
+	va_end( argptr );
+	CG_Printf( CG_ModernHUD_Notice( text, qtrue ) ? "[skipnotify]%s" : "%s", text );
+}
+
 static void CG_Obituary( entityState_t *ent ) {
 	int			mod;
 	int			target, attacker;
@@ -323,10 +336,10 @@ static void CG_Obituary( entityState_t *ent ) {
 	if (message) {
 // Q3Rally Code Start - take out the space
 		if (message[0] == '\'')
-			CG_Printf( "%s%s.\n", targetName, message);
+			CG_ObituaryPrint( "%s%s.\n", targetName, message);
 		else
 // Q3Rally Code END
-		CG_Printf( "%s %s.\n", targetName, message);
+		CG_ObituaryPrint( "%s %s.\n", targetName, message);
 		return;
 	}
 
@@ -478,14 +491,14 @@ static void CG_Obituary( entityState_t *ent ) {
 		if (message) {
 			if (cgs.gametype >= GT_TEAM) {
 				if (attackerCi) {
-					CG_Printf( "%s from %s %s %s from %s%s\n",
+					CG_ObituaryPrint( "%s from %s %s %s from %s%s\n",
 						targetName, CG_GetTeamNameWithColor(ci->team), message, attackerName, CG_GetTeamNameWithColor(attackerCi->team), message2);
 				} else {
-					CG_Printf( "%s from %s %s %s%s\n",
+					CG_ObituaryPrint( "%s from %s %s %s%s\n",
 						targetName, CG_GetTeamNameWithColor(ci->team), message, attackerName, message2);
 				}
 			} else {
-				CG_Printf( "%s %s %s%s\n",
+				CG_ObituaryPrint( "%s %s %s%s\n",
 					targetName, message, attackerName, message2);
 			}
 			return;
@@ -493,7 +506,7 @@ static void CG_Obituary( entityState_t *ent ) {
 	}
 
 	// we don't know what it was
-	CG_Printf( "%s died.\n", targetName );
+	CG_ObituaryPrint( "%s died.\n", targetName );
 }
 
 //==========================================================================

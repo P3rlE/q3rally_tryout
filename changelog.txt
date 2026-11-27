@@ -818,6 +818,11 @@ Changed:
   scrolling with it; the last messages stay while you type. The engine
   hands the line to the cgame in the read-only cvar cl_chatInput and leaves
   out its own while the cgame sets cg_hudChatInput (needs the new exe).
+- The v0.9 HUD keeps the top left corner clear: what the server prints
+  (connects, votes, "Server: timelimit changed to 15") shows as a grey line
+  without a name among the chat, deaths only in the kill feed (in modes
+  without it, as such a line). They still go into the console. Listings of
+  more than two lines keep the old notify lines.
 
 - q3r_david5 (Underground Battle Arena) rebuilt with the same concept: an
   octagonal car arena underground, the crowd all round, the rocket launcher

@@ -2127,7 +2127,8 @@ static void CG_ServerCommand( void ) {
 		const char *message;
 
 		message = CG_Argv(1);
-		CG_Printf( "%s", message );
+		/* the v0.9 HUD: a line under the card ("Tobias entered the game") */
+		CG_Printf( CG_ModernHUD_Notice( message, qfalse ) ? "[skipnotify]%s" : "%s", message );
 
                 if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS )
                                 && cgLastElimStatusTime != cg.time ) {

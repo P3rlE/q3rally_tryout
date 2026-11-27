@@ -933,11 +933,15 @@ static float MH_Chat( mhRaceLayout_t *l, float y ) {
 		mhText_t *n = &l->chatNameT[i], *m = &l->chatMessageT[i], *more = &l->chatMoreT[i];
 		char who[MH_TEXT_MAX];
 		float w, h;
-		Com_sprintf( who, sizeof( who ), "%s:", l->chatName[i] ? l->chatName[i] : "" );
+		float gap;
+		/* no name: a line of the server or the game ("Tobias entered the game") */
+		if ( l->chatName[i] && l->chatName[i][0] ) Com_sprintf( who, sizeof( who ), "%s:", l->chatName[i] );
+		else who[0] = '\0';
 		MH_Set( n, &name, who );
 		MH_Fit( n, 140.0f );
 		n->box.w = MH_Width( n );
-		room = MH_CHAT_W - 20.0f - n->box.w - 6.0f;
+		gap = who[0] ? 6.0f : 0.0f;
+		room = MH_CHAT_W - 20.0f - n->box.w - gap;
 		MH_Set( m, &text, l->chatMessage[i] ? l->chatMessage[i] : "" );
 		MH_Set( more, &text, "" );
 		if ( m->box.w > room ) {
@@ -960,14 +964,14 @@ static float MH_Chat( mhRaceLayout_t *l, float y ) {
 			MH_Fit( more, room );
 			more->box.w = MH_Width( more );
 		}
-		w = 10.0f + n->box.w + 6.0f + ( m->box.w > more->box.w ? m->box.w : more->box.w ) + 10.0f;
+		w = 10.0f + n->box.w + gap + ( m->box.w > more->box.w ? m->box.w : more->box.w ) + 10.0f;
 		h = 4.0f + n->box.h + ( more->text[0] ? 2.0f + more->box.h : 0.0f ) + 4.0f;
 		l->chatBox[i].x = x;
 		l->chatBox[i].y = y;
 		l->chatBox[i].w = w;
 		l->chatBox[i].h = h;
 		MH_Place( n, x + 10.0f, y + 4.0f );
-		MH_Place( m, x + 10.0f + n->box.w + 6.0f, y + 4.0f + MH_Base( n ) - MH_Base( m ) );
+		MH_Place( m, x + 10.0f + n->box.w + gap, y + 4.0f + MH_Base( n ) - MH_Base( m ) );
 		MH_Place( more, m->box.x, m->box.y + m->box.h + 2.0f );
 		y += h + MH_COLUMN_GAP;
 	}
