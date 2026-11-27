@@ -1662,7 +1662,7 @@ static struct {
 	char	name[40];
 	char	message[160];
 	int		time;
-	int		mode;		/* 0 everyone, 1 team, 2 to you */
+	int		mode;		/* 0 everyone, 1 team, 2 to you, 3 the server or the game (no name) */
 } mhChat[MH_CHAT_MAX];
 
 /* the v0.9 HUD is up and will show them (CG_ModernHUD_DrawChat) */
@@ -1746,6 +1746,36 @@ static qboolean MH_ChatTyping( mhRaceLayout_t *l ) {
 	l->chatInputLabel = mh.chatInputLabel;
 	l->chatInputText = mh.chatInputText;
 	l->chatInputCursor = cursor;
+	return qtrue;
+}
+
+/* a server print or a death: a grey line without a name among the chat. A
+ * death in a mode with the kill feed is there already. More than two lines
+ * (a listing) stay in the notify lines. */
+qboolean CG_ModernHUD_Notice( const char *text, qboolean obituary ) {
+	const char *p, *end;
+	int lines = 0, i;
+	if ( !text || !MH_ChatShown() ) return qfalse;
+	if ( obituary && MH_COMBAT() ) return qtrue;
+	for ( p = text; *p; p = *end ? end + 1 : end ) {
+		end = strchr( p, '\n' );
+		if ( !end ) end = p + strlen( p );
+		if ( end > p ) lines++;
+	}
+	if ( !lines || lines > 2 ) return lines == 0;
+	for ( p = text; *p; p = *end ? end + 1 : end ) {
+		char line[160];
+		end = strchr( p, '\n' );
+		if ( !end ) end = p + strlen( p );
+		if ( end == p ) continue;
+		Q_strncpyz( line, p, end - p + 1 < (int)sizeof( line ) ? end - p + 1 : (int)sizeof( line ) );
+		for ( i = 0; i < MH_CHAT_MAX - 1; i++ ) mhChat[i] = mhChat[i + 1];
+		i = MH_CHAT_MAX - 1;
+		mhChat[i].name[0] = '\0';
+		MH_Plain( line, mhChat[i].message, sizeof( mhChat[i].message ) );
+		mhChat[i].mode = 3;
+		mhChat[i].time = cg.time;
+	}
 	return qtrue;
 }
 
@@ -2279,6 +2309,7 @@ static const vec4_t mhKillBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.62f 
 static void MH_DrawChat( const mhRaceLayout_t *l ) {
 	static const vec4_t chatBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.55f };
 	static const vec4_t chatText = { 230 / 255.0f, 230 / 255.0f, 230 / 255.0f, 1.0f };	/* #e6e6e6 */
+	static const vec4_t chatSystem = { 179 / 255.0f, 179 / 255.0f, 179 / 255.0f, 1.0f };	/* #b3b3b3: no name */
 	int i;
 	for ( i = 0; i < l->chatCount; i++ ) {
 		int k = mh.chatLine[i], left = MH_CHAT_TIME - ( cg.time - mhChat[k].time );
@@ -2286,11 +2317,12 @@ static void MH_DrawChat( const mhRaceLayout_t *l ) {
 		static const vec4_t chatPrivate = { 214 / 255.0f, 128 / 255.0f, 1.0f, 1.0f };	/* to you: violet, apart from the teams */
 		const float *nameColor = mhChat[k].mode == 2 ? chatPrivate :
 		                         mhChat[k].mode == 1 && cg.snap ? MH_TeamColor( cg.snap->ps.persistant[PERS_TEAM] ) : mhAccent;
+		const float *textColor = mhChat[k].mode == 3 ? chatSystem : chatText;
 		if ( mhChat[k].mode == 1 && nameColor == mhMuted ) nameColor = mhAccent;
 		MH_FillRect( &l->chatBox[i], chatBack, a );
 		MH_Str( &l->chatNameT[i], nameColor, a );
-		MH_Str( &l->chatMessageT[i], chatText, a );
-		if ( l->chatMoreT[i].text[0] ) MH_Str( &l->chatMoreT[i], chatText, a );
+		MH_Str( &l->chatMessageT[i], textColor, a );
+		if ( l->chatMoreT[i].text[0] ) MH_Str( &l->chatMoreT[i], textColor, a );
 	}
 	if ( l->chatInput ) {
 		static const vec4_t inputBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.82f };

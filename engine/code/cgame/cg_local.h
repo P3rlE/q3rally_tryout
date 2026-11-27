@@ -2432,6 +2432,7 @@ void CG_ModernHUD_ElimEvent( int client, int round, int time );
 void CG_ModernHUD_ElimWinner( int client );
 void CG_ModernHUD_ObjectiveFrame( void );
 qboolean CG_ModernHUD_Chat( const char *raw, qboolean team );
+qboolean CG_ModernHUD_Notice( const char *text, qboolean obituary );
 void CG_ModernHUD_DrawChat( void );
 void CG_ModernHUD_ChatInputFrame( void );
 void CG_ModernHUD_ChatShutdown( void );

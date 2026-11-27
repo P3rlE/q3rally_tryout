@@ -87,6 +87,14 @@ space, the rest cut with "…". A message stays 8 s, the last second fading.
 It also shows while you are dead or watching (in the same place) but not
 over the TAB table, the end screen or the intro camera.
 
+What the server prints ("Jim connected", "Player called a vote.", "Vote
+passed.") and deaths in modes without the kill feed ("Player killed
+himself.") are lines in the same stack: no name, the text in grey
+(#b3b3b3), the same 8 s (`CG_ModernHUD_Notice`; canvas board "Chat:
+Systemzeilen ohne Label"). Deaths in the modes with the kill feed are only
+there. A print of more than two lines (a listing) stays in the notify
+lines.
+
 While the HUD shows a message it goes into the console with
 `[skipnotify]`, so the engine's notify lines at the top left do not show it
 twice; otherwise (TAB, end screen, `cg_drawStatus 0`, `cg_hudStyle 0`) it
