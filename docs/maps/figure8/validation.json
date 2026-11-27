@@ -1,0 +1,56 @@
+{
+  "map": "q3r_dd_02",
+  "field": [
+    3136.0,
+    3136.0
+  ],
+  "track_width": 330.0,
+  "kerb": 22.0,
+  "loop_radius": 580.0,
+  "loop_centres": [
+    [
+      -660.0,
+      660.0
+    ],
+    [
+      660.0,
+      -660.0
+    ]
+  ],
+  "straight_angles": [
+    96.6,
+    173.4
+  ],
+  "bridge": {
+    "deck_top": 112.0,
+    "deck_length": 440.0,
+    "underpass_clearance": 90.0,
+    "ramp_length": 340.0,
+    "ramp_degrees": 17.3
+  },
+  "spawns": 12,
+  "path_clear": true,
+  "brushes_new": 531,
+  "props": 115,
+  "pickups": {
+    "ammo_flame": 2,
+    "ammo_mines": 2,
+    "ammo_rockets": 4,
+    "ammo_shells": 2,
+    "ammo_slugs": 2,
+    "item_armor_green": 1,
+    "item_fuelcan": 2,
+    "item_health": 4,
+    "item_health_large": 3,
+    "item_health_mega": 1,
+    "rally_item_turbo": 2,
+    "rally_weapon_flame": 2,
+    "rally_weapon_mine": 1,
+    "rally_weapon_smoke": 1,
+    "weapon_flamethrower": 1,
+    "weapon_railgun": 1,
+    "weapon_rocketlauncher": 1,
+    "weapon_shotgun": 1
+  },
+  "brushes_kept": 971
+}

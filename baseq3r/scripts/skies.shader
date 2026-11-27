@@ -146,7 +146,7 @@ textures/q3r_skies/env/mp_us/mp_us
 	surfaceparm nolightmap
 	q3map_globaltexture
 	q3map_lightsubdivide 256
-	q3map_surfacelight 100
+	q3map_surfacelight 55	// Figure of 8 (the only map under this sky) has its own flood lights now: was 100
 	surfaceparm sky
 	// sun tilted for real-time shadows (was 1 1 1 100 0 90, straight down); map relit
 	q3map_sun 1 1 1 100 300 50
