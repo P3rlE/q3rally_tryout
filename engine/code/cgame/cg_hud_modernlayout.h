@@ -443,6 +443,53 @@ typedef struct {
 	mhText_t	thirdNameT[2], thirdBotT[2], thirdWinsT[2];
 } mhBracketLayout_t;
 
+/* the HUD options, Shift+H (gen.py hud_panel): a panel in the middle, the
+ * mode's toggles in groups on two columns, each with a small screen showing
+ * where its part of the HUD is; buttons for the choices, sliders for the
+ * minimap. Centred on the screen. */
+#define MH_OPT_W			840.0f
+#define MH_OPT_GROUPS		6
+#define MH_OPT_ITEMS		16
+#define MH_OPT_CHOICES		4
+
+typedef enum { MH_OPT_CARD, MH_OPT_ORDER, MH_OPT_CAR, MH_OPT_MAP, MH_OPT_TRACK, MH_OPT_FX } mhOptionsRegion_t;
+
+typedef struct {
+	/* inputs */
+	float		viewWidth;
+	const char	*crumb;				/* "Live HUD · Race · Ridge Racer" */
+	const char	*noun;				/* "race": "Your race. Your display." */
+	const char	*back;				/* "Back to race" */
+	int			groupCount;
+	const char	*groupTitle[MH_OPT_GROUPS];
+	int			groupRegion[MH_OPT_GROUPS];	/* mhOptionsRegion_t: the small screen's part */
+	int			groupColumn[MH_OPT_GROUPS];	/* 0 left, 1 right */
+	int			itemCount;			/* in the order of their groups */
+	int			itemGroup[MH_OPT_ITEMS];
+	const char	*itemLabel[MH_OPT_ITEMS], *itemHint[MH_OPT_ITEMS];	/* hint NULL: none */
+	int			itemChoices[MH_OPT_ITEMS];	/* 0: a slider (itemValue, itemFrac) */
+	const char	*itemChoice[MH_OPT_ITEMS][MH_OPT_CHOICES];
+	qboolean	itemWide[MH_OPT_ITEMS];		/* the buttons under the label, the column wide */
+	const char	*itemValue[MH_OPT_ITEMS];
+	float		itemFrac[MH_OPT_ITEMS];
+
+	/* outputs */
+	wsRect_t	box;
+	mhText_t	crumbT, titleT, emT, textT, hintT;
+	wsRect_t	groupIcon[MH_OPT_GROUPS], groupLine[MH_OPT_GROUPS];
+	mhText_t	groupTitleT[MH_OPT_GROUPS];
+	mhText_t	itemLabelT[MH_OPT_ITEMS], itemHintT[MH_OPT_ITEMS];
+	wsRect_t	itemButtons[MH_OPT_ITEMS];			/* the buttons' border */
+	wsRect_t	itemButton[MH_OPT_ITEMS][MH_OPT_CHOICES];
+	mhText_t	itemChoiceT[MH_OPT_ITEMS][MH_OPT_CHOICES];
+	wsRect_t	sliderRule[MH_OPT_ITEMS], sliderTrack[MH_OPT_ITEMS], sliderThumb[MH_OPT_ITEMS];
+	mhText_t	sliderValueT[MH_OPT_ITEMS];
+	wsRect_t	backBox, consoleBox;
+	mhText_t	backT, consoleT;
+} mhOptionsLayout_t;
+
+void	MH_OptionsLayout( mhOptionsLayout_t *o );
+
 void	MH_BracketLayout( mhBracketLayout_t *b );
 void	MH_EndLayout( mhEndLayout_t *e );
 void	MH_ZoneMarkerLayout( mhZoneMarker_t *m );

@@ -207,10 +207,16 @@ Changed:
   the server information. The same goes for the first-start wizard
   (driver name, details with avatar preview, offline Ladder, ready), the
   offline Ladder registration and saving a demo recording.
-- The HUD options in a race (Shift+H) are drawn by the game again, as the
-  WebUI's panel at the right: a select per HUD element, the mini-map's size
-  and field of view, Back to race and Console. The pointer reaches the whole
-  width of a wide screen there.
+- The HUD options (Shift+H) are a panel in the middle of the screen, where
+  the HUD keeps it free, so every change shows in the corners at once. They
+  list only what the mode's HUD has, in groups (card, on track, order,
+  effects, car and cockpit, mini-map), each with a small screen showing where
+  its part is; the choices are buttons (Off / On, the checkpoint arrow's Off
+  / On HUD / Above car, the ghost's four), the mini-map's size and field of
+  view sliders under its toggle while it is on. The title and the button say
+  race or match. The order's toggle now also shows in the combat modes, where
+  it always worked, under the order's own name (Frag order, Derby order,
+  Splits ..). The big messages no longer draw over the panel.
 - The garage is drawn by the game again and looks exactly like the WebUI's:
   the showroom with the rotatable 3D view (it opens on it) or the vehicle's
   picture, "Make it

@@ -36,6 +36,9 @@ BG = {
     'autoball': '/_blob/7a7a65e9bbf0dadb6daa935d79509eb8',
     'drag': '/_blob/239e6c46001c7cc303ce14c7345c601c',
     'lcs': '/_blob/d4f0e53d72925faefab6377c7128167a',
+    'panel_race': '/_blob/2edecaa6b8463b29672acfd9a95b5062',
+    'panel_dm': '/_blob/9895b6cc2b95a3e867b00db5cbb4f567',
+    'panel_derby': '/_blob/eb0885475918bab512df2f55265e4c4e',
 }
 if MODE == 'local':
     # HUD_SCENES: a folder with bg_<name>.jpg to show the scenes (comparison pictures)
@@ -1923,6 +1926,121 @@ board('TabCTF.dc.html', 'TAB: capture the flag', BG['team_dm'], [
     + team_side('blue', '3', '4 drivers', blue_side, (TAB_W - 16) // 2) + '</div>'
     + tab_footer('Ivan · Minori', 'Q3Rally Münster · 10 / 16') + '</div>',
 ], dim=0.62)
+
+# HUD options (Shift+H) ------------------------------------------------------------------------------
+# A panel in the middle, where the HUD keeps the screen free: every change shows in the corners at
+# once. Only the toggles that do something in the mode, in groups; a small screen beside a group's
+# name shows where its part of the HUD is. The native panel: cg_hud_panel.c, MH_PanelLayout.
+PANEL_W = 840
+PANEL_REGION = {'card': (1, 1, 9, 6), 'order': (17, 1, 9, 5), 'car': (1, 10, 26, 6), 'map': (19, 9, 8, 7),
+                'track': (8, 4, 12, 9), 'fx': (1, 1, 26, 15)}
+PANEL_MONO = f"font-family: {MONO}; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;"
+
+
+def p_icon(region):
+    x, y, w, h = PANEL_REGION[region]
+    return (f'<svg width="28" height="17" viewBox="0 0 28 17" aria-hidden="true" style="flex: none">'
+            f'<rect x="0.5" y="0.5" width="27" height="16" fill="none" stroke="#555555"></rect>'
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{ACC}"></rect></svg>')
+
+
+def p_head(title, region):
+    return (f'<div style="display: flex; align-items: center; gap: 10px; height: 24px">{p_icon(region)}'
+            f'<div style="{PANEL_MONO} font-size: 12px; color: #bbbbbb">{title}</div>'
+            f'<div style="flex: 1; height: 1px; background: {LINE}"></div></div>')
+
+
+def p_seg(opts, sel, full=False):
+    out = [f'<div style="display: {"flex" if full else "inline-flex"}; border: 1px solid #3b3b3b; flex: none">']
+    for i, o in enumerate(opts):
+        on = i == sel
+        st = (f'{PANEL_MONO} font-size: 12px; letter-spacing: 0.12em; height: 30px; padding: 0 14px; display: flex; '
+              f'align-items: center; justify-content: center; box-sizing: border-box; ' + ('flex: 1; ' if full else '')
+              + (f'background: {ACC}; color: #0d0d0d;' if on else 'background: #1a1a1a; color: #999999;')
+              + ('' if i == 0 else ' border-left: 1px solid #3b3b3b;'))
+        out.append(f'<button type="button" aria-pressed="{"true" if on else "false"}" '
+                   f'style="border: 0; margin: 0; cursor: pointer; {st}">{o}</button>')
+    return ''.join(out) + '</div>'
+
+
+def p_label(t, hint=None):
+    s = (f'<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">'
+         f'<div style="font-size: 16px; color: #ffffff; white-space: nowrap">{t}</div>')
+    if hint:
+        s += f'<div style="font-size: 13px; color: #999999; white-space: nowrap">{hint}</div>'
+    return s + '</div>'
+
+
+def p_row(t, on, hint=None):
+    return (f'<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px">'
+            f'{p_label(t, hint)}{p_seg(["Off", "On"], 1 if on else 0)}</div>')
+
+
+def p_multi(t, opts, sel, hint=None):
+    return (f'<div style="display: flex; flex-direction: column; gap: 8px; padding: 6px 0 4px 0">'
+            f'{p_label(t, hint)}{p_seg(opts, sel, True)}</div>')
+
+
+def p_slider(t, val, frac):
+    return (f'<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px 0 6px 16px; border-left: 1px solid {LINE}; margin-left: 2px">'
+            f'<div style="display: flex; justify-content: space-between; align-items: baseline">'
+            f'<div style="font-size: 14px; color: #dddddd">{t}</div>'
+            f'<div style="font-family: {MONO}; font-size: 14px; color: {ACC}">{val}</div></div>'
+            f'<div style="position: relative; height: 14px">'
+            f'<div style="position: absolute; left: 0; right: 0; top: 5px; height: 4px; background: #2c2c2c"></div>'
+            f'<div style="position: absolute; left: 0; top: 5px; height: 4px; width: {frac}%; background: {ACC}"></div>'
+            f'<div style="position: absolute; top: 0; left: calc({frac}% - 7px); width: 14px; height: 14px; background: #ffffff"></div>'
+            f'</div></div>')
+
+
+def p_group(title, region, rows):
+    return f'<div style="display: flex; flex-direction: column; gap: 6px">{p_head(title, region)}{"".join(rows)}</div>'
+
+
+def p_minimap(on=True):
+    return [p_row('Mini-map', on)] + ([p_slider('Size', '1.00', 37.5), p_slider('Field of view', '90', 66.6667)] if on else [])
+
+
+def hud_panel(name, title, bg, crumb, noun, back, left, right, top):
+    cols = ''.join(f'<div style="display: flex; flex-direction: column; gap: 22px">{"".join(c)}</div>' for c in (left, right))
+    panel = (f'<div role="dialog" aria-label="HUD options" style="position: absolute; left: {(1600 - PANEL_W) // 2}px; top: {top}px; '
+             f'width: {PANEL_W}px; box-sizing: border-box; background: rgba(13,13,13,0.95); border: 1px solid {LINE}; '
+             f'border-top: 2px solid {ACC}; padding: 26px 32px 28px 32px; display: flex; flex-direction: column; gap: 22px">'
+             f'<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 24px">'
+             f'<div style="display: flex; flex-direction: column; gap: 8px">'
+             f'<div style="{PANEL_MONO} font-size: 12px; color: {ACC}">Live HUD · {crumb}</div>'
+             f'<div style="font-family: {COND}; font-weight: 700; font-style: italic; font-size: 44px; line-height: 1; '
+             f'text-transform: uppercase; white-space: nowrap">Your {noun}. Your <span style="color: {ACC}">display.</span></div>'
+             f'<div style="font-size: 15px; color: #dddddd">Changes show right away. Only what this mode\'s HUD has is listed.</div>'
+             f'</div><div style="{PANEL_MONO} font-size: 12px; color: #999999; padding-top: 2px">Shift + H · Esc</div></div>'
+             f'<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 44px">{cols}</div>'
+             f'<div style="display: flex; gap: 10px; align-items: center">'
+             f'<button type="button" style="border: 0; margin: 0; cursor: pointer; background: {ACC}; color: #ffffff; '
+             f'font-family: {BODY}; font-weight: 700; font-size: 16px; height: 44px; padding: 0 20px">Back to {back}</button>'
+             f'<button type="button" style="margin: 0; cursor: pointer; background: transparent; color: #ffffff; border: 1px solid #555555; '
+             f'font-family: {BODY}; font-weight: 700; font-size: 16px; height: 44px; padding: 0 20px">Console</button>'
+             f'</div></div>')
+    board(name, title, bg, [panel], dim=0.25)
+
+
+hud_panel('PanelRace.dc.html', 'HUD options: race', BG.get('panel_race'), 'Race · Ridge Racer', 'race', 'race',
+          [p_group('Card', 'card', [p_row('Times', True, 'Lap, best, gap'), p_row('Lap counter', True), p_row('Race position', True)]),
+           p_group('On track', 'track', [p_multi('Checkpoint arrow', ['Off', 'On HUD', 'Above car'], 2, 'On HUD: at the top of the screen'),
+                                         p_row('Racing line', False)]),
+           p_group('Order', 'order', [p_row('Race order', True)])],
+          [p_group('Car and cockpit', 'car', [p_row('HUD', True, 'Off hides every panel'), p_row('Rear view', False),
+                                              p_row('Slipstream gauge', True)]),
+           p_group('Mini-map', 'map', p_minimap())], 102)
+hud_panel('PanelDeathmatch.dc.html', 'HUD options: deathmatch', BG.get('panel_dm'), 'Deathmatch · Battle Canyon', 'match', 'match',
+          [p_group('Order', 'order', [p_row('Frag order', True)]),
+           p_group('Car and cockpit', 'car', [p_row('HUD', True, 'Off hides every panel'), p_row('Rear view', False)])],
+          [p_group('Mini-map', 'map', p_minimap())], 221.5)
+hud_panel('PanelDerby.dc.html', 'HUD options: derby', BG.get('panel_derby'), 'Derby · Figure of 8', 'derby', 'match',
+          [p_group('Order', 'order', [p_row('Derby order', True)]),
+           p_group('Effects', 'fx', [p_row('Hit flash', True, 'Red flash when you are hit')]),
+           p_group('Car and cockpit', 'car', [p_row('HUD', True, 'Off hides every panel'), p_row('Rear view', False)])],
+          [p_group('Mini-map', 'map', p_minimap())], 173.5)
+
 
 ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html'],

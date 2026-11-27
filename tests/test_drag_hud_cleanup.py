@@ -25,6 +25,7 @@ qboolean isRallyRace(void) {
 }
 qboolean isRallyNonDMRace(void) { return isRallyRace(); }
 qboolean CG_IntroCam_IsActive(void) { return qfalse; }
+qboolean CG_IsSprintTrack(void) { return cgs.gametype==GT_SPRINT; }
 void CG_ModernHUD_DrawStandings(void) { standingsCalls++; }
 void CG_DrawArrowToCheckpoint(void) { arrowCalls++; }
 void CG_UpdateGhostSplitDelta(void) { ghostUpdates++; }
@@ -35,6 +36,7 @@ void trap_SendClientCommand(const char *text) {}
     harness += "vmCvar_t " + ",".join(sorted(cvars)) + ";\n"
     harness += "\n".join(re.findall(r"(?m)^#define HUDOPT_MODE_[^\n]+", core)) + "\n"
     harness += entry_type + "\n"
+    harness += function(core, "HUDOpt_Unavail") + "\n"
     harness += function(core, "HUDEntry_IsUnavail") + "\n"
     harness += function(racing_line, "RL_ShouldDraw") + "\n"
     harness += dispatcher + "\n"
@@ -58,28 +60,30 @@ int main(void) {
     assert(!arrowCalls && !ghostUpdates && !cg.wrongWayStartTime && !cg.wrongWayTime);
     assert(!RL_ShouldDraw());
     assert(cg_checkpointArrowMode.integer==2 && cg_racingLine.integer==1);
-    assert(unavailable(HUDOPT_MODE_RALLY_RACE));
-    assert(unavailable(HUDOPT_MODE_RACE_WITH_LAPS));
-    assert(unavailable(HUDOPT_MODE_RACE_OR_LCS)); /* solo: no useful opponent */
-    assert(!unavailable(HUDOPT_MODE_RACE_LCS_DERBY)); /* Drag time cells */
-    assert(!unavailable(HUDOPT_MODE_ANY)); /* status, minimap, rear-view */
+    assert(unavailable(HUDOPT_MODE_COURSE) && unavailable(HUDOPT_MODE_POSITION));
+    assert(unavailable(HUDOPT_MODE_LAPS));
+    assert(unavailable(HUDOPT_MODE_ORDER)); /* solo: no useful opponent */
+    assert(!unavailable(HUDOPT_MODE_TIMES)); /* Drag time cells */
+    assert(unavailable(HUDOPT_MODE_VIEWS)); /* the tachometer in their place */
+    assert(!unavailable(HUDOPT_MODE_ANY)); /* the HUD itself */
     assert(!hitCalls);
 
     /* a duel: the opponent list is an option */
     cgs.clientinfo[1].infoValid=qtrue; cgs.clientinfo[1].team=TEAM_FREE;
     CG_DrawHUD(); assert(cgs.numRacers==2);
-    assert(!unavailable(HUDOPT_MODE_RACE_OR_LCS));
+    assert(!unavailable(HUDOPT_MODE_ORDER));
 
     /* a race: the arrow (and wrong way) and the ghost split */
     cgs.gametype=GT_RACING; cgs.clientinfo[1].infoValid=qfalse;
     CG_DrawHUD();
     assert(arrowCalls==1 && ghostUpdates==1 && RL_ShouldDraw());
-    assert(!unavailable(HUDOPT_MODE_RALLY_RACE));
-    assert(!unavailable(HUDOPT_MODE_RACE_WITH_LAPS));
+    assert(!unavailable(HUDOPT_MODE_COURSE) && !unavailable(HUDOPT_MODE_POSITION));
+    assert(!unavailable(HUDOPT_MODE_LAPS) && !unavailable(HUDOPT_MODE_VIEWS));
     cg_checkpointArrowMode.integer=0; cg.wrongWayStartTime=1234;
     CG_DrawHUD();
     assert(arrowCalls==1 && ghostUpdates==2 && !cg.wrongWayStartTime);
     cg_racingLine.integer=0; assert(!RL_ShouldDraw());
+    cgs.gametype=GT_SPRINT; assert(unavailable(HUDOPT_MODE_LAPS)); /* the way to the finish instead */
 
     /* a spectator gets no guidance; the HUD hidden: nothing at all */
     cg_checkpointArrowMode.integer=2;
@@ -88,8 +92,12 @@ int main(void) {
     cgs.clientinfo[0].team=TEAM_FREE;
     cg.showHUD=qfalse; CG_DrawHUD(); assert(arrowCalls==1 && standingsCalls==5);
 
-    /* Derby: the hit flash */
+    /* Derby: the hit flash; its own order, no race things */
     cg.showHUD=qtrue; cgs.gametype=GT_DERBY; CG_DrawHUD(); assert(hitCalls==1);
+    assert(unavailable(HUDOPT_MODE_ORDER) && unavailable(HUDOPT_MODE_TIMES) && !unavailable(GT_DERBY));
+    /* combat: the order (frags), no times */
+    cgs.gametype=GT_DEATHMATCH; assert(!unavailable(HUDOPT_MODE_ORDER) && unavailable(HUDOPT_MODE_TIMES));
+    cgs.gametype=GT_LCS; assert(!unavailable(HUDOPT_MODE_TIMES) && unavailable(HUDOPT_MODE_LAPS));
     return 0;
 }
 '''

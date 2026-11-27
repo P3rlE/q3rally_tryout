@@ -31,7 +31,6 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_driverlayout.h"
 #include "q3_ui/ui_rally_configlayout.h"
 #include "q3_ui/ui_rally_garagelayout.h"
-#include "cgame/cg_hud_panellayout.h"
 #include "cgame/cg_hud_modernlayout.h"
 #include <stdio.h>
 uiStatic_t uis;
@@ -68,7 +67,6 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_driverlayout.c"
 #include "q3_ui/ui_rally_configlayout.c"
 #include "q3_ui/ui_rally_garagelayout.c"
-#include "cgame/cg_hud_panellayout.c"
 #include "cgame/cg_hud_modernlayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
@@ -368,26 +366,49 @@ int main(void) {
             printf("],\"description\":[%g,%g],\"page\":%g,\"settings\":%d,\"dialogY\":[%g,%g,%g,%g],\"h2\":[%d,%g]}\n",
                 l.descriptionY, l.descriptionLines.count * l.descriptionStyle.lineHeight, l.pageHeight, l.settings, l.dialogLabelY, l.dialogH2Y, l.dialogActionY, l.dialogHelpY,
                 l.dialogH2Lines.count, l.h2.size);
-        } else if (!strcmp(command, "hud")) {
-            /* hud <width> <height> <scroll>, then the toggles' labels (|) */
-            static hudPanelLayout_t l; static char labels[4096]; char *r, *next; float w, h; int i;
-            memset(&l, 0, sizeof(l));
-            scanf("%f %f %f\n", &w, &h, &l.scroll);
-            fgets(labels, sizeof(labels), stdin); labels[strcspn(labels, "\n")] = 0;
-            for (r = labels; *r && l.items < HUDPANEL_MAX_ITEMS; r = next) {
-                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
-                l.itemLabel[l.items++] = r;
+        } else if (!strcmp(command, "hudopt")) {
+            /* hudopt <view width>, then: crumb|noun|back|groups title~region~column;..|
+             * items group~label~hint (- none)~choices a,b,..~wide~value~frac;.. (no choices: a slider) */
+            static mhOptionsLayout_t o; static char line[4096]; char *f[5], *r, *item, *more, *p[7], *c; int n = 0, i, k;
+            memset(&o, 0, sizeof(o));
+            scanf("%f\n", &o.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 5; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            o.crumb = f[0]; o.noun = f[1]; o.back = f[2];
+            for (item = f[3]; *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                for (k = 0, r = item; k < 3; k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
+                i = o.groupCount++; o.groupTitle[i] = p[0]; o.groupRegion[i] = atoi(p[1]); o.groupColumn[i] = atoi(p[2]); }
+            for (item = f[4]; *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                for (k = 0, r = item; k < 7; k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
+                i = o.itemCount++; o.itemGroup[i] = atoi(p[0]); o.itemLabel[i] = p[1]; o.itemHint[i] = strcmp(p[2], "-") ? p[2] : NULL;
+                for (c = p[3]; c && *c && o.itemChoices[i] < MH_OPT_CHOICES; ) { o.itemChoice[i][o.itemChoices[i]++] = c; c = strchr(c, ','); if (c) *c++ = 0; }
+                o.itemWide[i] = atoi(p[4]); o.itemValue[i] = p[5]; o.itemFrac[i] = atof(p[6]); }
+            uis.glconfig.vidWidth = o.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_OptionsLayout(&o);
+#define B(name, b) printf("\"%s\":[%g,%g,%g,%g],", name, (b).x, (b).y, (b).w, (b).h)
+            printf("{"); B("box", o.box); B("crumb", o.crumbT.box); B("title", o.titleT.box); B("em", o.emT.box); B("text", o.textT.box);
+            B("hint", o.hintT.box); B("back", o.backBox); B("console", o.consoleBox); B("backT", o.backT.box); B("consoleT", o.consoleT.box);
+            printf("\"columns\":["); for (i = 0; i < o.groupCount; i++) printf("%s%d", i ? "," : "", o.groupColumn[i]);
+            printf("],\"groups\":[");
+            for (i = 0; i < o.groupCount; i++) printf("%s[[%g,%g,%g,%g],[%g,%g,%g,%g],[%g,%g,%g,%g]]", i ? "," : "",
+                o.groupIcon[i].x, o.groupIcon[i].y, o.groupIcon[i].w, o.groupIcon[i].h, o.groupTitleT[i].box.x, o.groupTitleT[i].box.y,
+                o.groupTitleT[i].box.w, o.groupTitleT[i].box.h, o.groupLine[i].x, o.groupLine[i].y, o.groupLine[i].w, o.groupLine[i].h);
+            printf("],\"items\":[");
+            for (i = 0; i < o.itemCount; i++) {
+                printf("%s{\"label\":[%g,%g,%g,%g],\"hint\":[%g,%g,%g,%g],\"buttons\":[%g,%g,%g,%g],\"rule\":[%g,%g,%g,%g],\"track\":[%g,%g,%g,%g],\"thumb\":[%g,%g,%g,%g],\"value\":[%g,%g,%g,%g],\"button\":[",
+                    i ? "," : "", o.itemLabelT[i].box.x, o.itemLabelT[i].box.y, o.itemLabelT[i].box.w, o.itemLabelT[i].box.h,
+                    o.itemHintT[i].box.x, o.itemHintT[i].box.y, o.itemHintT[i].box.w, o.itemHintT[i].box.h,
+                    o.itemButtons[i].x, o.itemButtons[i].y, o.itemButtons[i].w, o.itemButtons[i].h,
+                    o.sliderRule[i].x, o.sliderRule[i].y, o.sliderRule[i].w, o.sliderRule[i].h,
+                    o.sliderTrack[i].x, o.sliderTrack[i].y, o.sliderTrack[i].w, o.sliderTrack[i].h,
+                    o.sliderThumb[i].x, o.sliderThumb[i].y, o.sliderThumb[i].w, o.sliderThumb[i].h,
+                    o.sliderValueT[i].box.x, o.sliderValueT[i].box.y, o.sliderValueT[i].box.w, o.sliderValueT[i].box.h);
+                for (k = 0; k < o.itemChoices[i]; k++) printf("%s[%g,%g,%g,%g,%g,%g,%g,%g]", k ? "," : "", o.itemButton[i][k].x, o.itemButton[i][k].y,
+                    o.itemButton[i][k].w, o.itemButton[i][k].h, o.itemChoiceT[i][k].box.x, o.itemChoiceT[i][k].box.y, o.itemChoiceT[i][k].box.w, o.itemChoiceT[i][k].box.h);
+                printf("]}");
             }
-            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
-            HUDPanel_Layout(&l, w, h);
-            printf("{");
-            rect("panel", l.panel); rect("close", l.close); rect("console", l.console); rect("size", l.size); rect("zoom", l.zoom);
-            printf("\"items\":[");
-            for (i = 0; i < l.items; i++) printf("%s[%g,%d,%g,%g,%g,%g]", i ? "," : "", l.itemY[i], l.itemLines[i].count,
-                l.select[i].x, l.select[i].y, l.select[i].w, l.select[i].h);
-            printf("],\"y\":[%g,%g,%g,%g,%g,%g,%g,%g,%g],\"text\":%d,\"content\":%g,\"h2\":%g,\"x\":[%g,%g,%g]}\n",
-                l.labelY, l.h2Y, l.textY, l.h3Y, l.sizeY, l.sizeOutputY, l.zoomY, l.zoomOutputY, l.hintY,
-                l.textLines.count, l.contentHeight, l.h2Size, l.x, l.w, l.emX);
+            printf("]}\n");
+#undef B
         } else if (!strcmp(command, "hudmsg")) {
             /* hudmsg <view width>, then: title|size|top|sub;sub */
             static mhMessageLayout_t m; static char line[1024]; char *f[4], *r, *item, *more; int n = 0, i;

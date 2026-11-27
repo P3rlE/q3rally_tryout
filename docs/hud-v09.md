@@ -354,3 +354,18 @@ many drivers are ready in place of the clock.
 - Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
   orange. Under it the spectators and the server with how full it is.
 
+## HUD options (Shift+H)
+
+A panel in the middle of the screen (boards PanelRace, PanelDeathmatch,
+PanelDerby; `MH_OptionsLayout`, `CG_ModernHUD_DrawOptions`, cg_hud_panel.c),
+where the HUD keeps the screen free, so every change shows in the corners
+at once. It lists only the toggles that do something in the mode
+(`CG_HUDOptions_Build`, the table in cg_hud_core.c), in groups on two
+columns: Card, On track, Order and Effects at the left, Car and cockpit and
+Mini-map at the right (the car's group goes left in a mode without the
+card's toggles). A small screen beside each group's name shows where its
+part of the HUD is. The choices are buttons; the mini-map's size and field
+of view are sliders under its toggle while it is on. The order's toggle
+takes the order's name in the HUD (Race order, Frag order, Splits ..; in
+Derby it is `cg_hudShowDerbyList`). Escape, Shift+H or "Back to race / match"
+close it; it draws over everything, the big messages too.
