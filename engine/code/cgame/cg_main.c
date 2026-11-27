@@ -162,7 +162,6 @@ vmCvar_t	cg_crosshairY;
 vmCvar_t	cg_crosshairHealth;
 vmCvar_t	cg_draw2D;
 vmCvar_t	cg_drawStatus;
-vmCvar_t	cg_hudStyle;
 vmCvar_t	cg_animSpeed;
 vmCvar_t	cg_debugAnim;
 vmCvar_t	cg_debugPosition;
@@ -289,7 +288,6 @@ vmCvar_t	cg_startLightPreview;
 vmCvar_t	cg_fpsLimit;
 vmCvar_t	cg_autodrop;
 vmCvar_t	cg_drawPositionSprites;
-vmCvar_t	cg_elimTimeline;
 vmCvar_t	cg_tightCamTracking;
 vmCvar_t	cg_rearViewRenderLevel;
 vmCvar_t	cg_mainViewRenderLevel;
@@ -342,7 +340,6 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_draw2D, "cg_draw2D", "1", CVAR_ARCHIVE  },
 	{ &cg_drawStatus, "cg_drawStatus", "1", CVAR_ARCHIVE  },
 	/* 1: the v0.9 HUD where a game mode has it (cg_hud_modern.c), 0: the old one */
-	{ &cg_hudStyle, "cg_hudStyle", "1", CVAR_ARCHIVE },
 	{ &cg_drawTimer, "cg_drawTimer", "0", CVAR_ARCHIVE  },
 	{ &cg_drawFPS, "cg_drawFPS", "0", CVAR_ARCHIVE  },
     { &cg_sigilSwitch, "cg_sigilSwitch", "0", CVAR_ARCHIVE  },
@@ -448,7 +445,6 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_fpsLimit, "cg_fpsLimit", "60", CVAR_ARCHIVE },
 	{ &cg_autodrop, "cg_autodrop", "0", CVAR_ARCHIVE | CVAR_USERINFO },
 	{ &cg_drawPositionSprites, "cg_drawPositionSprites", "1", CVAR_ARCHIVE },
-	{ &cg_elimTimeline, "cg_elimTimeline", "1", CVAR_ARCHIVE },
 
         { &cg_tightCamTracking, "cg_tightCamTracking", "0", CVAR_ARCHIVE },
 
@@ -1196,9 +1192,6 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.SMIceShader = trap_R_RegisterShader("gfx/skidmarks/ice" );
 
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
-	cgs.media.derbyHudPanelShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_panel");
-	cgs.media.derbyHudVehicleShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_vehicle");
-	cgs.media.derbyHudWarningShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_warning");
 	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
 		cgs.media.trunkSectorShader[i] = trap_R_RegisterShaderNoMip( va( "gfx/hud/trunk_sector%d", i + 1 ) );
 		cgs.media.trunkEdgeShader[i] = trap_R_RegisterShaderNoMip( va( "gfx/hud/trunk_edge%d", i + 1 ) );
@@ -1245,25 +1238,6 @@ static void CG_RegisterGraphics( void ) {
 		cgs.media.greenSigilModel = trap_R_RegisterModel( "models/flags/g_sigil.md3" );
 		cgs.media.yellowSigilModel = trap_R_RegisterModel( "models/flags/y_sigil.md3" );
 		cgs.media.neutralSigilModel = trap_R_RegisterModel( "models/flags/n_sigil.md3" );
-		cgs.media.redFlagShader[0] = trap_R_RegisterShaderNoMip( "icons/iconf_red1" );
-		cgs.media.redFlagShader[1] = trap_R_RegisterShaderNoMip( "icons/iconf_red2" );
-		cgs.media.redFlagShader[2] = trap_R_RegisterShaderNoMip( "icons/iconf_red3" );
-		cgs.media.blueFlagShader[0] = trap_R_RegisterShaderNoMip( "icons/iconf_blu1" );
-		cgs.media.blueFlagShader[1] = trap_R_RegisterShaderNoMip( "icons/iconf_blu2" );
-		cgs.media.blueFlagShader[2] = trap_R_RegisterShaderNoMip( "icons/iconf_blu3" );
-		cgs.media.greenFlagShader[0] = trap_R_RegisterShaderNoMip( "icons/iconf_green1" );
-		cgs.media.greenFlagShader[1] = trap_R_RegisterShaderNoMip( "icons/iconf_green2" );
-		cgs.media.greenFlagShader[2] = trap_R_RegisterShaderNoMip( "icons/iconf_green3" );
-		cgs.media.yellowFlagShader[0] = trap_R_RegisterShaderNoMip( "icons/iconf_yell1" );
-		cgs.media.yellowFlagShader[1] = trap_R_RegisterShaderNoMip( "icons/iconf_yell2" );
-		cgs.media.yellowFlagShader[2] = trap_R_RegisterShaderNoMip( "icons/iconf_yell3" );
-// Q3Rally Code Start
-        cgs.media.sigilShader = trap_R_RegisterShaderNoMip( "icons/icons_neutral" );
-        cgs.media.redsigilShader = trap_R_RegisterShaderNoMip( "icons/icons_red" );
-        cgs.media.bluesigilShader = trap_R_RegisterShaderNoMip( "icons/icons_blu" );
-        cgs.media.greensigilShader = trap_R_RegisterShaderNoMip( "icons/icons_green" );
-        cgs.media.yellowsigilShader = trap_R_RegisterShaderNoMip( "icons/icons_yellow" );       
-// Q3Rally Code END
 
 #ifdef MISSIONPACK
 		cgs.media.flagPoleModel = trap_R_RegisterModel( "models/flag2/flagpole.md3" );

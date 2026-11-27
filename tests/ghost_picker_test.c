@@ -324,10 +324,7 @@ int main( void ) {
 		CG_GhostRace_DrawResultBanner();
 		assert( s_drawn == 2 );
 		assert( !CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
-		{
-			qboolean won;
-			assert( !CG_GhostRace_ClientResult( 0, &won ) );
-		}
+		assert( !cg.ghostRaceResults[0].valid );
 		s_snap.ps.pm_type = PM_NORMAL;
 
 		/* Opponent report: once per change, again after a new race start. */
@@ -351,18 +348,12 @@ int main( void ) {
 		/* Server results for every driver; own result is overwritten. */
 		Server( "lghostresult 3 1 58000 59000 \"Other Ghost\"" );
 		Server( "lghostresult 0 0 61000 60000 \"Gamma Ray\"" );
-		{
-			qboolean won = qfalse;
-			assert( CG_GhostRace_ClientResult( 3, &won ) && won );
-			assert( CG_GhostRace_ClientResult( 0, &won ) && !won );
-			assert( !CG_GhostRace_ClientResult( 4, &won ) );
-		}
+		assert( cg.ghostRaceResults[3].valid && cg.ghostRaceResults[3].won );
+		assert( cg.ghostRaceResults[0].valid && !cg.ghostRaceResults[0].won );
+		assert( !cg.ghostRaceResults[4].valid );
 		assert( cg.ghostResultValid && !cg.ghostResultWon && cg.ghostResultPlayerMs == 61000 );
 		CG_GhostRace_ResetRace();
-		{
-			qboolean won;
-			assert( !CG_GhostRace_ClientResult( 3, &won ) );
-		}
+		assert( !cg.ghostRaceResults[3].valid );
 
 		cgs.gametype = GT_RACING;
 		s_playbackMode = 3;

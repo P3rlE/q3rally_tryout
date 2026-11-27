@@ -200,108 +200,12 @@ static void CG_Autoball_TeamColor( int team, float alpha, vec4_t out ) {
 	out[3] = alpha;
 }
 
-static const char *CG_Autoball_SpeedText( int kmh ) {
-	if ( cg_metricUnits.integer )
-		return va( "%i km/h", kmh );
-	return va( "%i mph", (int)( kmh * 0.621371f + 0.5f ) );
-}
-
-static void CG_Autoball_DrawScoreBug( void ) {
-	vec4_t red, blue, center, white, accent;
-	int msec, seconds;
-	qboolean overtime = qfalse;
-	char clock[16];
-	const float y = 6.0f, h = 30.0f, teamW = 56.0f, clockW = 84.0f;
-	float x = 320.0f - ( teamW + clockW / 2.0f );
-
-	CG_Autoball_TeamColor( TEAM_RED, 0.85f, red );
-	CG_Autoball_TeamColor( TEAM_BLUE, 0.85f, blue );
-	AB_SET4( center, 0.02f, 0.03f, 0.04f, 0.72f );
-	AB_SET4( white, 1.0f, 1.0f, 1.0f, 1.0f );
-	AB_SET4( accent, 1.0f, 0.78f, 0.2f, 1.0f );
-
-	/* before the first whistle the clock stands (start time lies ahead) */
-	msec = cg.time - cgs.levelStartTime;
-	if ( msec < 0 || cgs.autoballState == AUTOBALL_STATE_WAITING )
-		msec = 0;
-	if ( cgs.timelimit > 0 ) {
-		msec = cgs.timelimit * 60000 - msec;
-		if ( msec < 0 ) {
-			overtime = qtrue;
-			msec = -msec;
-		}
-	}
-	if ( msec < 0 )
-		msec = 0;
-	seconds = msec / 1000;
-	/* own buffer: va() only rotates two buffers, the score va() calls below
-	   would overwrite the clock text */
-	Com_sprintf( clock, sizeof( clock ), "%s%i:%02i", overtime ? "+" : "", seconds / 60, seconds % 60 );
-
-	CG_FillRect( x, y, teamW, h, red );
-	CG_FillRect( x + teamW, y, clockW, h, center );
-	CG_FillRect( x + teamW + clockW, y, teamW, h, blue );
-	CG_DrawIngameString( (int)( x + teamW / 2 ), (int)( y + 4 ), va( "%i", cgs.scores1 ),
-		UI_CENTER | UI_DROPSHADOW, 1.0f, white );
-	CG_DrawIngameString( (int)( x + teamW + clockW + teamW / 2 ), (int)( y + 4 ), va( "%i", cgs.scores2 ),
-		UI_CENTER | UI_DROPSHADOW, 1.0f, white );
-	CG_DrawIngameString( 320, (int)( y + 8 ), clock, UI_CENTER | UI_SMALLFONT, 1.0f,
-		overtime ? accent : white );
-	if ( overtime ) {
-		CG_DrawIngameString( 320, (int)( y + h + 3 ), "OVERTIME", UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW,
-			0.75f, accent );
-	} else if ( cgs.autoballState == AUTOBALL_STATE_KICKOFF ) {
-		CG_DrawIngameString( 320, (int)( y + h + 3 ), "KICK-OFF", UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW,
-			0.75f, white );
-	}
-}
-
-static void CG_Autoball_DrawGoalBanner( void ) {
-	vec4_t color, white;
-	int elapsed;
-	float alpha, scale;
-	const char *who;
-
-	if ( cgs.autoballState != AUTOBALL_STATE_GOAL )
-		return;
-	elapsed = cg.time - cgs.autoballGoalTime;
-	if ( elapsed < 0 )
-		elapsed = 0;
-	alpha = elapsed < 3000 ? 1.0f : 1.0f - ( elapsed - 3000 ) / 1000.0f;
-	if ( alpha <= 0.0f )
-		return;
-	/* a short punch-in, then steady */
-	scale = elapsed < 250 ? 1.0f + ( 250 - elapsed ) / 250.0f * 0.25f : 1.0f;	/* stays inside 4:3 */
-
-	CG_Autoball_TeamColor( cgs.autoballGoalTeam, alpha, color );
-	AB_SET4( white, 1.0f, 1.0f, 1.0f, alpha );
-	CG_DrawIngameString( 320, 140, cgs.autoballGoalTeam == TEAM_BLUE ? "BLUE SCORES!" : "RED SCORES!",
-		UI_CENTER | UI_DROPSHADOW, 1.6f * scale, color );
-
-	/* scorer: client number, -2 own goal, -1 nobody credited (old touch) */
-	if ( cgs.autoballScorer >= 0 && cgs.autoballScorer < MAX_CLIENTS &&
-		cgs.clientinfo[cgs.autoballScorer].infoValid ) {
-		who = cgs.clientinfo[cgs.autoballScorer].name;
-	} else if ( cgs.autoballScorer == -2 ) {
-		who = "Own goal";
-	} else {
-		who = NULL;
-	}
-	if ( who ) {
-		CG_DrawIngameString( 320, 184, va( "%s^7  -  %s", who, CG_Autoball_SpeedText( cgs.autoballGoalSpeed ) ),
-			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 1.0f, white );
-	} else {
-		CG_DrawIngameString( 320, 184, CG_Autoball_SpeedText( cgs.autoballGoalSpeed ),
-			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 1.0f, white );
-	}
-}
-
 /*
 ================
 CG_Autoball_DrawIndicator
 
-On screen: four corner brackets around the ball. Off screen: a marker on the
-screen edge in the ball's direction, with the distance.
+On screen: four corner brackets around the ball, with the distance. Off
+screen the v0.9 HUD draws a marker on the screen edge (cg_hud_modern.c).
 ================
 */
 /* ball radius from the server (g_autoballBallScale), 75 for old servers */
@@ -312,7 +216,7 @@ static float CG_Autoball_Radius( const centity_t *cent ) {
 static void CG_Autoball_DrawIndicator( void ) {
 	centity_t *ball;
 	vec3_t delta;
-	vec4_t color, shadow;
+	vec4_t color;
 	float forward, left, up, focalX, focalY, sx, sy, dist;
 
 	ball = CG_Autoball_FindBall();
@@ -328,7 +232,6 @@ static void CG_Autoball_DrawIndicator( void ) {
 	focalY = 240.0f / tan( cg.refdef.fov_y * M_PI / 360.0f );
 
 	AB_SET4( color, 1.0f, 0.62f, 0.12f, 0.9f );
-	AB_SET4( shadow, 0.0f, 0.0f, 0.0f, 0.6f );
 	CG_SetScreenPlacement( PLACE_STRETCH, PLACE_STRETCH );
 
 	if ( forward > 1.0f ) {
@@ -360,44 +263,7 @@ static void CG_Autoball_DrawIndicator( void ) {
 		}
 	}
 
-	if ( CG_ModernHUD_Active() ) {
-		CG_PopScreenPlacement();
-		return;	/* off screen the v0.9 HUD draws its own marker, clear of its panels */
-	}
-	{
-		/* screen-space direction: right = -left, down = -up */
-		float dx = -left, dy = -up, len, t;
-		const char *arrow;
-
-		if ( forward <= 0.0f && fabs( dx ) < 1.0f && fabs( dy ) < 1.0f )
-			dy = 1.0f;
-		len = sqrt( dx * dx + dy * dy );
-		if ( len < 0.001f ) {
-			dx = 0.0f;
-			dy = 1.0f;
-			len = 1.0f;
-		}
-		dx /= len;
-		dy /= len;
-		t = 1e9f;
-		if ( fabs( dx ) > 0.001f )
-			t = 280.0f / fabs( dx );
-		if ( fabs( dy ) > 0.001f && 196.0f / fabs( dy ) < t )
-			t = 196.0f / fabs( dy );
-		sx = 320.0f + dx * t;
-		sy = 240.0f + dy * t;
-
-		if ( fabs( dx ) > fabs( dy ) )
-			arrow = dx > 0.0f ? ">" : "<";
-		else
-			arrow = dy > 0.0f ? "v" : "^";
-
-		CG_FillRect( sx - 15, sy - 15, 30, 30, shadow );
-		CG_DrawRect( sx - 15, sy - 15, 30, 30, 2, color );
-		CG_DrawIngameString( (int)sx, (int)( sy - 9 ), arrow, UI_CENTER, 0.75f, color );
-		CG_DrawIngameString( (int)sx, (int)( sy + ( dy > 0.5f ? -32 : 18 ) ), va( "%im", (int)dist ),
-			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.7f, color );
-	}
+	/* off screen the v0.9 HUD draws its own marker, clear of its panels */
 	CG_PopScreenPlacement();
 }
 
@@ -462,16 +328,7 @@ void CG_Autoball_Draw2D( void ) {
 	if ( cg_autoballIndicator.integer && cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR &&
 		!( cg.snap->ps.pm_flags & PMF_FOLLOW ) && cg.snap->ps.stats[STAT_HEALTH] > 0 )
 		CG_Autoball_DrawIndicator();
-	if ( cgs.gametype != GT_AUTOBALL )
-		return;
-	if ( CG_ModernHUD_Active() )
-		return;	/* the v0.9 HUD has its own score bug and goal message */
-	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
-	CG_Autoball_DrawScoreBug();
-	CG_PopScreenPlacement();
-	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
-	CG_Autoball_DrawGoalBanner();
-	CG_PopScreenPlacement();
+	/* the score bug and the goal message are the v0.9 HUD's */
 }
 
 
@@ -1341,113 +1198,4 @@ void CG_Autoball_OverrideView( void ) {
 	if ( CG_Autoball_IntroView() )
 		return;
 	CG_Autoball_TVView();
-}
-
-
-/*
-===========================================================================
-Awards under the end-of-match scoreboard
-===========================================================================
-*/
-
-#define AB_AWARD_W      150.0f
-#define AB_AWARD_H      50.0f
-#define AB_AWARD_GAP    8.0f
-
-static void CG_Autoball_DrawAward( float x, float y, const char *title, int client,
-	const char *value, float fade ) {
-	vec4_t bg, bar, white, accent;
-	char name[MAX_NAME_LENGTH];
-	int team;
-
-	team = cgs.clientinfo[client].team;
-	AB_SET4( bg, 0.02f, 0.03f, 0.04f, 0.72f * fade );
-	CG_Autoball_TeamColor( team == TEAM_BLUE ? TEAM_BLUE : TEAM_RED, 0.9f * fade, bar );
-	AB_SET4( white, 1.0f, 1.0f, 1.0f, fade );
-	AB_SET4( accent, 1.0f, 0.78f, 0.2f, fade );
-
-	CG_FillRect( x, y, AB_AWARD_W, AB_AWARD_H, bg );
-	CG_FillRect( x, y, AB_AWARD_W, 3.0f, bar );
-	Q_strncpyz( name, cgs.clientinfo[client].name, sizeof( name ) );
-	Q_CleanStr( name );
-	if ( strlen( name ) > 14 )
-		name[14] = '\0';
-	CG_DrawIngameString( (int)( x + AB_AWARD_W / 2 ), (int)( y + 6 ), title,
-		UI_CENTER | UI_SMALLFONT, 0.6f, accent );
-	CG_DrawIngameString( (int)( x + AB_AWARD_W / 2 ), (int)( y + 18 ), name,
-		UI_CENTER | UI_SMALLFONT, 0.75f, white );
-	CG_DrawIngameString( (int)( x + AB_AWARD_W / 2 ), (int)( y + 34 ), value,
-		UI_CENTER | UI_SMALLFONT, 0.6f, white );
-}
-
-/* MVP, top scorer, best keeper, hardest shot; only the ones somebody earned */
-void CG_Autoball_DrawAwards( int y, float fade ) {
-	int i, count;
-	int mvp = -1, scorer = -1, keeper = -1, shooter = -1;
-	const char *titles[4];
-	char values[4][32];	/* not va(): it only has two buffers */
-	int clients[4];
-	float x, top;
-
-	if ( cgs.gametype != GT_AUTOBALL || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION )
-		return;
-
-	for ( i = 0; i < cg.numScores; i++ ) {
-		score_t *s = &cg.scores[i];
-		if ( s->client < 0 || s->client >= MAX_CLIENTS )
-			continue;
-		if ( cgs.clientinfo[s->client].team != TEAM_RED && cgs.clientinfo[s->client].team != TEAM_BLUE )
-			continue;
-		if ( mvp < 0 || s->score > cg.scores[mvp].score )
-			mvp = i;
-		if ( s->autoballGoals > 0 && ( scorer < 0 || s->autoballGoals > cg.scores[scorer].autoballGoals ||
-			( s->autoballGoals == cg.scores[scorer].autoballGoals &&
-			s->autoballAssists > cg.scores[scorer].autoballAssists ) ) )
-			scorer = i;
-		if ( s->autoballSaves > 0 && ( keeper < 0 || s->autoballSaves > cg.scores[keeper].autoballSaves ) )
-			keeper = i;
-		if ( s->autoballBestShot > 0 && ( shooter < 0 || s->autoballBestShot > cg.scores[shooter].autoballBestShot ) )
-			shooter = i;
-	}
-
-	count = 0;
-	if ( mvp >= 0 ) {
-		titles[count] = "MVP";
-		clients[count] = cg.scores[mvp].client;
-		Com_sprintf( values[count], sizeof( values[count] ), "%i points", cg.scores[mvp].score );
-		count++;
-	}
-	if ( scorer >= 0 ) {
-		titles[count] = "TOP SCORER";
-		clients[count] = cg.scores[scorer].client;
-		Com_sprintf( values[count], sizeof( values[count] ), "%i goal%s", cg.scores[scorer].autoballGoals,
-			cg.scores[scorer].autoballGoals == 1 ? "" : "s" );
-		count++;
-	}
-	if ( keeper >= 0 ) {
-		titles[count] = "BEST KEEPER";
-		clients[count] = cg.scores[keeper].client;
-		Com_sprintf( values[count], sizeof( values[count] ), "%i save%s", cg.scores[keeper].autoballSaves,
-			cg.scores[keeper].autoballSaves == 1 ? "" : "s" );
-		count++;
-	}
-	if ( shooter >= 0 ) {
-		titles[count] = "HARDEST SHOT";
-		clients[count] = cg.scores[shooter].client;
-		Q_strncpyz( values[count], CG_Autoball_SpeedText( cg.scores[shooter].autoballBestShot ),
-			sizeof( values[count] ) );
-		count++;
-	}
-	if ( !count )
-		return;
-
-	/* below the scoreboard, but never off the screen */
-	top = (float)y + 10.0f;
-	if ( top > 480.0f - AB_AWARD_H - 8.0f )
-		top = 480.0f - AB_AWARD_H - 8.0f;
-	x = 320.0f - ( count * AB_AWARD_W + ( count - 1 ) * AB_AWARD_GAP ) / 2.0f;
-	for ( i = 0; i < count; i++ ) {
-		CG_Autoball_DrawAward( x, top, titles[i], clients[i], values[i], fade );
-		x += AB_AWARD_W + AB_AWARD_GAP;
-	}
 }

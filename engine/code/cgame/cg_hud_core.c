@@ -25,23 +25,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
   cg_hud_core.c
 
-  Central HUD dispatcher:
-    - Cvar registration for all HUD element toggles
-    - CG_DrawHUD()          : main entry point called each frame
-    - CG_DrawUpperRightHUD(): checkpoint arrow and score overlay
-    - CG_DrawLowerLeftHUD() : rear-weapon ammo area
-    - CG_DrawHUDOptionsMenu(): in-game overlay to toggle elements
+  HUD toggles and the per-frame HUD hook:
+    - cvar registration for the HUD element toggles
+    - the toggle table the HUD options panel (Shift+H) shows
+    - CG_DrawHUD(): the standings and the race state, each frame
 ===========================================================================
 */
 
 #include "cg_local.h"
 #include "../client/keycodes.h"
 #include "cg_hud_elements.h"
-
-/* -----------------------------------------------------------------------
-   LCS timeline sizing
-   ----------------------------------------------------------------------- */
-#define HUD_TEXT_INSET            6.0f
 
 /* -----------------------------------------------------------------------
    Shared colour palette (also used by racing / derby / vehicle modules)
@@ -59,15 +52,10 @@ float colors[4][4] = {
 vmCvar_t  cg_hudShowTimes;
 vmCvar_t  cg_hudShowLaps;
 vmCvar_t  cg_hudShowPosition;
-vmCvar_t  cg_hudShowDistToFinish;
 vmCvar_t  cg_hudShowOpponentList;
-vmCvar_t  cg_hudShowScores;
 vmCvar_t  cg_hudShowSlipstream;
 
-vmCvar_t  cg_hudShowDerbyVehicle;
 vmCvar_t  cg_hudShowDerbyList;
-vmCvar_t  cg_hudShowKothHillStatus;
-vmCvar_t  cg_hudShowKothRespawnWave;
 
 /* Menu open/close toggle – registered in CG_HUD_RegisterCvars, updated each frame */
 static vmCvar_t cg_hudOptionsOpen;
@@ -84,35 +72,12 @@ void CG_HUD_RegisterCvars( void ) {
     trap_Cvar_Register( &cg_hudShowTimes,          "cg_hudShowTimes",          "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowLaps,           "cg_hudShowLaps",           "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowPosition,       "cg_hudShowPosition",       "1", CVAR_ARCHIVE );
-    trap_Cvar_Register( &cg_hudShowDistToFinish,   "cg_hudShowDistToFinish",   "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowOpponentList,   "cg_hudShowOpponentList",   "1", CVAR_ARCHIVE );
-    trap_Cvar_Register( &cg_hudShowScores,         "cg_hudShowScores",         "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowSlipstream,     "cg_hudShowSlipstream",     "1", CVAR_ARCHIVE );
 
     /* Derby */
-    trap_Cvar_Register( &cg_hudShowDerbyVehicle,   "cg_hudShowDerbyVehicle",   "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowDerbyList,      "cg_hudShowDerbyList",      "1", CVAR_ARCHIVE );
-
-    /* KOTH */
-    trap_Cvar_Register( &cg_hudShowKothHillStatus,  "cg_hudShowKothHillStatus",  "1", CVAR_ARCHIVE );
-    trap_Cvar_Register( &cg_hudShowKothRespawnWave, "cg_hudShowKothRespawnWave", "1", CVAR_ARCHIVE );
 }
-
-/* -----------------------------------------------------------------------
-   CG_GetEliminationColumnWidth  (shared utility, stays in core)
-   ----------------------------------------------------------------------- */
-float CG_GetEliminationColumnWidth( void ) {
-    static float columnWidth = 0.0f;
-
-    if ( columnWidth <= 0.0f ) {
-        const float insetWidth = HUD_TEXT_INSET * 2.0f;
-        columnWidth = insetWidth + CG_IngameStringWidth(
-            "R99 LEFT63 Name (99s)", UI_SMALLFONT, 0.75f );
-    }
-
-    return columnWidth;
-}
-
 
 /* =======================================================================
    HUD OPTIONS MENU
@@ -122,12 +87,10 @@ float CG_GetEliminationColumnWidth( void ) {
    ======================================================================= */
 
 #define HUDOPT_MODE_ANY                 -1
-#define HUDOPT_MODE_SCORE_PANEL         -2
 #define HUDOPT_MODE_RALLY_RACE          -3
 #define HUDOPT_MODE_RACE_OR_LCS         -4
 #define HUDOPT_MODE_RACE_LCS_DERBY      -5
 #define HUDOPT_MODE_RACE_WITH_LAPS      -6
-#define HUDOPT_MODE_SPRINT_TRACK        -7
 
 typedef struct {
     const char  *label;
@@ -148,25 +111,18 @@ static const char *const hudCheckpointArrowLabels[] = {
 };
 
 static const hudToggleEntry_t hudToggleTable[] = {
-    /* ---- Race / match (left column, indices 0-9) ---- */
+    /* ---- race / match ---- */
     { "TIMES PANEL",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, HUDOPT_MODE_RACE_LCS_DERBY,      qfalse, NULL },
     { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, HUDOPT_MODE_RACE_WITH_LAPS,      qfalse, NULL },
     { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
-    { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, HUDOPT_MODE_SPRINT_TRACK,        qfalse, NULL },
     { "GHOST PLAYBACK",      "cg_ghostPlayback",         &cg_ghostPlayback,         3, GT_GHOST,                         qtrue,  hudGhostPlaybackLabels },
     { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudCheckpointArrowLabels },
     { "RACING LINE",         "cg_racingLine",            &cg_racingLine,            1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
-    { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, GT_LCS,                           qfalse, NULL },
     { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, HUDOPT_MODE_RACE_OR_LCS,          qfalse, NULL },
-    { "SCORES PANEL",        "cg_hudShowScores",         &cg_hudShowScores,         1, HUDOPT_MODE_SCORE_PANEL,           qfalse, NULL },
-    /* ---- Derby (right column top, indices 10-12) ---- */
-    { "DERBY VEHICLE STATE", "cg_hudShowDerbyVehicle",   &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse, NULL },
+    /* ---- Derby ---- */
     { "DERBY SCOREBOARD",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse, NULL },
     { "DERBY HIT IMPACT",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse, NULL },
-    /* ---- KOTH (right column middle, indices 13-14) ---- */
-    { "KOTH HILL STATUS",    "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH, qfalse, NULL },
-    { "KOTH RESPAWN WAVE",   "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH, qfalse, NULL },
-    /* ---- Vehicle (right column bottom, indices 15-18) ---- */
+    /* ---- car ---- */
     { "STATUS HUD",          "cg_drawStatus",            &cg_drawStatus,            1, HUDOPT_MODE_ANY, qfalse, NULL },
     { "REAR-VIEW MIRROR",    "cg_drawRearView",          &cg_drawRearView,          1, HUDOPT_MODE_ANY, qfalse, NULL },
     { "MINI-MAP",            "cg_drawMMap",              &cg_drawMMap,              1, HUDOPT_MODE_ANY, qfalse, NULL },
@@ -188,19 +144,15 @@ static void HUDOpt_SetFloatCvar( const char *cvarName, vmCvar_t *cvar, float val
 ================
 HUDEntry_IsUnavail
 Returns qtrue when a toggle entry is not applicable in the current gametype.
-  -1 is always available; -2 applies where the score panel is drawn.
-  -3 is course-race guidance/position, -4 opponent list, -5 race/LCS/Derby times,
-  -6 race with laps, -7 point-to-point (A2B) distance. Drag uses its dedicated
-  HUD; only times and an optional two-driver opponent list apply there.
+  -1 is always available; -3 is course-race guidance/position, -4 opponent
+  list, -5 race/LCS/Derby times, -6 race with laps. Drag has its own HUD;
+  only times and an optional two-driver opponent list apply there.
   Non-negative values are exact GT_* matches.
 ================
 */
 static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
     if ( e->gameTypeOnly == HUDOPT_MODE_ANY )
         return qfalse;
-    if ( e->gameTypeOnly == HUDOPT_MODE_SCORE_PANEL )
-        return ( BG_GametypeIsTimedRace( cgs.gametype ) ||
-                 cgs.gametype == GT_DERBY );
     if ( e->gameTypeOnly == HUDOPT_MODE_RALLY_RACE )
         return ( cgs.gametype == GT_DRAG || !isRallyRace() );
     if ( e->gameTypeOnly == HUDOPT_MODE_RACE_OR_LCS )
@@ -208,8 +160,6 @@ static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
                ( !isRallyRace() && cgs.gametype != GT_LCS );
     if ( e->gameTypeOnly == HUDOPT_MODE_RACE_LCS_DERBY )
         return ( !isRallyRace() && cgs.gametype != GT_LCS && cgs.gametype != GT_DERBY );
-    if ( e->gameTypeOnly == HUDOPT_MODE_SPRINT_TRACK )
-        return ( cgs.gametype == GT_DRAG || !CG_IsSprintTrack() );
     if ( e->gameTypeOnly == HUDOPT_MODE_RACE_WITH_LAPS )
         return ( !isRallyRace() || cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_DRAG );
     return ( cgs.gametype != e->gameTypeOnly );
@@ -267,14 +217,15 @@ void CG_DrawHUDOptionsMenu( void ) {
    ----------------------------------------------------------------------- */
 
 /*
-================
-CG_DrawUpperRightHUD
-Draws the checkpoint arrow and applicable upper-right score panel.
-================
+================================
+CG_DrawHUD
+Main HUD dispatcher, called each frame from CG_DrawActive().
+================================
 */
-float CG_DrawUpperRightHUD( float y ) {
+qboolean CG_DrawHUD( void ) {
     int i;
 
+    /* drivers in the match (not spectators, not disconnected) */
     cgs.numRacers = 0;
     for ( i = 0; i < cgs.maxclients; i++ ) {
         if ( !cgs.clientinfo[i].infoValid )              continue;
@@ -283,1140 +234,22 @@ float CG_DrawUpperRightHUD( float y ) {
         cgs.numRacers++;
     }
 
-    if ( cgs.clientinfo[cg.snap->ps.clientNum].team == TEAM_SPECTATOR ) {
-        return y;
-    }
-
-    /* Suppress racing HUD elements during the intro route preview. */
-    if ( CG_IntroCam_IsActive() ) {
-        return y;
-    }
-
-    /* The Drag strip has fixed lanes and a dedicated launch/timing display. */
-    if ( cgs.gametype == GT_DRAG ) {
-        cg.wrongWayStartTime = cg.wrongWayTime = 0;
-        return y;
-    }
-
-    if ( isRallyRace() ) {
-        if ( cg_checkpointArrowMode.integer ) {
-            CG_DrawArrowToCheckpoint( y );
-        } else {
-            cg.wrongWayStartTime = 0;
-        }
-
-        CG_UpdateGhostSplitDelta();
-        /* Race timing and position now live in the flat telemetry strip.
-           Do not draw the former stacked card over the world view. */
-	}
-
-    if ( !isRallyNonDMRace() && cgs.gametype != GT_DERBY &&
-         cgs.gametype != GT_LCS && cgs.gametype != GT_DEATHMATCH &&
-         cgs.gametype != GT_RACING_DM && cgs.gametype != GT_TEAM_RACING_DM &&
-         cgs.gametype != GT_TEAM && cgs.gametype != GT_CTF &&
-         cgs.gametype != GT_CTF4 && cgs.gametype != GT_DOMINATION &&
-         cgs.gametype != GT_KOTH && cgs.gametype != GT_AUTOBALL ) {
-        if ( cg_hudShowScores.integer ) {
-            y = CG_DrawScores( 636.0f, y );
-        }
-    }
-
-    return y;
-}
-
-
-/*
-================
-CG_DrawLowerLeftHUD
-================
-*/
-float CG_DrawLowerLeftHUD( float y ) {
-    int i;
-
-    y += 36;
-    for ( i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++ ) {
-        if ( cg.snap->ps.stats[STAT_WEAPONS] & ( 1u << i ) ) {
-            if ( cg.snap->ps.ammo[i] ) {
-                y -= 36;
-                break;
-            }
-        }
-    }
-    return y;
-}
-
-
-/* -----------------------------------------------------------------------
-   Compact race order panel. Gaps to the leader are measured at the latest
-   checkpoint passed by both drivers, rather than guessed from their speed.
-   ----------------------------------------------------------------------- */
-#define RACE_ORDER_MAX_ROWS   9
-#define RACE_ORDER_PANEL_W    160.0f
-#define TEAM_DM_ORDER_PANEL_W 192.0f
-#define RACE_ORDER_ROW_H       16.0f
-#define RACE_ORDER_TEXT_SCALE  0.52f
-
-static void CG_GetRedBlueTeamColor( int teamIndex, vec4_t color ) {
-    if ( teamIndex == 0 ) {
-        color[0] = 0.96f; color[1] = 0.24f; color[2] = 0.22f;
-    } else {
-        color[0] = 0.28f; color[1] = 0.56f; color[2] = 1.00f;
-    }
-    color[3] = 1.00f;
-}
-
-static void CG_GetCTFTeamColor( int teamIndex, vec4_t color ) {
-    switch ( teamIndex ) {
-    case 0:
-        color[0] = 0.96f; color[1] = 0.24f; color[2] = 0.22f;
-        break;
-    case 1:
-        color[0] = 0.28f; color[1] = 0.56f; color[2] = 1.00f;
-        break;
-    case 2:
-        color[0] = 0.18f; color[1] = 0.88f; color[2] = 0.32f;
-        break;
-    default:
-        color[0] = 1.00f; color[1] = 0.82f; color[2] = 0.16f;
-        break;
-    }
-    color[3] = 1.00f;
-}
-
-static float CG_DrawRacingOrderHUD( float top ) {
-    int clientAtPosition[MAX_CLIENTS + 1];
-    int teamAtPosition[MAX_CLIENTS + 1];
-    int i, position, maxPosition, localPosition;
-    int firstPosition, lastPosition, rowCount, clientNum, leaderClient;
-    int gapMs, absGapMs, nameLength;
-    int teamIndex;
-    qboolean isElimination, isEliminated, isTeamRace, isTeamRaceDM;
-    float panelX, panelY, panelH, panelW, rowY, chipX, chipY, chipW;
-    screenPlacement_e savedHorizontalPlacement;
-    screenPlacement_e savedVerticalPlacement;
-    char name[32];
-    char gapText[16];
-    char teamValue[24];
-    static const char *teamCodes[2] = { "RED", "BLU" };
-    static const char *teamNames[2] = { "RED", "BLUE" };
-    team_t driverTeam;
-    vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
-    vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
-    vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
-    vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
-    vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
-    vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
-    vec4_t gapColor = { 0.36f, 0.70f, 0.96f, 1.00f };
-    vec4_t negativeGapColor = { 1.00f, 0.38f, 0.30f, 1.00f };
-    vec4_t teamColor;
-    vec4_t teamFillColor;
-
-    isTeamRaceDM = cgs.gametype == GT_TEAM_RACING_DM;
-    isTeamRace = cgs.gametype == GT_TEAM_RACING || isTeamRaceDM;
-    if ( !cg.snap || !CG_RaceOrderIsActive() || cg.showScores ||
-         cg.predictedPlayerState.pm_type == PM_INTERMISSION ||
-         cg.snap->ps.pm_type == PM_INTERMISSION ) {
-        return top;
-    }
-
-    isElimination = cgs.gametype == GT_ELIMINATION;
-
-    for ( i = 0; i <= MAX_CLIENTS; i++ ) {
-        clientAtPosition[i] = -1;
-        teamAtPosition[i] = -1;
-    }
-    maxPosition = 0;
-    localPosition = 0;
-    if ( isElimination &&
-         cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR &&
-         !cg_entities[cg.snap->ps.clientNum].eliminationOut ) {
-        localPosition = cg.snap->ps.stats[STAT_POSITION];
-    }
-
-    for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
-        if ( !cgs.clientinfo[i].infoValid ) {
-            continue;
-        }
-        driverTeam = cgs.clientinfo[i].team;
-        if ( isTeamRace && i == cg.snap->ps.clientNum &&
-             cg.snap->ps.persistant[PERS_TEAM] >= TEAM_RED &&
-             cg.snap->ps.persistant[PERS_TEAM] <= TEAM_BLUE ) {
-            driverTeam = (team_t)cg.snap->ps.persistant[PERS_TEAM];
-        }
-        if ( isTeamRace &&
-             ( driverTeam < TEAM_RED || driverTeam > TEAM_BLUE ) ) {
-            continue;
-        }
-        isEliminated = isElimination && cg_entities[i].eliminationOut;
-        if ( driverTeam == TEAM_SPECTATOR && !isEliminated ) {
-            continue;
-        }
-
-        position = cg_entities[i].currentPosition;
-        if ( isElimination && i == cg.snap->ps.clientNum &&
-             !cg_entities[i].eliminationOut &&
-             cg.snap->ps.stats[STAT_POSITION] > 0 ) {
-            /* The local playerState is carried in every snapshot and is the
-             * freshest source for our own place; mirrored positions can
-             * briefly leave the local row one update behind. */
-            position = cg.snap->ps.stats[STAT_POSITION];
-        }
-        if ( position <= 0 ) {
-            position = cgs.clientinfo[i].position;
-        }
-        if ( isElimination && i != cg.snap->ps.clientNum &&
-             localPosition > 0 && position == localPosition ) {
-            /* Prefer the authoritative local snapshot if an older mirrored
-             * position temporarily collides with it. */
-            continue;
-        }
-        if ( position <= 0 || position > MAX_CLIENTS ||
-             clientAtPosition[position] >= 0 ) {
-            continue;
-        }
-
-        clientAtPosition[position] = i;
-        teamAtPosition[position] = driverTeam;
-        if ( position > maxPosition ) {
-            maxPosition = position;
-        }
-        if ( i == cg.snap->ps.clientNum ) {
-            localPosition = position;
-        }
-    }
-
-    if ( maxPosition <= 0 ) {
-        return top;
-    }
-
-    rowCount = maxPosition < RACE_ORDER_MAX_ROWS ? maxPosition : RACE_ORDER_MAX_ROWS;
-    firstPosition = 1;
-    if ( maxPosition > rowCount ) {
-        if ( localPosition <= 0 ) {
-            localPosition = 1;
-        }
-        firstPosition = localPosition - rowCount / 2;
-        if ( firstPosition < 1 ) {
-            firstPosition = 1;
-        }
-        if ( firstPosition > maxPosition - rowCount + 1 ) {
-            firstPosition = maxPosition - rowCount + 1;
-        }
-    }
-    lastPosition = firstPosition + rowCount - 1;
-
-    panelW = isTeamRace ? TEAM_DM_ORDER_PANEL_W : RACE_ORDER_PANEL_W;
-    panelX = 640.0f - panelW;
-    panelY = top;
-    panelH = ( isTeamRace ? 57.0f : 40.0f ) +
-             rowCount * RACE_ORDER_ROW_H;
-    savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-    savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-    CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
-
-    CG_FillRect( panelX, panelY, panelW, panelH, panelColor );
-    CG_FillRect( panelX, panelY, panelW, 2.0f, accentColor );
-    CG_FillRect( panelX, panelY, panelW, 20.0f, headerColor );
-    CG_DrawRect( panelX, panelY, panelW, panelH, 1.0f, borderColor );
-    CG_FillRect( panelX + 7.0f, panelY + 19.0f, panelW - 14.0f,
-                 1.0f, borderColor );
-
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 5.0f ),
-                         isTeamRaceDM ? "TEAM RACE DM" :
-                         ( isTeamRace ? "TEAM RACE ORDER" : "RACE ORDER" ),
-                         UI_SMALLFONT, 0.56f, accentColor );
-
-    if ( isTeamRace ) {
-        chipY = panelY + 22.0f;
-        chipW = ( panelW - 18.0f ) / 2.0f;
-        for ( teamIndex = 0; teamIndex < 2; teamIndex++ ) {
-            CG_GetRedBlueTeamColor( teamIndex, teamColor );
-            chipX = panelX + 7.0f + teamIndex * ( chipW + 4.0f );
-            teamFillColor[0] = teamColor[0];
-            teamFillColor[1] = teamColor[1];
-            teamFillColor[2] = teamColor[2];
-            teamFillColor[3] = 0.20f;
-            CG_FillRect( chipX, chipY, chipW, 16.0f, teamFillColor );
-            CG_FillRect( chipX, chipY, 2.0f, 16.0f, teamColor );
-            CG_DrawRect( chipX, chipY, chipW, 16.0f, 1.0f, borderColor );
-            CG_DrawIngameString( (int)( chipX + 5.0f ), (int)( chipY + 4.0f ),
-                                 teamNames[teamIndex], UI_SMALLFONT, 0.42f, teamColor );
-            if ( isTeamRaceDM ) {
-                Com_sprintf( teamValue, sizeof( teamValue ), "%dF",
-                             cg.teamScores[teamIndex] );
-            } else if ( cg.teamTimes[teamIndex] > 0 &&
-                        cg.teamTimes[teamIndex] < ( 1 << 30 ) ) {
-                Q_strncpyz( teamValue, getStringForTime( cg.teamTimes[teamIndex] ),
-                            sizeof( teamValue ) );
-            } else {
-                Q_strncpyz( teamValue, "--:--:--", sizeof( teamValue ) );
-            }
-            CG_DrawIngameString( (int)( chipX + chipW - 4.0f ),
-                                 (int)( chipY + 4.0f ), teamValue,
-                                 UI_RIGHT | UI_SMALLFONT, 0.44f, textColor );
-        }
-        CG_FillRect( panelX + 7.0f, panelY + 40.0f, panelW - 14.0f,
-                     1.0f, borderColor );
-        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 43.0f ),
-                             "POS", UI_SMALLFONT, 0.40f, mutedColor );
-        CG_DrawIngameString( (int)( panelX + 30.0f ), (int)( panelY + 43.0f ),
-                             "DRIVER", UI_SMALLFONT, 0.40f, mutedColor );
-        CG_DrawIngameString( (int)( panelX + 116.0f ), (int)( panelY + 43.0f ),
-                             "TEAM", UI_SMALLFONT, 0.40f, mutedColor );
-        CG_DrawIngameString( (int)( panelX + panelW - 8.0f ),
-                             (int)( panelY + 43.0f ), "TO LEAD",
-                             UI_RIGHT | UI_SMALLFONT, 0.40f, mutedColor );
-        CG_FillRect( panelX + 7.0f, panelY + 51.0f, panelW - 14.0f,
-                     1.0f, borderColor );
-        rowY = panelY + 53.0f;
-    } else {
-        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 23.0f ),
-                             "POS", UI_SMALLFONT, 0.44f, mutedColor );
-        CG_DrawIngameString( (int)( panelX + 32.0f ), (int)( panelY + 23.0f ),
-                             "DRIVER", UI_SMALLFONT, 0.44f, mutedColor );
-        CG_DrawIngameString( (int)( panelX + panelW - 8.0f ),
-                             (int)( panelY + 23.0f ),
-                             isElimination ? "STATUS" : "TO LEAD",
-                             UI_RIGHT | UI_SMALLFONT, 0.44f, mutedColor );
-        rowY = panelY + 34.0f;
-    }
-
-    for ( position = firstPosition; position <= lastPosition; position++ ) {
-        clientNum = clientAtPosition[position];
-        if ( clientNum < 0 ) {
-            rowY += RACE_ORDER_ROW_H;
-            continue;
-        }
-        isEliminated = isElimination && cg_entities[clientNum].eliminationOut;
-
-        if ( clientNum == cg.snap->ps.clientNum ) {
-            CG_FillRect( panelX + 1.0f, rowY, panelW - 2.0f,
-                         RACE_ORDER_ROW_H, selectedColor );
-            CG_FillRect( panelX + 1.0f, rowY, 2.0f, RACE_ORDER_ROW_H, accentColor );
-        } else {
-            CG_FillRect( panelX + 1.0f, rowY, panelW - 2.0f,
-                         RACE_ORDER_ROW_H, rowColor );
-        }
-
-        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( rowY + 3.0f ),
-                             va( "%02d", position ), UI_SMALLFONT,
-                             RACE_ORDER_TEXT_SCALE,
-                             position == 1 ? accentColor : mutedColor );
-
-        Q_strncpyz( name, cgs.clientinfo[clientNum].name, sizeof( name ) );
-        while ( CG_IngameStringWidth( name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE ) >
-                ( isTeamRace ? 78 : 72 ) ) {
-            nameLength = strlen( name );
-            if ( nameLength <= 1 ) {
-                break;
-            }
-            if ( nameLength >= 2 && name[nameLength - 2] == '^' ) {
-                name[nameLength - 2] = '\0';
-            } else {
-                name[nameLength - 1] = '\0';
-            }
-        }
-        CG_DrawIngameString( (int)( panelX + 32.0f ), (int)( rowY + 3.0f ),
-                             name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                             isEliminated ? mutedColor :
-                             ( clientNum == cg.snap->ps.clientNum ? accentColor : textColor ) );
-
-        if ( isTeamRace ) {
-            teamIndex = teamAtPosition[position] - TEAM_RED;
-            CG_GetRedBlueTeamColor( teamIndex, teamColor );
-            CG_FillRect( panelX + 116.0f, rowY + 4.0f, 2.0f, 8.0f, teamColor );
-            CG_DrawIngameString( (int)( panelX + 122.0f ), (int)( rowY + 3.0f ),
-                                 teamCodes[teamIndex], UI_SMALLFONT, 0.38f,
-                                 teamColor );
-        }
-
-        if ( isElimination ) {
-            Q_strncpyz( gapText, isEliminated ? "OUT" : "ALIVE", sizeof( gapText ) );
-            CG_DrawIngameString( (int)( panelX + panelW - 8.0f ),
-                                 (int)( rowY + 3.0f ), gapText,
-                                 UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                                 isEliminated ? negativeGapColor : mutedColor );
-        } else if ( position == 1 ) {
-            Q_strncpyz( gapText, "LEADER", sizeof( gapText ) );
-            CG_DrawIngameString( (int)( panelX + panelW - 8.0f ),
-                                 (int)( rowY + 3.0f ), gapText,
-                                 UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                                 accentColor );
-        } else {
-            leaderClient = clientAtPosition[1];
-            if ( leaderClient >= 0 &&
-                 CG_GetRaceSplitGap( leaderClient, clientNum, &gapMs ) ) {
-                absGapMs = gapMs < 0 ? -gapMs : gapMs;
-                Com_sprintf( gapText, sizeof( gapText ), "%c%d.%02d",
-                             gapMs < 0 ? '-' : '+', absGapMs / 1000,
-                             ( absGapMs % 1000 ) / 10 );
-                CG_DrawIngameString( (int)( panelX + panelW - 8.0f ),
-                                     (int)( rowY + 3.0f ), gapText,
-                                     UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                                     gapMs < 0 ? negativeGapColor : gapColor );
-            } else {
-                CG_DrawIngameString( (int)( panelX + panelW - 8.0f ),
-                                     (int)( rowY + 3.0f ), "--",
-                                     UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                                     mutedColor );
-            }
-        }
-
-        CG_FillRect( panelX + 7.0f, rowY + RACE_ORDER_ROW_H - 1.0f,
-                     panelW - 14.0f, 1.0f, borderColor );
-        rowY += RACE_ORDER_ROW_H;
-    }
-
-    CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
-    return panelY + panelH;
-}
-
-/* Deathmatch uses the same compact top-right visual language as the racing
- * order panel, but ranks players by frags and puts the frag limit in the
- * header. */
-static void CG_DrawDeathmatchOrderHUD( float top ) {
-    int clients[MAX_CLIENTS];
-    int fragScores[MAX_CLIENTS];
-    int count, i, j, clientNum, localIndex;
-    int rowCount, firstRow, row, position, nameLength;
-    float panelX, panelY, panelH, rowY;
-    screenPlacement_e savedHorizontalPlacement;
-    screenPlacement_e savedVerticalPlacement;
-    char name[32];
-    char limitText[24];
-    vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
-    vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
-    vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
-    vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
-    vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
-    vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
-
-    if ( !cg.snap || cgs.gametype != GT_DEATHMATCH ) {
-        return;
-    }
-
-    count = 0;
-    localIndex = -1;
-    for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
-        if ( !cgs.clientinfo[i].infoValid ||
-             cgs.clientinfo[i].team == TEAM_SPECTATOR ) {
-            continue;
-        }
-        clients[count] = i;
-        fragScores[count] = cgs.clientinfo[i].score;
-        if ( i == cg.snap->ps.clientNum ) {
-            fragScores[count] = cg.snap->ps.persistant[PERS_SCORE];
-            localIndex = count;
-        }
-        count++;
-    }
-
-    /* Keep the local player visible even while client info is catching up. */
-    if ( localIndex < 0 && count < MAX_CLIENTS &&
-         cg.snap->ps.clientNum >= 0 &&
-         cg.snap->ps.clientNum < MAX_CLIENTS &&
-         cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR ) {
-        localIndex = count;
-        clients[count] = cg.snap->ps.clientNum;
-        fragScores[count] = cg.snap->ps.persistant[PERS_SCORE];
-        count++;
-    }
-    if ( count <= 0 ) {
-        return;
-    }
-
-    /* Sort by frags, keeping the server order for ties. */
-    for ( i = 1; i < count; i++ ) {
-        int savedClient = clients[i];
-        int savedScore = fragScores[i];
-        j = i;
-        while ( j > 0 && fragScores[j - 1] < savedScore ) {
-            clients[j] = clients[j - 1];
-            fragScores[j] = fragScores[j - 1];
-            j--;
-        }
-        clients[j] = savedClient;
-        fragScores[j] = savedScore;
-    }
-
-    localIndex = -1;
-    for ( i = 0; i < count; i++ ) {
-        if ( clients[i] == cg.snap->ps.clientNum ) {
-            localIndex = i;
-            break;
-        }
-    }
-
-    rowCount = count < RACE_ORDER_MAX_ROWS ? count : RACE_ORDER_MAX_ROWS;
-    firstRow = 0;
-    if ( count > rowCount && localIndex >= 0 ) {
-        firstRow = localIndex - rowCount / 2;
-        if ( firstRow < 0 ) {
-            firstRow = 0;
-        }
-        if ( firstRow > count - rowCount ) {
-            firstRow = count - rowCount;
-        }
-    }
-
-    panelX = 640.0f - RACE_ORDER_PANEL_W;
-    panelY = top;
-    panelH = 34.0f + rowCount * RACE_ORDER_ROW_H + 6.0f;
-    savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-    savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-    CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
-
-    CG_FillRect( panelX, panelY, RACE_ORDER_PANEL_W, panelH, panelColor );
-    CG_FillRect( panelX, panelY, RACE_ORDER_PANEL_W, 2.0f, accentColor );
-    CG_FillRect( panelX, panelY, RACE_ORDER_PANEL_W, 20.0f, headerColor );
-    CG_DrawRect( panelX, panelY, RACE_ORDER_PANEL_W, panelH, 1.0f, borderColor );
-    CG_FillRect( panelX + 7.0f, panelY + 19.0f,
-                 RACE_ORDER_PANEL_W - 14.0f, 1.0f, borderColor );
-
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 5.0f ),
-                         "FRAG ORDER", UI_SMALLFONT, 0.56f, accentColor );
-    if ( cgs.fraglimit > 0 ) {
-        Com_sprintf( limitText, sizeof( limitText ), "LIMIT %d", cgs.fraglimit );
-    } else {
-        Q_strncpyz( limitText, "NO LIMIT", sizeof( limitText ) );
-    }
-    CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
-                         (int)( panelY + 5.0f ), limitText,
-                         UI_RIGHT | UI_SMALLFONT, 0.44f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 23.0f ),
-                         "POS", UI_SMALLFONT, 0.44f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + 32.0f ), (int)( panelY + 23.0f ),
-                         "DRIVER", UI_SMALLFONT, 0.44f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
-                         (int)( panelY + 23.0f ), "FRAGS",
-                         UI_RIGHT | UI_SMALLFONT, 0.44f, mutedColor );
-
-    rowY = panelY + 34.0f;
-    for ( row = 0; row < rowCount; row++ ) {
-        i = firstRow + row;
-        clientNum = clients[i];
-        position = i + 1;
-        if ( cgs.clientinfo[clientNum].position > 0 ) {
-            position = cgs.clientinfo[clientNum].position;
-        }
-
-        if ( clientNum == cg.snap->ps.clientNum ) {
-            CG_FillRect( panelX + 1.0f, rowY, RACE_ORDER_PANEL_W - 2.0f,
-                         RACE_ORDER_ROW_H, selectedColor );
-            CG_FillRect( panelX + 1.0f, rowY, 2.0f, RACE_ORDER_ROW_H, accentColor );
-        } else {
-            CG_FillRect( panelX + 1.0f, rowY, RACE_ORDER_PANEL_W - 2.0f,
-                         RACE_ORDER_ROW_H, rowColor );
-        }
-
-        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( rowY + 3.0f ),
-                             va( "%02d", position ), UI_SMALLFONT,
-                             RACE_ORDER_TEXT_SCALE,
-                             row == 0 ? accentColor : mutedColor );
-        Q_strncpyz( name, cgs.clientinfo[clientNum].name, sizeof( name ) );
-        while ( CG_IngameStringWidth( name, UI_SMALLFONT,
-                                      RACE_ORDER_TEXT_SCALE ) > 72 ) {
-            nameLength = strlen( name );
-            if ( nameLength <= 1 ) {
-                break;
-            }
-            if ( nameLength >= 2 && name[nameLength - 2] == '^' ) {
-                name[nameLength - 2] = '\0';
-            } else {
-                name[nameLength - 1] = '\0';
-            }
-        }
-        CG_DrawIngameString( (int)( panelX + 32.0f ), (int)( rowY + 3.0f ),
-                             name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                             clientNum == cg.snap->ps.clientNum ? accentColor : textColor );
-        CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
-                             (int)( rowY + 3.0f ), va( "%d", fragScores[i] ),
-                             UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                             textColor );
-        CG_FillRect( panelX + 7.0f, rowY + RACE_ORDER_ROW_H - 1.0f,
-                     RACE_ORDER_PANEL_W - 14.0f, 1.0f, borderColor );
-        rowY += RACE_ORDER_ROW_H;
-    }
-
-    CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
-}
-
-/* Two-team modes keep both totals above a player-score-ranked list. */
-static void CG_DrawTeamDeathmatchOrderHUD( float top ) {
-    static const char *teamCodes[2] = { "RED", "BLU" };
-    static const char *teamNames[2] = { "RED", "BLUE" };
-    int clients[MAX_CLIENTS];
-    int fragScores[MAX_CLIENTS];
-    int playerTeams[MAX_CLIENTS];
-    int count, i, j, clientNum, localIndex, rowCount, firstRow, row;
-    int teamIndex, nameLength;
-    qboolean isKoth;
-    qboolean isAutoball;
-    team_t playerTeam, localTeam;
-    float panelX, panelY, panelH, rowY, chipX, chipY, chipW;
-    screenPlacement_e savedHorizontalPlacement;
-    screenPlacement_e savedVerticalPlacement;
-    char name[32];
-    char limitText[24];
-    vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
-    vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
-    vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
-    vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
-    vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
-    vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
-    vec4_t teamColor;
-    vec4_t teamFillColor;
-
-    if ( !cg.snap || ( cgs.gametype != GT_TEAM && cgs.gametype != GT_KOTH &&
-                       cgs.gametype != GT_AUTOBALL ) ) {
-        return;
-    }
-    isKoth = ( cgs.gametype == GT_KOTH );
-    isAutoball = ( cgs.gametype == GT_AUTOBALL );
-
-    count = 0;
-    localIndex = -1;
-    localTeam = (team_t)cg.snap->ps.persistant[PERS_TEAM];
-    for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
-        if ( !cgs.clientinfo[i].infoValid ) {
-            continue;
-        }
-        playerTeam = cgs.clientinfo[i].team;
-        if ( i == cg.snap->ps.clientNum &&
-             localTeam >= TEAM_RED && localTeam <= TEAM_BLUE ) {
-            playerTeam = localTeam;
-        }
-        if ( playerTeam < TEAM_RED || playerTeam > TEAM_BLUE ) {
-            continue;
-        }
-
-        clients[count] = i;
-        playerTeams[count] = playerTeam;
-        fragScores[count] = cgs.clientinfo[i].score;
-        if ( i == cg.snap->ps.clientNum ) {
-            fragScores[count] = cg.snap->ps.persistant[PERS_SCORE];
-            localIndex = count;
-        }
-        count++;
-    }
-
-    /* Keep the local player visible while client info is catching up. */
-    if ( localIndex < 0 && count < MAX_CLIENTS &&
-         cg.snap->ps.clientNum >= 0 && cg.snap->ps.clientNum < MAX_CLIENTS &&
-         localTeam >= TEAM_RED && localTeam <= TEAM_BLUE ) {
-        localIndex = count;
-        clients[count] = cg.snap->ps.clientNum;
-        playerTeams[count] = localTeam;
-        fragScores[count] = cg.snap->ps.persistant[PERS_SCORE];
-        count++;
-    }
-    if ( count <= 0 ) {
-        return;
-    }
-
-    /* Rank every playable team together; retain server order for ties. */
-    for ( i = 1; i < count; i++ ) {
-        int savedClient = clients[i];
-        int savedScore = fragScores[i];
-        int savedTeam = playerTeams[i];
-        j = i;
-        while ( j > 0 && fragScores[j - 1] < savedScore ) {
-            clients[j] = clients[j - 1];
-            fragScores[j] = fragScores[j - 1];
-            playerTeams[j] = playerTeams[j - 1];
-            j--;
-        }
-        clients[j] = savedClient;
-        fragScores[j] = savedScore;
-        playerTeams[j] = savedTeam;
-    }
-
-    localIndex = -1;
-    for ( i = 0; i < count; i++ ) {
-        if ( clients[i] == cg.snap->ps.clientNum ) {
-            localIndex = i;
-            break;
-        }
-    }
-
-    rowCount = count < RACE_ORDER_MAX_ROWS ? count : RACE_ORDER_MAX_ROWS;
-    firstRow = 0;
-    if ( count > rowCount && localIndex >= 0 ) {
-        firstRow = localIndex - rowCount / 2;
-        if ( firstRow < 0 ) {
-            firstRow = 0;
-        }
-        if ( firstRow > count - rowCount ) {
-            firstRow = count - rowCount;
-        }
-    }
-
-    panelX = 640.0f - TEAM_DM_ORDER_PANEL_W;
-    panelY = top;
-    panelH = 57.0f + rowCount * RACE_ORDER_ROW_H;
-    savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-    savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-    CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
-
-    CG_FillRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, panelH, panelColor );
-    CG_FillRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, 2.0f, accentColor );
-    CG_FillRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, 20.0f, headerColor );
-    CG_DrawRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, panelH, 1.0f, borderColor );
-    CG_FillRect( panelX + 7.0f, panelY + 20.0f, TEAM_DM_ORDER_PANEL_W - 14.0f,
-                 1.0f, borderColor );
-
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 5.0f ),
-                         isKoth ? "KOTH DRIVER ORDER" :
-                         ( isAutoball ? "AUTOBALL ORDER" : "TEAM FRAG ORDER" ),
-                         UI_SMALLFONT, ( isKoth || isAutoball ) ? 0.48f : 0.56f, accentColor );
-    if ( isKoth ) {
-        Q_strncpyz( limitText, "HILL MODE", sizeof( limitText ) );
-    } else if ( isAutoball ) {
-        if ( cgs.capturelimit > 0 ) {
-            Com_sprintf( limitText, sizeof( limitText ), "GOALS %d", cgs.capturelimit );
-        } else {
-            Q_strncpyz( limitText, "NO LIMIT", sizeof( limitText ) );
-        }
-    } else if ( cgs.fraglimit > 0 ) {
-        Com_sprintf( limitText, sizeof( limitText ), "LIMIT %d", cgs.fraglimit );
-    } else {
-        Q_strncpyz( limitText, "NO LIMIT", sizeof( limitText ) );
-    }
-    CG_DrawIngameString( (int)( panelX + TEAM_DM_ORDER_PANEL_W - 8.0f ), (int)( panelY + 5.0f ),
-                         limitText, UI_RIGHT | UI_SMALLFONT, 0.42f, mutedColor );
-
-    chipY = panelY + 22.0f;
-    chipW = ( TEAM_DM_ORDER_PANEL_W - 18.0f ) / 2.0f;
-    for ( teamIndex = 0; teamIndex < 2; teamIndex++ ) {
-        CG_GetRedBlueTeamColor( teamIndex, teamColor );
-        chipX = panelX + 7.0f + teamIndex * ( chipW + 4.0f );
-        teamFillColor[0] = teamColor[0];
-        teamFillColor[1] = teamColor[1];
-        teamFillColor[2] = teamColor[2];
-        teamFillColor[3] = 0.20f;
-        CG_FillRect( chipX, chipY, chipW, 16.0f, teamFillColor );
-        CG_FillRect( chipX, chipY, 2.0f, 16.0f, teamColor );
-        CG_DrawRect( chipX, chipY, chipW, 16.0f, 1.0f, borderColor );
-        CG_DrawIngameString( (int)( chipX + 5.0f ), (int)( chipY + 4.0f ),
-                             teamNames[teamIndex], UI_SMALLFONT, 0.42f, teamColor );
-        CG_DrawIngameString( (int)( chipX + chipW - 4.0f ),
-                             (int)( chipY + 4.0f ),
-                             va( "%d", cg.teamScores[teamIndex] ),
-                             UI_RIGHT | UI_SMALLFONT, 0.44f, textColor );
-    }
-
-    CG_FillRect( panelX + 7.0f, panelY + 40.0f, TEAM_DM_ORDER_PANEL_W - 14.0f,
-                 1.0f, borderColor );
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 43.0f ),
-                         "POS", UI_SMALLFONT, 0.40f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + 30.0f ), (int)( panelY + 43.0f ),
-                         "DRIVER", UI_SMALLFONT, 0.40f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + 116.0f ), (int)( panelY + 43.0f ),
-                         "TEAM", UI_SMALLFONT, 0.40f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + TEAM_DM_ORDER_PANEL_W - 8.0f ), (int)( panelY + 43.0f ),
-                         ( isKoth || isAutoball ) ? "PTS" : "FRAGS",
-                         UI_RIGHT | UI_SMALLFONT, 0.40f, mutedColor );
-    CG_FillRect( panelX + 7.0f, panelY + 51.0f, TEAM_DM_ORDER_PANEL_W - 14.0f,
-                 1.0f, borderColor );
-
-    rowY = panelY + 53.0f;
-    for ( row = 0; row < rowCount; row++ ) {
-        i = firstRow + row;
-        clientNum = clients[i];
-        teamIndex = playerTeams[i] - TEAM_RED;
-
-        if ( clientNum == cg.snap->ps.clientNum ) {
-            CG_FillRect( panelX + 1.0f, rowY, TEAM_DM_ORDER_PANEL_W - 2.0f,
-                         RACE_ORDER_ROW_H, selectedColor );
-            CG_FillRect( panelX + 1.0f, rowY, 2.0f,
-                         RACE_ORDER_ROW_H, accentColor );
-        } else {
-            CG_FillRect( panelX + 1.0f, rowY, TEAM_DM_ORDER_PANEL_W - 2.0f,
-                         RACE_ORDER_ROW_H, rowColor );
-        }
-
-        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( rowY + 3.0f ),
-                             va( "%02d", i + 1 ), UI_SMALLFONT,
-                             RACE_ORDER_TEXT_SCALE,
-                             row == 0 ? accentColor : mutedColor );
-        Q_strncpyz( name, cgs.clientinfo[clientNum].name, sizeof( name ) );
-        while ( CG_IngameStringWidth( name, UI_SMALLFONT,
-                                      RACE_ORDER_TEXT_SCALE ) > 78 ) {
-            nameLength = strlen( name );
-            if ( nameLength <= 1 ) {
-                break;
-            }
-            if ( nameLength >= 2 && name[nameLength - 2] == '^' ) {
-                name[nameLength - 2] = '\0';
-            } else {
-                name[nameLength - 1] = '\0';
-            }
-        }
-        CG_DrawIngameString( (int)( panelX + 30.0f ), (int)( rowY + 3.0f ),
-                             name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                             clientNum == cg.snap->ps.clientNum ? accentColor : textColor );
-
-        CG_GetRedBlueTeamColor( teamIndex, teamColor );
-        CG_FillRect( panelX + 116.0f, rowY + 4.0f, 2.0f, 8.0f, teamColor );
-        CG_DrawIngameString( (int)( panelX + 122.0f ), (int)( rowY + 3.0f ),
-                             teamCodes[teamIndex], UI_SMALLFONT, 0.38f,
-                             teamColor );
-        CG_DrawIngameString( (int)( panelX + 216.0f ), (int)( rowY + 3.0f ),
-                             va( "%d", fragScores[i] ),
-                             UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                             textColor );
-        CG_FillRect( panelX + 7.0f, rowY + RACE_ORDER_ROW_H - 1.0f,
-                     TEAM_DM_ORDER_PANEL_W - 14.0f, 1.0f, borderColor );
-        rowY += RACE_ORDER_ROW_H;
-    }
-
-    CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
-}
-
-/* CTF keeps team totals and flag state in compact header chips; each driver
- * row reports the carried flag, using icons for the four-team variant. */
-static void CG_DrawCTFOrderHUD( float top ) {
-    int clients[MAX_CLIENTS];
-    int playerScores[MAX_CLIENTS];
-    int playerTeams[MAX_CLIENTS];
-    int count, i, j, clientNum, localIndex, rowCount, firstRow, row;
-    int nameLength, teamIndex, carriedFlag, flagStatus;
-    int teamCount;
-    gitem_t *flagItem;
-    team_t playerTeam, localTeam;
-    float panelX, panelY, panelH, rowY, chipX, chipY, chipW;
-    qhandle_t flagShader, carriedFlagIcon;
-    screenPlacement_e savedHorizontalPlacement;
-    screenPlacement_e savedVerticalPlacement;
-    char name[32];
-    char flagText[12];
-    vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
-    vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
-    vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
-    vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
-    vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
-    vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
-    vec4_t flagColor;
-    vec4_t teamColor;
-    vec4_t teamFillColor;
-    static const char *teamCodes[4] = { "RED", "BLU", "GRN", "YLW" };
-    static const char *teamShortCodes[4] = { "R", "B", "G", "Y" };
-    static const char *teamNames[4] = { "RED", "BLUE", "GREEN", "YELLOW" };
-    qboolean isFourTeam;
-    qboolean isDomination;
-
-    if ( !cg.snap || ( cgs.gametype != GT_CTF && cgs.gametype != GT_CTF4 &&
-                       cgs.gametype != GT_DOMINATION ) ) {
-        return;
-    }
-
-    isDomination = cgs.gametype == GT_DOMINATION;
-    isFourTeam = cgs.gametype == GT_CTF4 || isDomination;
-    teamCount = isFourTeam ? 4 : 2;
-    count = 0;
-    localIndex = -1;
-    localTeam = (team_t)cg.snap->ps.persistant[PERS_TEAM];
-    for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
-        if ( !cgs.clientinfo[i].infoValid ) {
-            continue;
-        }
-        playerTeam = cgs.clientinfo[i].team;
-        if ( i == cg.snap->ps.clientNum &&
-             localTeam >= TEAM_RED &&
-             localTeam <= ( isFourTeam ? TEAM_YELLOW : TEAM_BLUE ) ) {
-            playerTeam = localTeam;
-        }
-        if ( playerTeam < TEAM_RED ||
-             playerTeam > ( isFourTeam ? TEAM_YELLOW : TEAM_BLUE ) ) {
-            continue;
-        }
-
-        clients[count] = i;
-        playerTeams[count] = playerTeam;
-        playerScores[count] = cgs.clientinfo[i].score;
-        if ( i == cg.snap->ps.clientNum ) {
-            playerScores[count] = cg.snap->ps.persistant[PERS_SCORE];
-            localIndex = count;
-        }
-        count++;
-    }
-
-    if ( localIndex < 0 && count < MAX_CLIENTS &&
-         cg.snap->ps.clientNum >= 0 && cg.snap->ps.clientNum < MAX_CLIENTS &&
-         localTeam >= TEAM_RED &&
-         localTeam <= ( isFourTeam ? TEAM_YELLOW : TEAM_BLUE ) ) {
-        localIndex = count;
-        clients[count] = cg.snap->ps.clientNum;
-        playerTeams[count] = localTeam;
-        playerScores[count] = cg.snap->ps.persistant[PERS_SCORE];
-        count++;
-    }
-    if ( count <= 0 ) {
-        return;
-    }
-
-    /* Rank by score and keep server order stable for ties. */
-    for ( i = 1; i < count; i++ ) {
-        int savedClient = clients[i];
-        int savedScore = playerScores[i];
-        int savedTeam = playerTeams[i];
-        j = i;
-        while ( j > 0 && playerScores[j - 1] < savedScore ) {
-            clients[j] = clients[j - 1];
-            playerScores[j] = playerScores[j - 1];
-            playerTeams[j] = playerTeams[j - 1];
-            j--;
-        }
-        clients[j] = savedClient;
-        playerScores[j] = savedScore;
-        playerTeams[j] = savedTeam;
-    }
-
-    localIndex = -1;
-    for ( i = 0; i < count; i++ ) {
-        if ( clients[i] == cg.snap->ps.clientNum ) {
-            localIndex = i;
-            break;
-        }
-    }
-
-    rowCount = count < RACE_ORDER_MAX_ROWS ? count : RACE_ORDER_MAX_ROWS;
-    firstRow = 0;
-    if ( count > rowCount && localIndex >= 0 ) {
-        firstRow = localIndex - rowCount / 2;
-        if ( firstRow < 0 ) {
-            firstRow = 0;
-        }
-        if ( firstRow > count - rowCount ) {
-            firstRow = count - rowCount;
-        }
-    }
-
-    panelX = 640.0f - TEAM_DM_ORDER_PANEL_W;
-    panelY = top;
-    panelH = 57.0f + rowCount * RACE_ORDER_ROW_H;
-    savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-    savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-    CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
-
-    CG_FillRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, panelH, panelColor );
-    CG_FillRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, 2.0f, accentColor );
-    CG_FillRect( panelX, panelY + 2.0f, TEAM_DM_ORDER_PANEL_W, 18.0f, headerColor );
-    CG_DrawRect( panelX, panelY, TEAM_DM_ORDER_PANEL_W, panelH, 1.0f, borderColor );
-    CG_FillRect( panelX + 7.0f, panelY + 20.0f,
-                 TEAM_DM_ORDER_PANEL_W - 14.0f, 1.0f, borderColor );
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 5.0f ),
-                         isDomination ? "DOMINATION ORDER" :
-                         ( isFourTeam ? "CTF4 DRIVER ORDER" : "CTF DRIVER ORDER" ),
-                         UI_SMALLFONT, 0.56f, accentColor );
-
-    chipY = panelY + 22.0f;
-    chipW = ( TEAM_DM_ORDER_PANEL_W - 14.0f - ( teamCount - 1 ) * 3.0f ) /
-            teamCount;
-    for ( teamIndex = 0; teamIndex < teamCount; teamIndex++ ) {
-        CG_GetCTFTeamColor( teamIndex, teamColor );
-        chipX = panelX + 7.0f + teamIndex * ( chipW + 3.0f );
-        teamFillColor[0] = teamColor[0];
-        teamFillColor[1] = teamColor[1];
-        teamFillColor[2] = teamColor[2];
-        teamFillColor[3] = 0.20f;
-        CG_FillRect( chipX, chipY, chipW, 16.0f, teamFillColor );
-        CG_FillRect( chipX, chipY, 2.0f, 16.0f, teamColor );
-        CG_DrawRect( chipX, chipY, chipW, 16.0f, 1.0f, borderColor );
-        if ( isFourTeam ) {
-            CG_DrawIngameString( (int)( chipX + 4.0f ), (int)( chipY + 4.0f ),
-                                 teamShortCodes[teamIndex], UI_SMALLFONT,
-                                 0.40f, teamColor );
-        } else {
-            CG_DrawIngameString( (int)( chipX + 5.0f ), (int)( chipY + 4.0f ),
-                                 teamNames[teamIndex], UI_SMALLFONT,
-                                 0.40f, teamColor );
-        }
-        flagShader = 0;
-        if ( !isDomination ) {
-            switch ( teamIndex ) {
-            case 0: flagStatus = cgs.redflag; break;
-            case 1: flagStatus = cgs.blueflag; break;
-            case 2: flagStatus = cgs.greenflag; break;
-            default: flagStatus = cgs.yellowflag; break;
-            }
-            if ( flagStatus >= 0 && flagStatus <= 2 ) {
-                switch ( teamIndex ) {
-                case 0: flagShader = cgs.media.redFlagShader[flagStatus]; break;
-                case 1: flagShader = cgs.media.blueFlagShader[flagStatus]; break;
-                case 2: flagShader = cgs.media.greenFlagShader[flagStatus]; break;
-                default: flagShader = cgs.media.yellowFlagShader[flagStatus]; break;
-                }
-            }
-        }
-        if ( flagShader ) {
-            trap_R_SetColor( NULL );
-            CG_DrawPic( chipX + ( isFourTeam ? 15.0f : 39.0f ),
-                        chipY + 2.0f, isFourTeam ? 10.0f : 13.0f,
-                        12.0f, flagShader );
-        }
-        CG_DrawIngameString( (int)( chipX + chipW - 4.0f ),
-                             (int)( chipY + 4.0f ),
-                             va( "%d", cg.teamScores[teamIndex] ),
-                             UI_RIGHT | UI_SMALLFONT, 0.42f, textColor );
-    }
-
-    CG_FillRect( panelX + 7.0f, panelY + 40.0f, TEAM_DM_ORDER_PANEL_W - 14.0f,
-                 1.0f, borderColor );
-    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 43.0f ),
-                         "POS", UI_SMALLFONT, 0.40f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + 30.0f ), (int)( panelY + 43.0f ),
-                         "DRIVER", UI_SMALLFONT, 0.40f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + 116.0f ), (int)( panelY + 43.0f ),
-                         "TEAM", UI_SMALLFONT, 0.40f, mutedColor );
-    CG_DrawIngameString( (int)( panelX + TEAM_DM_ORDER_PANEL_W - 8.0f ),
-                         (int)( panelY + 43.0f ), isDomination ? "SCORE" : "FLAG",
-                         UI_RIGHT | UI_SMALLFONT, 0.40f, mutedColor );
-    CG_FillRect( panelX + 7.0f, panelY + 51.0f, TEAM_DM_ORDER_PANEL_W - 14.0f,
-                 1.0f, borderColor );
-
-    rowY = panelY + 53.0f;
-    for ( row = 0; row < rowCount; row++ ) {
-        i = firstRow + row;
-        clientNum = clients[i];
-        teamIndex = playerTeams[i] - TEAM_RED;
-        if ( clientNum == cg.snap->ps.clientNum ) {
-            CG_FillRect( panelX + 1.0f, rowY, TEAM_DM_ORDER_PANEL_W - 2.0f,
-                         RACE_ORDER_ROW_H, selectedColor );
-            CG_FillRect( panelX + 1.0f, rowY, 2.0f, RACE_ORDER_ROW_H, accentColor );
-        } else {
-            CG_FillRect( panelX + 1.0f, rowY, TEAM_DM_ORDER_PANEL_W - 2.0f,
-                         RACE_ORDER_ROW_H, rowColor );
-        }
-        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( rowY + 3.0f ),
-                             va( "%02d", i + 1 ), UI_SMALLFONT,
-                             RACE_ORDER_TEXT_SCALE,
-                             row == 0 ? accentColor : mutedColor );
-
-        Q_strncpyz( name, cgs.clientinfo[clientNum].name, sizeof( name ) );
-        while ( CG_IngameStringWidth( name, UI_SMALLFONT,
-                                      RACE_ORDER_TEXT_SCALE ) > 78 ) {
-            nameLength = strlen( name );
-            if ( nameLength <= 1 ) {
-                break;
-            }
-            if ( nameLength >= 2 && name[nameLength - 2] == '^' ) {
-                name[nameLength - 2] = '\0';
-            } else {
-                name[nameLength - 1] = '\0';
-            }
-        }
-        CG_DrawIngameString( (int)( panelX + 30.0f ), (int)( rowY + 3.0f ),
-                             name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                             clientNum == cg.snap->ps.clientNum ? accentColor : textColor );
-        CG_GetCTFTeamColor( teamIndex, teamColor );
-        CG_FillRect( panelX + 116.0f, rowY + 4.0f, 2.0f, 8.0f, teamColor );
-        CG_DrawIngameString( (int)( panelX + 122.0f ), (int)( rowY + 3.0f ),
-                             isFourTeam ? teamShortCodes[teamIndex] : teamCodes[teamIndex],
-                             UI_SMALLFONT, isFourTeam ? 0.42f : 0.38f,
-                             teamColor );
-
-        if ( isDomination ) {
-            CG_DrawIngameString( (int)( panelX + TEAM_DM_ORDER_PANEL_W - 8.0f ),
-                                 (int)( rowY + 3.0f ),
-                                 va( "%d", playerScores[i] ),
-                                 UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                                 textColor );
-        } else {
-            carriedFlag = 0;
-            if ( cgs.clientinfo[clientNum].powerups & ( 1 << PW_REDFLAG ) ) {
-                carriedFlag = PW_REDFLAG;
-            } else if ( cgs.clientinfo[clientNum].powerups & ( 1 << PW_BLUEFLAG ) ) {
-                carriedFlag = PW_BLUEFLAG;
-            } else if ( isFourTeam &&
-                        ( cgs.clientinfo[clientNum].powerups & ( 1 << PW_GREENFLAG ) ) ) {
-                carriedFlag = PW_GREENFLAG;
-            } else if ( isFourTeam &&
-                        ( cgs.clientinfo[clientNum].powerups & ( 1 << PW_YELLOWFLAG ) ) ) {
-                carriedFlag = PW_YELLOWFLAG;
-            }
-            carriedFlagIcon = 0;
-            if ( isFourTeam && carriedFlag ) {
-                flagItem = BG_FindItemForPowerup( carriedFlag );
-                if ( flagItem && flagItem->icon ) {
-                    carriedFlagIcon = trap_R_RegisterShader( flagItem->icon );
-                }
-                if ( carriedFlagIcon ) {
-                    trap_R_SetColor( NULL );
-                    CG_DrawPic( panelX + TEAM_DM_ORDER_PANEL_W - 22.0f,
-                                rowY + 2.0f, 12.0f, 12.0f, carriedFlagIcon );
-                }
-            } else if ( carriedFlag == PW_REDFLAG ) {
-                Q_strncpyz( flagText, "RED", sizeof( flagText ) );
-                Vector4Copy( colorRed, flagColor );
-            } else if ( carriedFlag == PW_BLUEFLAG ) {
-                Q_strncpyz( flagText, "BLUE", sizeof( flagText ) );
-                Vector4Copy( colorBlue, flagColor );
-            } else {
-                Q_strncpyz( flagText, "--", sizeof( flagText ) );
-                Vector4Copy( mutedColor, flagColor );
-            }
-            if ( !isFourTeam || !carriedFlagIcon ) {
-                CG_DrawIngameString( (int)( panelX + TEAM_DM_ORDER_PANEL_W - 8.0f ),
-                                     (int)( rowY + 3.0f ),
-                                     isFourTeam ? "--" : flagText,
-                                     UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
-                                     isFourTeam ? mutedColor : flagColor );
-            }
-        }
-        CG_FillRect( panelX + 7.0f, rowY + RACE_ORDER_ROW_H - 1.0f,
-                     TEAM_DM_ORDER_PANEL_W - 14.0f, 1.0f, borderColor );
-        rowY += RACE_ORDER_ROW_H;
-    }
-
-    CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
-}
-
-/*
-================================
-CG_DrawHUD
-Main HUD dispatcher, called each frame from CG_DrawActive().
-================================
-*/
-qboolean CG_DrawHUD( void ) {
     /* Update all HUD toggle cvars from engine each frame */
     trap_Cvar_Update( &cg_hudOptionsOpen );
     trap_Cvar_Update( &cg_hudShowTimes );
     trap_Cvar_Update( &cg_hudShowLaps );
     trap_Cvar_Update( &cg_hudShowPosition );
-    trap_Cvar_Update( &cg_hudShowDistToFinish );
     trap_Cvar_Update( &cg_ghostPlayback );
     trap_Cvar_Update( &cg_checkpointArrowMode );
-    trap_Cvar_Update( &cg_elimTimeline );
 
     trap_Cvar_Update( &cg_hudShowOpponentList );
-    trap_Cvar_Update( &cg_hudShowScores );
     trap_Cvar_Update( &cg_hudShowSlipstream );
     trap_Cvar_Update( &cg_drawStatus );
     trap_Cvar_Update( &cg_drawRearView );
     trap_Cvar_Update( &cg_drawMMap );
-    trap_Cvar_Update( &cg_hudShowDerbyVehicle );
     trap_Cvar_Update( &cg_hudShowDerbyList );
-    trap_Cvar_Update( &cg_hudShowKothHillStatus );
-    trap_Cvar_Update( &cg_hudShowKothRespawnWave );
 
-    if ( cg_paused.integer ) {
-        return qfalse;
-    }
-
-    if ( !cg.showHUD ) {
-        if ( cgs.gametype == GT_DERBY
-             && cg_hudShowDerbyVehicle.integer ) {
-            CG_DrawHUD_DerbyVehicleState();
-        }
+    if ( cg_paused.integer || !cg.showHUD ) {
         return qfalse;
     }
 
@@ -1426,91 +259,25 @@ qboolean CG_DrawHUD( void ) {
         trap_SendClientCommand( "score" );
     }
 
-    if ( CG_ModernHUD_Active() ) {
-        CG_ModernHUD_DrawStandings();
-    } else if ( isRallyRace() && cg_hudShowOpponentList.integer &&
-         ( cgs.gametype != GT_DRAG || cgs.numRacers > 1 ) ) {
-        CG_DrawRacingOrderHUD( 10.0f );
-    }
-    if ( cgs.gametype == GT_DEATHMATCH && !cg.showScores && !CG_ModernHUD_Active() &&
-         cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
-        CG_DrawDeathmatchOrderHUD( 10.0f );
-    }
-    if ( ( cgs.gametype == GT_TEAM || cgs.gametype == GT_KOTH ||
-           cgs.gametype == GT_AUTOBALL ) && !cg.showScores && !CG_ModernHUD_Active() &&
-         cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
-        CG_DrawTeamDeathmatchOrderHUD( 10.0f );
-    }
-    if ( ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ||
-           cgs.gametype == GT_DOMINATION ) &&
-         !cg.showScores && !CG_ModernHUD_Active() &&
-         cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
-        CG_DrawCTFOrderHUD( 10.0f );
-    }
-
-    switch ( cgs.gametype ) {
-
-    default:
-    case GT_RACING:
-    case GT_SPRINT:
-    case GT_TEAM_RACING:
-        /* Race telemetry is rendered in the bottom status strip. */
-        break;
-
-    case GT_ELIMINATION:
-        /* Eliminations are shown in the driver list status column. */
-        break;
-
-    case GT_RACING_DM:
-    case GT_TEAM_RACING_DM:
-        /* Race telemetry is rendered in the bottom status strip. */
-        break;
-
-    case GT_DEATHMATCH:
-    case GT_TEAM:
-    case GT_CTF:
-    case GT_CTF4:
-        /* Mode statistics are rendered in the bottom status strip. */
-        break;
-
-    case GT_DOMINATION:
-        /* Dedicated four-team driver and zone panels are drawn above. */
-        break;
-
-    // Q3Rally Code Start - KOTH
-    case GT_KOTH:
-        // KOTH uses the modular top-right scoreboard; avoid duplicate legacy FRAGS/TEAM panel.
-        if ( cg_hudShowKothHillStatus.integer && !cg.showScores && !CG_ModernHUD_Active() &&
-             cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
-            CG_DrawKOTH_HillStatus();
+    /* the race state the HUD reads: wrong way, the checkpoint arrow
+       (cg_checkpointArrowMode 1), the ghost split */
+    if ( cgs.gametype == GT_DRAG ) {
+        cg.wrongWayStartTime = cg.wrongWayTime = 0;
+    } else if ( isRallyRace() &&
+                cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR &&
+                !CG_IntroCam_IsActive() ) {
+        if ( cg_checkpointArrowMode.integer ) {
+            CG_DrawArrowToCheckpoint();
+        } else {
+            cg.wrongWayStartTime = 0;
         }
-        break;
-    // Q3Rally Code END - KOTH
+        CG_UpdateGhostSplitDelta();
+    }
 
-    case GT_DERBY:
-        /* The results scoreboard takes over this corner at match end. */
-        if ( cg_hudShowDerbyList.integer && !cg.showScores && !CG_ModernHUD_Active() &&
-             cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
-            CG_DrawHUD_DerbyList( 440, 16 );
-        }
-        if ( cg_derbyHitFxEnable.integer )     CG_DrawHUD_DerbyHitImpact();
-        break;
+    CG_ModernHUD_DrawStandings();
 
-    case GT_LCS:
-	if ( CG_ModernHUD_Active() ) break;	/* the v0.9 HUD has the order */
-	{
-		float y = 130.0f;
-		qboolean showLcsOverview = ( !cg.showScores &&
-			cg.predictedPlayerState.pm_type != PM_DEAD &&
-			cg.predictedPlayerState.pm_type != PM_INTERMISSION );
-		if ( showLcsOverview && cg_hudShowOpponentList.integer ) {
-			y = CG_DrawHUD_LCSList( 440, 16 );
-		}
-		if ( showLcsOverview && cg_elimTimeline.integer ) {
-			CG_DrawEliminationTimeline( y + 4.0f );
-		}
-        break;
-	}
+    if ( cgs.gametype == GT_DERBY && cg_derbyHitFxEnable.integer ) {
+        CG_DrawHUD_DerbyHitImpact();
     }
 
     // CG_DrawHUD draws overlays but is not the scoreboard visibility gate.

@@ -77,18 +77,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define HUD_TOAST_FADE_TIME             300
 #define HUD_TOAST_ANNOUNCEMENT_TIME     2200
 #define HUD_TOAST_CLEAN_SECTOR_ITEM     -1
-#define ELIM_TIMELINE_MAX_EVENTS         5
 
 #define	PULSE_SCALE			1.5			// amount to scale up the icons when activating
 
 #define	MAX_STEP_CHANGE		32
 
-typedef struct {
-    int clientNum;
-    int round;
-    int remaining;
-    int timestamp;
-} cgElimTimelineEvent_t;
 
 typedef enum {
     CG_HUD_TOAST_PICKUP,
@@ -865,8 +858,6 @@ typedef struct {
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
-	cgElimTimelineEvent_t	elimTimelineEvents[ELIM_TIMELINE_MAX_EVENTS];
-	int			elimTimelineCount;
 	char		killerName[MAX_NAME_LENGTH];
 	char			spectatorList[MAX_STRING_CHARS];		// list of names
 	int				spectatorLen;												// length of list
@@ -1126,16 +1117,7 @@ typedef struct {
     qhandle_t   greenSigilModel;
     qhandle_t   yellowSigilModel;
     qhandle_t   neutralSigilModel;
-	qhandle_t	redFlagShader[3];
-	qhandle_t	blueFlagShader[3];
-    qhandle_t   greenFlagShader[3];
-    qhandle_t   yellowFlagShader[3];
 	qhandle_t	flagShader[4];
-	qhandle_t   sigilShader;
-    qhandle_t   redsigilShader;
-    qhandle_t   bluesigilShader;
-    qhandle_t   greensigilShader;
-    qhandle_t   yellowsigilShader;
 	/* KOTH hill indicator shaders */
 	qhandle_t   kothCrownModel;             /* floating crown above the hill: models/mapobjects/koth/crown.md3 */
 	qhandle_t   kothPostModel;              /* bollards on the hill border: models/mapobjects/koth/post.md3 */
@@ -1318,12 +1300,9 @@ typedef struct {
 	qhandle_t	SMSnowShader;
 	qhandle_t	SMIceShader;
 	qhandle_t	checkpointArrow;
-	qhandle_t	derbyHudPanelShader;
 	qhandle_t	trunkSectorShader[TRUNK_ITEM_COUNT];
 	qhandle_t	trunkEdgeShader[TRUNK_ITEM_COUNT];
 	qhandle_t	trunkOutlineShader;
-	qhandle_t	derbyHudVehicleShader;
-	qhandle_t	derbyHudWarningShader;
 
 
 	// weapon effect models
@@ -1765,7 +1744,6 @@ extern	vmCvar_t		cg_crosshairY;
 extern	vmCvar_t		cg_crosshairSize;
 extern	vmCvar_t		cg_crosshairHealth;
 extern	vmCvar_t		cg_drawStatus;
-extern	vmCvar_t		cg_hudStyle;
 extern	vmCvar_t		cg_draw2D;
 extern	vmCvar_t		cg_animSpeed;
 extern	vmCvar_t		cg_debugAnim;
@@ -1884,7 +1862,6 @@ void CG_Autoball_AddScoreboard( const vec3_t origin, float yaw, int sides, float
 	float width, float height, float range );
 void CG_Autoball_OverrideView( void );
 qboolean CG_Autoball_IntroActive( void );
-void CG_Autoball_DrawAwards( int y, float fade );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;
@@ -1910,7 +1887,6 @@ extern	vmCvar_t		cg_developer;
 extern	vmCvar_t		cg_fpsLimit;
 extern	vmCvar_t		cg_autodrop;
 extern	vmCvar_t		cg_drawPositionSprites;
-extern	vmCvar_t		cg_elimTimeline;
 extern	vmCvar_t		cg_tightCamTracking;
 extern	vmCvar_t		cg_rearViewRenderLevel;
 extern	vmCvar_t		cg_mainViewRenderLevel;
@@ -2020,7 +1996,6 @@ void CG_DrawStringExt( int x, int y, const char *string, const float *setColor, 
 void CG_DrawBigString( int x, int y, const char *s, float alpha );
 void CG_DrawBigStringColor( int x, int y, const char *s, vec4_t color );
 void CG_DrawSmallString( int x, int y, const char *s, float alpha );
-void CG_DrawSmallStringColor( int x, int y, const char *s, vec4_t color );
 
 int CG_DrawStrlen( const char *str );
 
@@ -2047,7 +2022,6 @@ extern  char systemChat[256];
 extern  char teamChat1[256];
 extern  char teamChat2[256];
 
-float CG_DrawScores( float x, float y );
 void CG_AddLagometerFrameInfo( void );
 void CG_AddLagometerSnapshotInfo( snapshot_t *snap );
 void CG_CenterPrint( const char *str, int y, int charWidth );
@@ -2115,7 +2089,6 @@ void CG_LoadDeferredPlayers( void );
 //
 void CG_JukeboxInit( void );
 void CG_JukeboxFrame( void );
-void CG_JukeboxDraw( float x, float y, float w, float h );
 void CG_JukeboxToggle_f( void );
 void CG_JukeboxNext_f( void );
 void CG_JukeboxPrev_f( void );
@@ -2281,15 +2254,6 @@ void CG_LoadingClient( int clientNum );
 void CG_DrawInformation( void );
 
 //
-// cg_scoreboard.c
-//
-qboolean CG_IsRaceResults( void );
-qboolean CG_DrawOldScoreboard( void );
-// Q3Rally Code Start - removed
-// void CG_DrawTourneyScoreboard( void );
-// Q3Rally Code END
-
-//
 // cg_consolecmds.c
 //
 qboolean CG_ConsoleCommand( void );
@@ -2372,8 +2336,6 @@ void CG_DrawGiantDigitalString( int x, int y, const char *s, float alpha );
 void CG_DrawGiantDigitalStringColor( int x, int y, const char *s, vec4_t color );
 void CG_DrawSmallDigitalString( int x, int y, const char *s, float alpha );
 void CG_DrawSmallDigitalStringColor( int x, int y, const char *s, vec4_t color );
-void CG_DrawTinyDigitalString( int x, int y, const char *s, float alpha );
-void CG_DrawTinyDigitalStringColor( int x, int y, const char *s, vec4_t color );
 
 void CG_DrawTinyString( int x, int y, const char *s, float alpha );
 void CG_DrawTinyStringColor( int x, int y, const char *s, vec4_t color );
@@ -2381,14 +2343,10 @@ int  CG_FrontendStringWidth( const char *text, int style, float scale );
 void CG_DrawFrontendString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
 int  CG_IngameStringWidth( const char *text, int style, float scale );
-qboolean CG_DrawDragTourney( void );
 qboolean CG_DragTourneyDue( void );
 void CG_ModernHUD_DrawTourney( void );
 void CG_DrawIngameString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
-void CG_DrawIngameSmallString( int x, int y, const char *text,
-	                             const float *color );
-void CG_DrawDragTelemetryHud( void );
 void CG_QueueHudToast( int itemNum );
 void CG_QueueRewardToast( qhandle_t icon, sfxHandle_t sound, int rewardCount );
 void CG_QueueAchievementToast( bgAchievementCategory_t category, int tierIndex );
@@ -2416,7 +2374,6 @@ typedef struct {
 	float		progress;
 } cgJukeboxView_t;
 qboolean CG_JukeboxView( cgJukeboxView_t *view );
-qboolean CG_ModernHUD_Active( void );
 qboolean CG_ModernHUD_EndActive( void );
 void CG_ModernHUD_DrawEnd( void );
 qboolean CG_ModernHUD_DrawTab( void );
@@ -2472,8 +2429,7 @@ void CG_ParseTrackLength( const char *str );
 qboolean isRaceObserver( int clientNum );
 int CG_GetPlayersRemaining( int *lastClientNum );
 void CG_CheckEliminationWarning( int playersRemaining );
-void CG_ResetEliminationTimeline( void );
-void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, int timestamp );
+void CG_ResetElimination( void );
 qboolean CG_IsActiveCompetitor( int clientNum );
 
 qboolean CG_InsideBox( const vec3_t mins, const vec3_t maxs, const vec3_t pos );
@@ -2486,7 +2442,6 @@ void CG_NewLapTime( int client, int lap, int time );
 void CG_RaceLapStart( int client, int time );
 void CG_RecordRaceSplit( int client, int lap, int checkpoint, int time );
 qboolean CG_GetRaceSplitGap( int aheadClient, int behindClient, int *gapMs );
-qboolean CG_RaceOrderIsActive( void );
 void CG_UpdateGhostSplitDelta( void );
 void CG_FinishedRace( int client, int time );
 void CG_StartRace( int time );
@@ -2529,12 +2484,10 @@ void CG_GhostRace_EvaluateFinish( int bestLapMs );
 qboolean CG_GhostRace_ScoreboardGhost( char *name, int nameSize, int *ghostMs, int *playerMs, qboolean *finished );
 void CG_GhostRace_DrawResultBanner( void );
 void CG_GhostRace_ReportOpponent( void );
-qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won );
 void CG_AttemptSavePersonalGhost( int finishTime );
 int CG_DragStartLightState( int *reds, qboolean *green, int *greenTime );
 void CG_RaceResultPosition( int client, int position );
 const cgRaceResult_t *CG_RaceResult( int client );
-void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
 void CG_UpdateDragStartSounds( void );
 void CG_ResetDragStartSounds( void );
@@ -2549,7 +2502,6 @@ float CG_DrawUpperRightHUD( float y );
 float CG_DrawLowerLeftHUD( float y );
 void CG_DrawMMap( float x, float y, float w, float h );
 void CG_DrawHUD_DerbyList(float x, float y);
-void CG_DrawKOTH_HillStatus( void ); /* Q3Rally KOTH */
 void CG_DrawKOTH_RespawnWave( void ); /* Q3Rally KOTH */
 
 

@@ -41,7 +41,7 @@ mode card and the standings changes.
 | Team Racing | yes: the race with "YOUR TEAM" in the card, the teams' average time over the order ("--" until the first car is home) and a square in the team colour before every driver |
 | Racing DM, Team Racing DM | yes: SCORE (frags) in the card instead of the gap, the car's card 330px wide with FRONT and REAR weapon (ammo, name) before the items, a kill feed of the last three kills (6 s) under the order; in teams the frags in the team cells |
 | Elimination | yes: place among those still in, LEFT x/y, NEXT OUT (who is last now, how many are through the lap that decides), total time; "Still in" with SAFE/DANGER and the drivers out under it; a big message when someone is out; weapons and kill feed with g_eliminationWeapons |
-| Last Car Standing | yes: LEFT x / y and SCORE, match time and the leader; "Still in" with everyone's integrity as a bar (in percent, orange when low), those out under it; weapons and kill feed; a big message when someone is out |
+| Last Car Standing | yes: LEFT x / y and SCORE, match time and the leader; "Still in" with everyone's integrity as a bar (in percent, orange when low), those out under it, the latest out first, with the match time they went out at ("OUT 1:12"); weapons and kill feed; a big message when someone is out |
 | Derby | yes: SCORE and NO RAM (time left to ram someone), the car from above with the zones that took the hits (OK / WORN / CRITICAL, the zone just hit blinks, front up as drawn); "Derby order" with everyone's integrity; a big message when someone is out; a notification for each hit you deal ("Rear hit on Josh", the damage, RAM BONUS when fuel or NOS came with it: the server's `derbyHit`, at most every 300 ms, hits on the same car add up) |
 | Deathmatch | yes: frags against the frag limit and the rank ("=3rd" when tied), time left (or played) and the leader; "Frag order" from the scores; weapons and kill feed |
 | Team Deathmatch | yes: your team in its colour and your frags, the clock and the frag limit; "Team frag order" with the teams' frags over it and team squares; weapons and kill feed |
@@ -57,12 +57,12 @@ have crossed, growing while the one ahead is past the next one. The order
 itself is the server's (by the way still to go); where the two disagree
 right after an overtake, a place is shown no closer than the one ahead.
 
-All game modes now have the new HUD.
-
-`cg_hudStyle 0` shows the old HUD in every mode. The HUD toggles
-(`cg_hudShowTimes`, `cg_hudShowLaps`, `cg_hudShowPosition`,
-`cg_hudShowOpponentList`, `cg_hudShowSlipstream`, `cg_drawRearView`,
-`cg_drawMMap`, `cg_drawStatus`) work as before; `cg_mmap_size` scales the
+All game modes have the new HUD, and it is the only one: the old HUD
+(`cg_hudStyle`, the bottom strip, the old scoreboard and end screens, the
+old Derby panel) is gone. The HUD toggles (`cg_hudShowTimes`,
+`cg_hudShowLaps`, `cg_hudShowPosition`, `cg_hudShowOpponentList`,
+`cg_hudShowDerbyList`, `cg_hudShowSlipstream`, `cg_drawRearView`,
+`cg_drawMMap`, `cg_drawStatus`, `cg_checkpointArrowMode`) work as before; `cg_mmap_size` scales the
 minimap, `cg_mmap_fov` its zoom.
 
 In these modes the big messages in the middle are in the menu fonts too
@@ -97,7 +97,7 @@ lines.
 
 While the HUD shows a message it goes into the console with
 `[skipnotify]`, so the engine's notify lines at the top left do not show it
-twice; otherwise (TAB, end screen, `cg_drawStatus 0`, `cg_hudStyle 0`) it
+twice; otherwise (TAB, end screen, `cg_drawStatus 0`) it
 prints as before. Code: `CG_ModernHUD_Chat` (cg_servercmds.c
 "chat"/"tchat"), `MH_Chat` in cg_hud_modernlayout.c, `CG_ModernHUD_DrawChat`
 (cg_draw.c).

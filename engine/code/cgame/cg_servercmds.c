@@ -963,7 +963,7 @@ static void CG_MapRestart( void ) {
 	cgs.voteTime = 0;
 
         cg.mapRestart = qtrue;
-        CG_ResetEliminationTimeline();
+        CG_ResetElimination();
 
 	cg.ghostRecordingActive = qfalse;
 	cg.ghostRecording.valid = qfalse;
@@ -1813,67 +1813,29 @@ static void CG_ParseGhostDone( void ) {
 
 static int cgLastElimStatusTime = -1;
 
-void CG_ResetEliminationTimeline( void ) {
+/* a new map: nobody is out */
+void CG_ResetElimination( void ) {
 	int i;
 
-        memset( cg.elimTimelineEvents, 0, sizeof( cg.elimTimelineEvents ) );
-        cg.elimTimelineCount = 0;
-	CG_ModernHUD_ElimReset();	/* the end screen's record */
+	CG_ModernHUD_ElimReset();	/* the end screen's record, LCS's "Still in" */
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		cg_entities[i].eliminationOut = qfalse;
 	}
 }
 
-void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, int timestamp ) {
-        int index;
+/* elim_event <client> <round> <remaining> <time>: someone is out of an
+ * elimination race (the end screen orders by it) */
+static void CG_ParseEliminationEvent( void ) {
+	int clientNum;
 
-        if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
-                return;
-        }
-
-        if ( round < 0 ) {
-                round = 0;
-        }
-
-        if ( remaining < 0 ) {
-                remaining = 0;
-        }
-
-        if ( cg.elimTimelineCount >= ELIM_TIMELINE_MAX_EVENTS ) {
-                int i;
-
-                for ( i = 1; i < ELIM_TIMELINE_MAX_EVENTS; ++i ) {
-                        cg.elimTimelineEvents[i - 1] = cg.elimTimelineEvents[i];
-                }
-
-                cg.elimTimelineCount = ELIM_TIMELINE_MAX_EVENTS - 1;
-        }
-
-        CG_ModernHUD_ElimEvent( clientNum, round, timestamp );	/* all of them, for the end screen */
-        index = cg.elimTimelineCount;
-        cg.elimTimelineEvents[index].clientNum = clientNum;
-        cg.elimTimelineEvents[index].round = round;
-        cg.elimTimelineEvents[index].remaining = remaining;
-        cg.elimTimelineEvents[index].timestamp = timestamp;
-        cg.elimTimelineCount++;
-}
-
-static void CG_ParseEliminationTimelineEvent( void ) {
-        int clientNum;
-        int round;
-        int remaining;
-        int timestamp;
-
-        if ( trap_Argc() < 5 ) {
-                return;
-        }
-
-        clientNum = atoi( CG_Argv( 1 ) );
-        round = atoi( CG_Argv( 2 ) );
-        remaining = atoi( CG_Argv( 3 ) );
-        timestamp = atoi( CG_Argv( 4 ) );
-
-        CG_AddEliminationTimelineEvent( clientNum, round, remaining, timestamp );
+	if ( trap_Argc() < 5 ) {
+		return;
+	}
+	clientNum = atoi( CG_Argv( 1 ) );
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
+		return;
+	}
+	CG_ModernHUD_ElimEvent( clientNum, atoi( CG_Argv( 2 ) ), atoi( CG_Argv( 4 ) ) );
 }
 
 static void CG_ParseEliminationStatus( void ) {
@@ -2007,7 +1969,7 @@ static void CG_ServerCommand( void ) {
 			cgs.dragMatch.client[i] = atoi( CG_Argv( 6 + 2 * i ) );
 			cgs.dragMatch.wins[i] = atoi( CG_Argv( 7 + 2 * i ) );
 		}
-		if ( heat != lastHeatToast && !cgs.dragMatch.over && cgs.dragMatch.bestOf > 1 && heat > 0 && CG_ModernHUD_Active() ) {
+		if ( heat != lastHeatToast && !cgs.dragMatch.over && cgs.dragMatch.bestOf > 1 && heat > 0 ) {
 			/* a heat of a match begins: which, and how it stands */
 			char title[32], sub[64];
 			lastHeatToast = heat;
@@ -2092,7 +2054,7 @@ static void CG_ServerCommand( void ) {
         }
 
         if ( !strcmp( cmd, "elim_event" ) ) {
-                CG_ParseEliminationTimelineEvent();
+                CG_ParseEliminationEvent();
                 return;
         }
 

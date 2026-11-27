@@ -11,18 +11,16 @@ This file is part of q3rally source code.
 ===========================================================================
   cg_hud_vehicle.c
 
-  Vehicle instrument HUD elements:
-    - CG_AddObjectsToScene    : helper used by mirror and minimap
-    - CG_DrawRearviewMirror   : rear-view 3D render + overlay shader
-    - CG_DrawMMap             : top-down minimap render
+  Scene helpers for the v0.9 HUD's 3D views (cg_hud_modern.c):
+    - CG_AddKOTHHillIndicatorToScene: the KOTH crown and bollards
+    - CG_AddObjectsToScene          : the entities a rear view or the
+                                      minimap renders
 ===========================================================================
 */
 
 #include "cg_local.h"
 #include "cg_hud_elements.h"
 
-static const vec4_t vehicleHudLabel  = { 0.57f, 0.70f, 0.74f, 0.90f };
-static const vec4_t vehicleHudFrame  = { 0.30f, 0.43f, 0.49f, 0.82f };
 
 /* -----------------------------------------------------------------------
    King of the Hill indicator
@@ -340,103 +338,4 @@ void CG_AddObjectsToScene( int renderLevel ) {
 			CG_AddCEntity( &cg_entities[ cg.snap->entities[i].number ] );
 		}
 	}
-}
-
-
-/* -----------------------------------------------------------------------
-   CG_DrawRearviewMirror
-   ----------------------------------------------------------------------- */
-void CG_DrawRearviewMirror( float x, float y, float w, float h ) {
-	int   tmp;
-	float labelX, labelY;
-	float frameX, frameY, frameW, frameH;
-	screenPlacement_e savedHorizontalPlacement, savedVerticalPlacement;
-
-	if ( !cg_drawRearView.integer )
-		return;
-	if ( cg.snap->ps.pm_type == PM_INTERMISSION )
-		return;
-	if ( cgs.clientinfo[cg.snap->ps.clientNum].team == TEAM_SPECTATOR )
-		return;
-
-	savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-	savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
-	frameX = x - 1.0f;
-	frameY = y - 1.0f;
-	frameW = w + 2.0f;
-	frameH = h + 2.0f;
-	labelX = x + 5.0f;
-	labelY = y + 3.0f;
-	CG_AdjustFrom640( &x, &y, &w, &h );
-
-	cg.mirrorRefdef.x      = x;
-	cg.mirrorRefdef.y      = y;
-	cg.mirrorRefdef.width  = w;
-	cg.mirrorRefdef.height = h;
-	cg.mirrorRefdef.fov_x  = 70;
-	tmp = cg.mirrorRefdef.width / tan( cg.mirrorRefdef.fov_x / 360 * M_PI );
-	cg.mirrorRefdef.fov_y  = atan2( cg.mirrorRefdef.height, tmp ) * 360.0f / M_PI;
-	cg.mirrorRefdef.time   = cg.time;
-	cg.mirrorRefdef.rdflags= 0;
-
-	CG_AddObjectsToScene( cg_rearViewRenderLevel.integer );
-	trap_R_RenderScene( &cg.mirrorRefdef );
-	CG_DrawRect( frameX, frameY, frameW, frameH, 1.0f, vehicleHudFrame );
-	CG_DrawIngameString( (int)labelX, (int)labelY,
-	                     "REAR VIEW", UI_SMALLFONT | UI_DROPSHADOW,
-	                     0.58f, vehicleHudLabel );
-	CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
-}
-
-
-/* -----------------------------------------------------------------------
-   CG_DrawMMap
-   Top-down minimap overlay.
-   ----------------------------------------------------------------------- */
-void CG_DrawMMap( float x, float y, float w, float h ) {
-	float overlay_x, overlay_y, frameX, frameY, frameW, frameH;
-	float tmp;
-	screenPlacement_e savedHorizontalPlacement, savedVerticalPlacement;
-
-	if ( !cg_drawMMap.integer )
-		return;
-	if ( cg.snap->ps.pm_type == PM_INTERMISSION )
-		return;
-	if ( cgs.clientinfo[cg.snap->ps.clientNum].team == TEAM_SPECTATOR )
-		return;
-
-	savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-	savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
-	overlay_x = x;
-	overlay_y = y;
-	frameX = x - 1.0f;
-	frameY = y - 1.0f;
-	frameW = w * cg_mmap_size.value + 2.0f;
-	frameH = h * cg_mmap_size.value + 2.0f;
-	CG_AdjustFrom640( &x, &y, &w, &h );
-
-	cg.mmapRefdef.x       = x;
-	cg.mmapRefdef.y       = y;
-	cg.mmapRefdef.width   = w * cg_mmap_size.value;
-	cg.mmapRefdef.height  = h * cg_mmap_size.value;
-	cg.mmapRefdef.fov_x   = cg_mmap_fov.value;
-	tmp = cg.mmapRefdef.width / tan( cg_mmap_fov.value / 360.0f * M_PI );
-	cg.mmapRefdef.fov_y   = atan2( cg.mmapRefdef.height, tmp ) * 360.0f / M_PI;
-	cg.mmapRefdef.time    = cg.time;
-	cg.mmapRefdef.rdflags = 0;
-
-	CG_AddObjectsToScene( cg_mmap_renderLevel.integer );
-	CG_AddKOTHHillIndicatorToScene( qtrue );
-
-	if ( cg_mmap_renderLevel.integer & RL_PLAYERS )
-		CG_AddCEntity( &cg_entities[cg.snap->ps.clientNum] );
-
-	trap_R_RenderScene( &cg.mmapRefdef );
-	CG_DrawRect( frameX, frameY, frameW, frameH, 1.0f, vehicleHudFrame );
-	CG_DrawIngameString( (int)( overlay_x + 7.0f ), (int)( overlay_y + 4.0f ),
-	                     "MAP", UI_SMALLFONT | UI_DROPSHADOW,
-	                     0.58f, vehicleHudLabel );
-	CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
 }
