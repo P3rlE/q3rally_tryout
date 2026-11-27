@@ -24,6 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __CG_HUD_ELEMENTS_H__
 #define __CG_HUD_ELEMENTS_H__
 
+#include "cg_hud_modernlayout.h"
+
 /*
 ===========================================================================
   HUD ELEMENT TOGGLE CVARS
@@ -72,6 +74,13 @@ void  CG_AddKOTHHillIndicatorToScene( qboolean minimapPass );
 void     CG_DrawHUDOptionsMenu( void );
 qboolean CG_HUDOptions_MouseEvent( int cx, int cy, qboolean clicked );
 void     CG_HUDOptions_KeyEvent( int key );
+/* the HUD options' content (cg_hud_core.c) and drawing (cg_hud_modern.c) */
+#define  HUDOPT_ITEM_SIZE   -2      /* the minimap's sliders, in place of a toggle */
+#define  HUDOPT_ITEM_FOV    -3
+void     CG_HUDOptions_Build( mhOptionsLayout_t *o, int *entry, int *value );
+void     CG_HUDOptions_Set( int entry, int value );
+void     CG_ModernHUD_Names( const char **title, const char **order );
+void     CG_ModernHUD_DrawOptions( mhOptionsLayout_t *o, const int *value, int hover, int hoverChoice );
 /* cg_hud_panel.c */
 void     CG_HUDPanel_Draw( void );
 qboolean CG_HUDPanel_Key( int key );

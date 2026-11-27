@@ -6570,3 +6570,88 @@ qboolean CG_ModernHUD_DrawTab( void ) {
 	MH_Str( &t->serverT, mhDim, 1.0f );
 	return qtrue;
 }
+
+/* ---------------------------------------------------------------------------
+   the HUD options (Shift+H, cg_hud_panel.c; gen.py hud_panel)
+   ------------------------------------------------------------------------- */
+
+/* the mode's title and the order's name, as the HUD showed them last */
+void CG_ModernHUD_Names( const char **title, const char **order ) {
+	*title = mh.l.title;
+	*order = mh.l.orderTitle;
+}
+
+/* the small screen beside a group's name: which part is its (gen.py
+ * PANEL_REGION, in the icon's 28 x 17) */
+static const float mhOptRegion[][4] = {
+	{ 1, 1, 9, 6 },		/* MH_OPT_CARD */
+	{ 17, 1, 9, 5 },	/* MH_OPT_ORDER */
+	{ 1, 10, 26, 6 },	/* MH_OPT_CAR */
+	{ 19, 9, 8, 7 },	/* MH_OPT_MAP */
+	{ 8, 4, 12, 9 },	/* MH_OPT_TRACK */
+	{ 1, 1, 26, 15 },	/* MH_OPT_FX */
+};
+
+/* hover: the item under the pointer (hoverChoice: its choice), -2 the back
+ * button, -3 the console button */
+void CG_ModernHUD_DrawOptions( mhOptionsLayout_t *o, const int *value, int hover, int hoverChoice ) {
+	static const vec4_t shade = { 0.0f, 0.0f, 0.0f, 0.25f };
+	static const vec4_t glass = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.95f };
+	static const vec4_t outline = { 85 / 255.0f, 85 / 255.0f, 85 / 255.0f, 1.0f };	/* #555 */
+	static const vec4_t buttonLine = { 59 / 255.0f, 59 / 255.0f, 59 / 255.0f, 1.0f };	/* #3b3b3b */
+	static const vec4_t buttonOff = { 26 / 255.0f, 26 / 255.0f, 26 / 255.0f, 1.0f };	/* #1a1a1a */
+	static const vec4_t buttonHover = { 42 / 255.0f, 42 / 255.0f, 42 / 255.0f, 1.0f };
+	static const vec4_t onAccent = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 1.0f };
+	int g, i, c;
+
+	mhScale = cgs.glconfig.vidHeight / MH_DESIGN_HEIGHT;
+	WS_FillRect( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight, shade );
+
+	MH_FillRect( &o->box, glass, 1.0f );
+	MH_Border( &o->box, mhLine, 2.0f, mhAccent, 1.0f );
+	MH_Str( &o->crumbT, mhAccent, 1.0f );
+	MH_Str( &o->titleT, mhWhite, 1.0f );
+	MH_Str( &o->emT, mhAccent, 1.0f );
+	MH_Str( &o->textT, mhValue, 1.0f );
+	MH_Str( &o->hintT, mhMuted, 1.0f );
+
+	for ( g = 0; g < o->groupCount; g++ ) {
+		const wsRect_t *r = &o->groupIcon[g];
+		const float *part = mhOptRegion[o->groupRegion[g] >= 0 && o->groupRegion[g] <= MH_OPT_FX ? o->groupRegion[g] : 0];
+		MH_Border( r, outline, 1.0f, NULL, 1.0f );
+		MH_Fill( r->x + part[0], r->y + part[1], part[2], part[3], mhAccent, 1.0f );
+		MH_Str( &o->groupTitleT[g], mhLabel, 1.0f );
+		MH_FillRect( &o->groupLine[g], mhLine, 1.0f );
+	}
+
+	for ( i = 0; i < o->itemCount; i++ ) {
+		if ( !o->itemChoices[i] ) {
+			/* a slider: the line at its left, the track filled to the thumb */
+			wsRect_t fill = o->sliderTrack[i];
+			fill.w = o->sliderThumb[i].x + 7.0f - fill.x;
+			MH_FillRect( &o->sliderRule[i], mhLine, 1.0f );
+			MH_Str( &o->itemLabelT[i], mhValue, 1.0f );
+			MH_Str( &o->sliderValueT[i], mhAccent, 1.0f );
+			MH_FillRect( &o->sliderTrack[i], mhTrack, 1.0f );
+			MH_FillRect( &fill, mhAccent, 1.0f );
+			MH_FillRect( &o->sliderThumb[i], mhWhite, 1.0f );
+			continue;
+		}
+		MH_Str( &o->itemLabelT[i], mhWhite, 1.0f );
+		if ( o->itemHint[i] ) MH_Str( &o->itemHintT[i], mhMuted, 1.0f );
+		MH_Border( &o->itemButtons[i], buttonLine, 1.0f, NULL, 1.0f );
+		for ( c = 0; c < o->itemChoices[i]; c++ ) {
+			const wsRect_t *b = &o->itemButton[i][c];
+			qboolean on = value[i] == c, over = hover == i && hoverChoice == c;
+			MH_FillRect( b, on ? mhAccent : over ? buttonHover : buttonOff, 1.0f );
+			if ( c ) MH_Fill( b->x, b->y, 1.0f, b->h, buttonLine, 1.0f );
+			MH_Str( &o->itemChoiceT[i][c], on ? onAccent : over ? mhWhite : mhMuted, 1.0f );
+		}
+	}
+
+	MH_FillRect( &o->backBox, mhAccent, hover == -2 ? 0.85f : 1.0f );
+	MH_Str( &o->backT, mhWhite, 1.0f );
+	if ( hover == -3 ) MH_FillRect( &o->consoleBox, buttonHover, 1.0f );
+	MH_Border( &o->consoleBox, outline, 1.0f, NULL, 1.0f );
+	MH_Str( &o->consoleT, mhWhite, 1.0f );
+}

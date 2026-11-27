@@ -2302,3 +2302,218 @@ void MH_BracketLayout( mhBracketLayout_t *b ) {
 	MH_BracketCard( b, &b->thirdCard, &b->thirdDivider, b->third, b->thirdNameT, b->thirdBotT, b->thirdWinsT, b->thirdRow,
 	                cx, cy + 90.0f + ( 2.0f * rowH + 1.0f ) * 0.5f, cardW, rowH );
 }
+
+
+/* -------------------------------------------------------------------------
+   the HUD options (gen.py hud_panel)
+   ------------------------------------------------------------------------- */
+
+#define MH_OPT_PAD_X		32.0f
+#define MH_OPT_GAP			22.0f		/* header, columns, buttons; groups in a column */
+#define MH_OPT_COL_GAP		44.0f
+#define MH_OPT_ROW			44.0f		/* a row's least height */
+#define MH_OPT_BUTTON		30.0f
+#define MH_OPT_BUTTON_PAD	14.0f
+
+/* the button faces: Share Tech Mono 12, .12em, capitals */
+static void MH_OptButtonStyle( wsTextStyle_t *style ) {
+	MH_Label( style, 12.0f );
+	style->spacing = 0.12f * 12.0f;
+}
+
+/* the label over its hint (2px apart): their height */
+static float MH_OptLabel( mhOptionsLayout_t *o, int i ) {
+	wsTextStyle_t label, hint;
+	MH_Text( &label, 16.0f );
+	MH_Text( &hint, 13.0f );
+	MH_Set( &o->itemLabelT[i], &label, o->itemLabel[i] );
+	MH_Set( &o->itemHintT[i], &hint, o->itemHint[i] ? o->itemHint[i] : "" );
+	return o->itemLabelT[i].box.h + ( o->itemHint[i] ? 2.0f + o->itemHintT[i].box.h : 0.0f );
+}
+
+static void MH_OptPlaceLabel( mhOptionsLayout_t *o, int i, float x, float y ) {
+	MH_Place( &o->itemLabelT[i], x, y );
+	MH_Place( &o->itemHintT[i], x, y + o->itemLabelT[i].box.h + 2.0f );
+}
+
+/* the buttons: in a border, each as wide as its face plus 14px a side and
+ * the 1px line between (wide: the row's width shared out, flex: 1) */
+static void MH_OptButtons( mhOptionsLayout_t *o, int i, float x, float y, float w ) {
+	wsTextStyle_t face;
+	float widths[MH_OPT_CHOICES], total = 0.0f, bx;
+	int c, n = o->itemChoices[i];
+	MH_OptButtonStyle( &face );
+	for ( c = 0; c < n; c++ ) {
+		MH_Set( &o->itemChoiceT[i][c], &face, o->itemChoice[i][c] );
+		widths[c] = o->itemChoiceT[i][c].box.w + 2.0f * MH_OPT_BUTTON_PAD + ( c ? 1.0f : 0.0f );
+		total += widths[c];
+	}
+	if ( o->itemWide[i] ) {
+		/* flex: 1 from a basis of 0: the padding and lines kept, the rest equal */
+		float pb = 0.0f;
+		for ( c = 0; c < n; c++ ) pb += 2.0f * MH_OPT_BUTTON_PAD + ( c ? 1.0f : 0.0f );
+		for ( c = 0; c < n; c++ ) widths[c] = ( w - 2.0f - pb ) / n + 2.0f * MH_OPT_BUTTON_PAD + ( c ? 1.0f : 0.0f );
+		total = w - 2.0f;
+	}
+	o->itemButtons[i].x = o->itemWide[i] ? x : x + w - total - 2.0f;
+	o->itemButtons[i].y = y;
+	o->itemButtons[i].w = total + 2.0f;
+	o->itemButtons[i].h = MH_OPT_BUTTON + 2.0f;
+	bx = o->itemButtons[i].x + 1.0f;
+	for ( c = 0; c < n; c++ ) {
+		wsRect_t *b = &o->itemButton[i][c];
+		float inner = c ? 1.0f : 0.0f;		/* the line at its left */
+		b->x = bx;
+		b->y = y + 1.0f;
+		b->w = widths[c];
+		b->h = MH_OPT_BUTTON;
+		MH_Place( &o->itemChoiceT[i][c], bx + inner + ( widths[c] - inner - o->itemChoiceT[i][c].box.w ) * 0.5f,
+		          b->y + ( MH_OPT_BUTTON - o->itemChoiceT[i][c].box.h ) * 0.5f );
+		bx += widths[c];
+	}
+}
+
+/* an item at y in a column at x, w wide: its height */
+static float MH_OptItem( mhOptionsLayout_t *o, int i, float x, float y, float w ) {
+	float labelH, h;
+	if ( !o->itemChoices[i] ) {
+		/* a slider: a line at the left, the label and its value on a
+		 * baseline, the track under them */
+		wsTextStyle_t label, value;
+		float in = x + 2.0f + 1.0f + 16.0f, iw = w - 2.0f - 1.0f - 16.0f, rowH, frac;
+		MH_Text( &label, 14.0f );
+		MH_Mono( &value, 14.0f );
+		MH_Set( &o->itemLabelT[i], &label, o->itemLabel[i] );
+		MH_Set( &o->sliderValueT[i], &value, o->itemValue[i] );
+		rowH = MH_BaselineRow( &o->itemLabelT[i], &o->sliderValueT[i], in, y + 4.0f, iw );
+		o->itemLabelT[i].box.w = MH_Width( &o->itemLabelT[i] );
+		frac = WS_Clamp( 0.0f, o->itemFrac[i], 1.0f );
+		o->sliderTrack[i].x = in;
+		o->sliderTrack[i].y = y + 4.0f + rowH + 8.0f + 5.0f;
+		o->sliderTrack[i].w = iw;
+		o->sliderTrack[i].h = 4.0f;
+		o->sliderThumb[i].x = in + frac * iw - 7.0f;
+		o->sliderThumb[i].y = o->sliderTrack[i].y - 5.0f;
+		o->sliderThumb[i].w = o->sliderThumb[i].h = 14.0f;
+		h = 4.0f + rowH + 8.0f + 14.0f + 6.0f;
+		o->sliderRule[i].x = x + 2.0f;
+		o->sliderRule[i].y = y;
+		o->sliderRule[i].w = 1.0f;
+		o->sliderRule[i].h = h;
+		return h;
+	}
+	labelH = MH_OptLabel( o, i );
+	if ( o->itemWide[i] ) {
+		/* padding 6px 0 4px, the label, 8px, the buttons */
+		MH_OptPlaceLabel( o, i, x, y + 6.0f );
+		MH_OptButtons( o, i, x, y + 6.0f + labelH + 8.0f, w );
+		return 6.0f + labelH + 8.0f + MH_OPT_BUTTON + 2.0f + 4.0f;
+	}
+	/* a row: the label at the left, the buttons at the right, centred */
+	h = MH_OPT_ROW;
+	if ( labelH > h ) h = labelH;
+	MH_OptPlaceLabel( o, i, x, y + ( h - labelH ) * 0.5f );
+	MH_OptButtons( o, i, x, y + ( h - MH_OPT_BUTTON - 2.0f ) * 0.5f, w );
+	return h;
+}
+
+/* a group: its head (24px: the small screen, the title, a line), then its
+ * items, 6px apart; its height (y < 0: measured only) */
+static float MH_OptGroup( mhOptionsLayout_t *o, int g, float x, float y, float w ) {
+	wsTextStyle_t title;
+	float h = 24.0f;
+	int i;
+	MH_Label( &title, 12.0f );
+	MH_Set( &o->groupTitleT[g], &title, o->groupTitle[g] );
+	o->groupIcon[g].x = x;
+	o->groupIcon[g].y = y + ( 24.0f - 17.0f ) * 0.5f;
+	o->groupIcon[g].w = 28.0f;
+	o->groupIcon[g].h = 17.0f;
+	MH_Place( &o->groupTitleT[g], x + 28.0f + 10.0f, y + ( 24.0f - o->groupTitleT[g].box.h ) * 0.5f );
+	o->groupLine[g].x = o->groupTitleT[g].box.x + o->groupTitleT[g].box.w + 10.0f;
+	o->groupLine[g].y = y + ( 24.0f - 1.0f ) * 0.5f;
+	o->groupLine[g].w = x + w - o->groupLine[g].x;
+	o->groupLine[g].h = 1.0f;
+	for ( i = 0; i < o->itemCount; i++ ) {
+		if ( o->itemGroup[i] != g ) continue;
+		h += 6.0f;
+		h += MH_OptItem( o, i, x, y + h, w );
+	}
+	return h;
+}
+
+static float MH_OptColumn( mhOptionsLayout_t *o, int column, float x, float y, float w ) {
+	float h = 0.0f;
+	int g, n = 0;
+	for ( g = 0; g < o->groupCount; g++ ) {
+		if ( o->groupColumn[g] != column ) continue;
+		if ( n++ ) h += MH_OPT_GAP;
+		h += MH_OptGroup( o, g, x, y + h, w );
+	}
+	return h;
+}
+
+void MH_OptionsLayout( mhOptionsLayout_t *o ) {
+	wsTextStyle_t crumb, title, text, button;
+	char line[64];
+	float x, y, w, col, left, right, headH, gridH, top = 0.0f;
+	int pass;
+
+	MH_Label( &crumb, 12.0f );
+	MH_Big( &title, 44.0f );
+	title.uppercase = qtrue;
+	MH_Text( &text, 15.0f );
+
+	o->box.w = MH_OPT_W;
+	o->box.x = ( o->viewWidth - o->box.w ) * 0.5f;
+	x = o->box.x + 1.0f + MH_OPT_PAD_X;
+	w = o->box.w - 2.0f - 2.0f * MH_OPT_PAD_X;
+	col = ( w - MH_OPT_COL_GAP ) * 0.5f;
+
+	/* twice: once for the height (to centre the panel), then in place */
+	for ( pass = 0; pass < 2; pass++ ) {
+		y = top + 2.0f + 26.0f;
+		/* the header: crumb, title, text 8px apart; the hint at the right */
+		MH_Set( &o->crumbT, &crumb, o->crumb );
+		MH_Place( &o->crumbT, x, y );
+		Com_sprintf( line, sizeof( line ), "Your %s. Your ", o->noun );
+		MH_Set( &o->titleT, &title, line );
+		MH_Place( &o->titleT, x, y + o->crumbT.box.h + 8.0f );
+		MH_Set( &o->emT, &title, "display." );
+		MH_Place( &o->emT, x + o->titleT.box.w, o->titleT.box.y );
+		MH_Set( &o->textT, &text, "Changes show right away. Only what this mode's HUD has is listed." );
+		MH_Place( &o->textT, x, o->titleT.box.y + o->titleT.box.h + 8.0f );
+		MH_Set( &o->hintT, &crumb, "Shift + H \xb7 Esc" );
+		MH_Place( &o->hintT, x + w - o->hintT.box.w, y + 2.0f );
+		MH_Fit( &o->crumbT, w - o->hintT.box.w - 24.0f );	/* a long map name */
+		o->crumbT.box.w = MH_Width( &o->crumbT );
+		headH = o->textT.box.y + o->textT.box.h - y;
+		y += headH + MH_OPT_GAP;
+
+		left = MH_OptColumn( o, 0, x, y, col );
+		right = MH_OptColumn( o, 1, x + col + MH_OPT_COL_GAP, y, col );
+		gridH = left > right ? left : right;
+		y += gridH + MH_OPT_GAP;
+
+		/* the buttons: 44px high, 20px a side; the second has a border */
+		MH_Text( &button, 16.0f );
+		button.font = WS_BODY_BOLD;
+		MH_Set( &o->backT, &button, o->back );
+		MH_Set( &o->consoleT, &button, "Console" );
+		o->backBox.x = x;
+		o->backBox.y = y;
+		o->backBox.w = o->backT.box.w + 40.0f;
+		o->backBox.h = 44.0f;
+		o->consoleBox.x = o->backBox.x + o->backBox.w + 10.0f;
+		o->consoleBox.y = y;
+		o->consoleBox.w = o->consoleT.box.w + 40.0f + 2.0f;
+		o->consoleBox.h = 44.0f;
+		MH_Place( &o->backT, o->backBox.x + 20.0f, y + ( 44.0f - o->backT.box.h ) * 0.5f );
+		MH_Place( &o->consoleT, o->consoleBox.x + 21.0f, y + ( 44.0f - o->consoleT.box.h ) * 0.5f );
+		y += 44.0f + 28.0f + 1.0f;
+
+		o->box.y = top;
+		o->box.h = y - top;
+		top = ( MH_DESIGN_HEIGHT - o->box.h ) * 0.5f;
+	}
+}

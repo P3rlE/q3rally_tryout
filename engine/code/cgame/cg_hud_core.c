@@ -80,53 +80,70 @@ void CG_HUD_RegisterCvars( void ) {
 }
 
 /* =======================================================================
-   HUD OPTIONS MENU
-   Shift+H (or "toggle cg_hudOptionsOpen") in a race. The panel is
-   cg_hud_panel.c, in the look of the WebUI's #hud-screen; the toggles it
-   shows are this table.
+   HUD OPTIONS
+   Shift+H (or "toggle cg_hudOptionsOpen"). The panel is cg_hud_panel.c,
+   laid out by MH_OptionsLayout (the design: gen.py hud_panel); it shows the
+   toggles of this table that do something in the mode, in their groups.
    ======================================================================= */
 
 #define HUDOPT_MODE_ANY                 -1
-#define HUDOPT_MODE_RALLY_RACE          -3
-#define HUDOPT_MODE_RACE_OR_LCS         -4
-#define HUDOPT_MODE_RACE_LCS_DERBY      -5
-#define HUDOPT_MODE_RACE_WITH_LAPS      -6
+#define HUDOPT_MODE_COURSE              -3	/* a race on a course: guidance, slipstream */
+#define HUDOPT_MODE_ORDER               -4	/* the order at the top right (not Derby's) */
+#define HUDOPT_MODE_TIMES               -5	/* the times in the card */
+#define HUDOPT_MODE_LAPS                -6	/* a race with laps */
+#define HUDOPT_MODE_POSITION            -7	/* the place in the card (the ghost race has the gap) */
+#define HUDOPT_MODE_VIEWS               -8	/* rear view and minimap (Drag: the tachometer) */
+
+/* the groups, in the panel's order; the left column first */
+typedef enum { HUDG_CARD, HUDG_TRACK, HUDG_ORDER, HUDG_FX, HUDG_CAR, HUDG_MAP, HUDG_COUNT } hudGroup_t;
+
+static const struct {
+    const char  *title;
+    int          region;    /* mhOptionsRegion_t */
+    int          column;    /* the car's goes left in a mode without the card's toggles */
+} hudGroups[HUDG_COUNT] = {
+    { "Card",            MH_OPT_CARD,  0 },
+    { "On track",        MH_OPT_TRACK, 0 },
+    { "Order",           MH_OPT_ORDER, 0 },
+    { "Effects",         MH_OPT_FX,    0 },
+    { "Car and cockpit", MH_OPT_CAR,   1 },
+    { "Mini-map",        MH_OPT_MAP,   1 },
+};
 
 typedef struct {
-    const char  *label;
+    const char  *label;         /* NULL: the HUD's own name for its order */
     const char  *cvarName;
     vmCvar_t    *cvar;
-    int          onValue;       /* value to set when toggling ON; also max cycle value */
+    int          onValue;       /* the highest value: 0..onValue are the choices */
     int          gameTypeOnly;  /* exact GT_* value or negative mode-group selector     */
-    qboolean     isCycler;      /* qtrue: cycle 0..onValue instead of simple toggle    */
-    const char *const *cycleLabels; /* state badge text when cycling                   */
+    int          group;         /* hudGroup_t */
+    const char  *hint;          /* under the label; NULL: none */
+    const char *const *choiceLabels;	/* NULL: Off, On */
+    qboolean     wide;          /* the choices under the label */
 } hudToggleEntry_t;
 
 static const char *const hudGhostPlaybackLabels[] = {
-    "OFF", "PERSONAL", "SERVER BASE", "LADDER", NULL
+    "Off", "Personal", "Server", "Ladder", NULL
 };
 
 static const char *const hudCheckpointArrowLabels[] = {
-    "OFF", "ON HUD", "ABOVE CAR", NULL
+    "Off", "On HUD", "Above car", NULL
 };
 
 static const hudToggleEntry_t hudToggleTable[] = {
-    /* ---- race / match ---- */
-    { "TIMES PANEL",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, HUDOPT_MODE_RACE_LCS_DERBY,      qfalse, NULL },
-    { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, HUDOPT_MODE_RACE_WITH_LAPS,      qfalse, NULL },
-    { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
-    { "GHOST PLAYBACK",      "cg_ghostPlayback",         &cg_ghostPlayback,         3, GT_GHOST,                         qtrue,  hudGhostPlaybackLabels },
-    { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudCheckpointArrowLabels },
-    { "RACING LINE",         "cg_racingLine",            &cg_racingLine,            1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
-    { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, HUDOPT_MODE_RACE_OR_LCS,          qfalse, NULL },
-    /* ---- Derby ---- */
-    { "DERBY SCOREBOARD",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse, NULL },
-    { "DERBY HIT IMPACT",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse, NULL },
-    /* ---- car ---- */
-    { "STATUS HUD",          "cg_drawStatus",            &cg_drawStatus,            1, HUDOPT_MODE_ANY, qfalse, NULL },
-    { "REAR-VIEW MIRROR",    "cg_drawRearView",          &cg_drawRearView,          1, HUDOPT_MODE_ANY, qfalse, NULL },
-    { "MINI-MAP",            "cg_drawMMap",              &cg_drawMMap,              1, HUDOPT_MODE_ANY, qfalse, NULL },
-    { "SLIPSTREAM GAUGE",    "cg_hudShowSlipstream",     &cg_hudShowSlipstream,     1, HUDOPT_MODE_RALLY_RACE, qfalse, NULL },
+    { "Times",            "cg_hudShowTimes",        &cg_hudShowTimes,        1, HUDOPT_MODE_TIMES,    HUDG_CARD,  NULL, NULL, qfalse },
+    { "Lap counter",      "cg_hudShowLaps",         &cg_hudShowLaps,         1, HUDOPT_MODE_LAPS,     HUDG_CARD,  NULL, NULL, qfalse },
+    { "Race position",    "cg_hudShowPosition",     &cg_hudShowPosition,     1, HUDOPT_MODE_POSITION, HUDG_CARD,  NULL, NULL, qfalse },
+    { "Ghost",            "cg_ghostPlayback",       &cg_ghostPlayback,       3, GT_GHOST,             HUDG_TRACK, "The car you race against", hudGhostPlaybackLabels, qtrue },
+    { "Checkpoint arrow", "cg_checkpointArrowMode", &cg_checkpointArrowMode, 2, HUDOPT_MODE_COURSE,   HUDG_TRACK, "On HUD: at the top of the screen", hudCheckpointArrowLabels, qtrue },
+    { "Racing line",      "cg_racingLine",          &cg_racingLine,          1, HUDOPT_MODE_COURSE,   HUDG_TRACK, NULL, NULL, qfalse },
+    { NULL,               "cg_hudShowOpponentList", &cg_hudShowOpponentList, 1, HUDOPT_MODE_ORDER,    HUDG_ORDER, NULL, NULL, qfalse },
+    { NULL,               "cg_hudShowDerbyList",    &cg_hudShowDerbyList,    1, GT_DERBY,             HUDG_ORDER, NULL, NULL, qfalse },
+    { "Hit flash",        "cg_derbyHitFxEnable",    &cg_derbyHitFxEnable,    1, GT_DERBY,             HUDG_FX,    "Red flash when you are hit", NULL, qfalse },
+    { "HUD",              "cg_drawStatus",          &cg_drawStatus,          1, HUDOPT_MODE_ANY,      HUDG_CAR,   "Off hides every panel", NULL, qfalse },
+    { "Rear view",        "cg_drawRearView",        &cg_drawRearView,        1, HUDOPT_MODE_VIEWS,    HUDG_CAR,   NULL, NULL, qfalse },
+    { "Slipstream gauge", "cg_hudShowSlipstream",   &cg_hudShowSlipstream,   1, HUDOPT_MODE_COURSE,   HUDG_CAR,   NULL, NULL, qfalse },
+    { "Mini-map",         "cg_drawMMap",            &cg_drawMMap,            1, HUDOPT_MODE_VIEWS,    HUDG_MAP,   NULL, NULL, qfalse },
 };
 
 #define HUDOPT_NUM_ENTRIES  ( (int)( sizeof(hudToggleTable) / sizeof(hudToggleTable[0]) ) )
@@ -143,34 +160,130 @@ static void HUDOpt_SetFloatCvar( const char *cvarName, vmCvar_t *cvar, float val
 /*
 ================
 HUDEntry_IsUnavail
-Returns qtrue when a toggle entry is not applicable in the current gametype.
-  -1 is always available; -3 is course-race guidance/position, -4 opponent
-  list, -5 race/LCS/Derby times, -6 race with laps. Drag has its own HUD;
-  only times and an optional two-driver opponent list apply there.
-  Non-negative values are exact GT_* matches.
+qtrue when a toggle does nothing in this mode (the panel leaves it out).
+Negative values are the HUDOPT_MODE_* groups, others exact GT_* matches.
+Drag has its own HUD: the times, and the order in a duel.
 ================
 */
-static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
-    if ( e->gameTypeOnly == HUDOPT_MODE_ANY )
+static qboolean HUDOpt_Unavail( int mode ) {
+    if ( mode == HUDOPT_MODE_ANY )
         return qfalse;
-    if ( e->gameTypeOnly == HUDOPT_MODE_RALLY_RACE )
+    if ( mode == HUDOPT_MODE_COURSE )
         return ( cgs.gametype == GT_DRAG || !isRallyRace() );
-    if ( e->gameTypeOnly == HUDOPT_MODE_RACE_OR_LCS )
-        return ( cgs.gametype == GT_DRAG && cgs.numRacers < 2 ) ||
-               ( !isRallyRace() && cgs.gametype != GT_LCS );
-    if ( e->gameTypeOnly == HUDOPT_MODE_RACE_LCS_DERBY )
-        return ( !isRallyRace() && cgs.gametype != GT_LCS && cgs.gametype != GT_DERBY );
-    if ( e->gameTypeOnly == HUDOPT_MODE_RACE_WITH_LAPS )
-        return ( !isRallyRace() || cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_DRAG );
-    return ( cgs.gametype != e->gameTypeOnly );
+    if ( mode == HUDOPT_MODE_POSITION )
+        return ( cgs.gametype == GT_DRAG || cgs.gametype == GT_GHOST || !isRallyRace() );
+    if ( mode == HUDOPT_MODE_ORDER )
+        return ( cgs.gametype == GT_DRAG && cgs.numRacers < 2 ) || cgs.gametype == GT_DERBY;
+    if ( mode == HUDOPT_MODE_TIMES )
+        return ( !isRallyRace() && cgs.gametype != GT_LCS );
+    if ( mode == HUDOPT_MODE_LAPS )
+        return ( !isRallyRace() || cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_DRAG || CG_IsSprintTrack() );
+    if ( mode == HUDOPT_MODE_VIEWS )
+        return ( cgs.gametype == GT_DRAG );
+    return ( cgs.gametype != mode );
 }
+
+static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
+    return HUDOpt_Unavail( e->gameTypeOnly );
+}
+
+/* a toggle's choice as the panel shows it */
+static const char *HUDEntry_Choice( const hudToggleEntry_t *e, int choice ) {
+    if ( e->cvar == &cg_ghostPlayback && cgs.gametype == GT_GHOST && choice == 0 ) return "Auto";
+    if ( e->choiceLabels ) return e->choiceLabels[choice];
+    return choice ? "On" : "Off";
+}
+
+/* the minimap's sliders: size (cg_mmap_size x 100) and field of view */
+#define HUDOPT_SIZE_MIN     40
+#define HUDOPT_SIZE_MAX     200
+#define HUDOPT_FOV_MIN      30
+#define HUDOPT_FOV_MAX      120
 
 /*
 ================
-HUDEntry_DoBadgeLabel
-Returns the badge string for a given entry, reflecting cycler states.
+CG_HUDOptions_Build
+The panel's content for this mode: the groups that have a toggle, the
+toggles, the minimap's sliders under it while it is on. entry[] gets each
+item's toggle (an index into the table), or HUDOPT_ITEM_SIZE / _FOV.
 ================
 */
+void CG_HUDOptions_Build( mhOptionsLayout_t *o, int *entry, int *value ) {
+    static char crumb[96], sizeText[16], fovText[16];
+    const char *title, *order;
+    int g, i, groupOf[HUDG_COUNT];
+    int size, fov;
+
+    CG_ModernHUD_Names( &title, &order );
+    Com_sprintf( crumb, sizeof( crumb ), "Live HUD \xb7 %s", title && title[0] ? title : "HUD" );
+    o->crumb = crumb;
+    if ( isRallyRace() ) {
+        o->noun = "race";
+        o->back = "Back to race";
+    } else {
+        o->noun = cgs.gametype == GT_DERBY ? "derby" : "match";
+        o->back = "Back to match";
+    }
+
+    o->groupCount = o->itemCount = 0;
+    for ( g = 0; g < HUDG_COUNT; g++ ) groupOf[g] = -1;
+    for ( g = 0; g < HUDG_COUNT; g++ ) {
+        for ( i = 0; i < HUDOPT_NUM_ENTRIES; i++ ) {
+            const hudToggleEntry_t *e = &hudToggleTable[i];
+            int item, c;
+            if ( e->group != g || HUDEntry_IsUnavail( e ) || o->itemCount >= MH_OPT_ITEMS ) continue;
+            if ( groupOf[g] < 0 ) {
+                groupOf[g] = o->groupCount++;
+                o->groupTitle[groupOf[g]] = hudGroups[g].title;
+                o->groupRegion[groupOf[g]] = hudGroups[g].region;
+                o->groupColumn[groupOf[g]] = hudGroups[g].column;
+                /* without the card's toggles the left column is short: the car's join it */
+                if ( g == HUDG_CAR && groupOf[HUDG_CARD] < 0 ) o->groupColumn[groupOf[g]] = 0;
+            }
+            trap_Cvar_Update( e->cvar );
+            item = o->itemCount++;
+            o->itemGroup[item] = groupOf[g];
+            o->itemLabel[item] = e->label ? e->label : ( order && order[0] ? order : "Order" );
+            o->itemHint[item] = e->hint;
+            if ( e->cvar == &cg_hudShowTimes ) {
+                o->itemHint[item] = cgs.gametype == GT_LCS ? "Match time" :
+                                    HUDOpt_Unavail( HUDOPT_MODE_LAPS ) ? NULL : "Lap, best, gap";
+            }
+            o->itemChoices[item] = e->onValue + 1;
+            for ( c = 0; c <= e->onValue && c < MH_OPT_CHOICES; c++ ) o->itemChoice[item][c] = HUDEntry_Choice( e, c );
+            o->itemWide[item] = e->wide;
+            entry[item] = i;
+            value[item] = e->cvar->integer;
+
+            /* the minimap's size and field of view, while it is on */
+            if ( e->cvar == &cg_drawMMap && e->cvar->integer && o->itemCount + 2 <= MH_OPT_ITEMS ) {
+                trap_Cvar_Update( &cg_mmap_size );
+                trap_Cvar_Update( &cg_mmap_fov );
+                size = (int)( cg_mmap_size.value * 100.0f + 0.5f );
+                fov = (int)( cg_mmap_fov.value + 0.5f );
+                Com_sprintf( sizeText, sizeof( sizeText ), "%d.%02d", size / 100, size % 100 );
+                Com_sprintf( fovText, sizeof( fovText ), "%d", fov );
+                item = o->itemCount++;
+                o->itemGroup[item] = groupOf[g];
+                o->itemLabel[item] = "Size";
+                o->itemChoices[item] = 0;
+                o->itemValue[item] = sizeText;
+                o->itemFrac[item] = (float)( size - HUDOPT_SIZE_MIN ) / ( HUDOPT_SIZE_MAX - HUDOPT_SIZE_MIN );
+                entry[item] = HUDOPT_ITEM_SIZE;
+                value[item] = size;
+                item = o->itemCount++;
+                o->itemGroup[item] = groupOf[g];
+                o->itemLabel[item] = "Field of view";
+                o->itemChoices[item] = 0;
+                o->itemValue[item] = fovText;
+                o->itemFrac[item] = (float)( fov - HUDOPT_FOV_MIN ) / ( HUDOPT_FOV_MAX - HUDOPT_FOV_MIN );
+                entry[item] = HUDOPT_ITEM_FOV;
+                value[item] = fov;
+            }
+        }
+    }
+}
+
 /*
 ================
 CG_HUDOptionsIsOpen
@@ -285,39 +398,28 @@ qboolean CG_DrawHUD( void ) {
 }
 
 
-int CG_WebHUDNumber( int field, int index ) {
-    const hudToggleEntry_t *entry;
-    if ( field == 0 ) return HUDOPT_NUM_ENTRIES;
-    if ( index < 0 || index >= HUDOPT_NUM_ENTRIES ) return 0;
-    entry = &hudToggleTable[index]; trap_Cvar_Update( entry->cvar );
-    if ( field == 1 ) return entry->cvar->integer;
-    if ( field == 2 ) return entry->onValue + 1;
-    if ( field == 3 ) return HUDEntry_IsUnavail( entry );
-    return 0;
-}
-int CG_WebHUDChar( int index, int field, int choice, int character ) {
-    const hudToggleEntry_t *entry;
-    const char *text = "";
-    if ( index < 0 || index >= HUDOPT_NUM_ENTRIES ) return 0;
-    entry = &hudToggleTable[index];
-    if ( field == 0 ) text = entry->label;
-    else if ( field == 1 && choice >= 0 && choice <= entry->onValue ) {
-        if ( entry->cycleLabels ) text = entry->cycleLabels[choice];
-        else text = choice ? "On" : "Off";
-        if ( entry->cvar == &cg_ghostPlayback && cgs.gametype == GT_GHOST && choice == 0 ) text = "Auto";
-    }
-    if ( !text || character < 0 || character >= (int)strlen( text ) ) return 0;
-    return (unsigned char)text[character];
-}
-void CG_WebHUDAction( int action, int index, int value ) {
-    const hudToggleEntry_t *entry;
+/*
+================
+CG_HUDOptions_Set
+A choice in the panel (entry: the toggle; HUDOPT_ITEM_SIZE / _FOV: a
+slider's value, size x 100 or degrees, in steps of 5). Only while the
+panel is open, only toggles of this mode, only values they have.
+================
+*/
+void CG_HUDOptions_Set( int entry, int value ) {
+    const hudToggleEntry_t *e;
     trap_Cvar_Update( &cg_hudOptionsOpen );
     if ( !CG_HUDOptionsIsOpen() ) return;
-    if ( action == 0 ) {
-        if ( index < 0 || index >= HUDOPT_NUM_ENTRIES ) return;
-        entry = &hudToggleTable[index];
-        if ( HUDEntry_IsUnavail( entry ) || value < 0 || value > entry->onValue ) return;
-        trap_Cvar_Set( entry->cvarName, va( "%d", value ) ); trap_Cvar_Update( entry->cvar );
-    } else if ( action == 1 && value >= 40 && value <= 200 && value % 5 == 0 ) HUDOpt_SetFloatCvar( "cg_mmap_size", &cg_mmap_size, value / 100.0f, qfalse );
-    else if ( action == 2 && value >= 30 && value <= 120 && value % 5 == 0 ) HUDOpt_SetFloatCvar( "cg_mmap_fov", &cg_mmap_fov, value, qtrue );
+    if ( entry == HUDOPT_ITEM_SIZE ) {
+        if ( value >= HUDOPT_SIZE_MIN && value <= HUDOPT_SIZE_MAX && value % 5 == 0 )
+            HUDOpt_SetFloatCvar( "cg_mmap_size", &cg_mmap_size, value / 100.0f, qfalse );
+    } else if ( entry == HUDOPT_ITEM_FOV ) {
+        if ( value >= HUDOPT_FOV_MIN && value <= HUDOPT_FOV_MAX && value % 5 == 0 )
+            HUDOpt_SetFloatCvar( "cg_mmap_fov", &cg_mmap_fov, value, qtrue );
+    } else if ( entry >= 0 && entry < HUDOPT_NUM_ENTRIES ) {
+        e = &hudToggleTable[entry];
+        if ( HUDEntry_IsUnavail( e ) || value < 0 || value > e->onValue ) return;
+        trap_Cvar_Set( e->cvarName, va( "%d", value ) );
+        trap_Cvar_Update( e->cvar );
+    }
 }

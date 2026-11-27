@@ -2550,7 +2550,6 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	CG_DrawFollow();
 
 	cg.scoreBoardShowing = CG_DrawHUD();
-	CG_DrawHUDOptionsMenu();
 	CG_LadderGhost_DrawPicker();
 	CG_GhostRace_DrawResultBanner();
 
@@ -2564,6 +2563,8 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 		CG_ModernHUD_DrawMessages();
 	}
 
+	/* the HUD options over everything, the big messages too */
+	CG_DrawHUDOptionsMenu();
 }
 
 

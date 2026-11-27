@@ -298,17 +298,21 @@ What still differs from the WebUI:
 
 ## The HUD options (cgame)
 
-- Shift+H in a race opens `cgame/cg_hud_panel.c`, the WebUI's `#hud-screen`
-  (session.js): the panel fixed at the right (clamp(21rem, 42vw, 36rem),
-  inside the page's 15px scrollbar gutter, #111 with a 3px accent at its
-  left), scrolling on its own. Layout in `cgame/cg_hud_panellayout.c`,
-  tested against Chrome (tests/test_native_hud_options.py).
+- Shift+H opens `cgame/cg_hud_panel.c`: a panel in the middle of the
+  screen (840 design pixels wide, centred), where the HUD keeps the screen
+  free, so every change shows in the corners at once. The design is the
+  HUD design's PanelRace / PanelDeathmatch / PanelDerby boards
+  (tools/ui_webstyle/hud_design/gen.py hud_panel); the layout
+  `MH_OptionsLayout` in `cgame/cg_hud_modernlayout.c`, tested against
+  Chrome (tests/test_native_hud_options.py), the drawing
+  `CG_ModernHUD_DrawOptions`.
+- It lists only the toggles that do something in the mode (the table in
+  cg_hud_core.c, `CG_HUDOptions_Build`), in groups with a small screen that
+  shows where their part of the HUD is; the choices are buttons, the
+  minimap's size and field of view sliders under its toggle while it is on.
 - The cgame builds `q3_ui/ui_rally_webstyle.c` in as well (`CGAME` picks
-  the cgame's glconfig and white shader); the text styles, buttons,
-  selects, range inputs and the scrollbar now live there for both.
-- The toggles come from the table in cg_hud_core.c through
-  `CG_WebHUDNumber` / `CG_WebHUDChar` / `CG_WebHUDAction` (named after the
-  WebUI, which called them too).
+  the cgame's glconfig and white shader); the text styles live there for
+  both.
 - The cgame's cursor reaches the sides of a wide screen like the UI's
   (-bias .. 640 + bias). Escape (the client clears the cgame key catcher)
   and Shift+H close the panel.
