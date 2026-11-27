@@ -824,6 +824,25 @@ Changed:
   without it, as such a line). They still go into the console. Listings of
   more than two lines keep the old notify lines.
 
+- q3r_dd_02 (Figure of 8) rebuilt: the stadium stays (stands, crowd, press
+  box, the truss rig, the skyline), the field is new. The eight used to be
+  painted on a flat field; now it is a real track (asphalt with red and white
+  kerbs, two loops, two straights) and one straight crosses the other on a
+  bridge with ramps (railgun on the deck, mega health underneath, turbo
+  before each ramp; the screen over the middle hangs higher). The loops hold
+  islands: a tyre store (tyre walls, a concrete garage, mines) and a scrap
+  yard (barriers, rusted wrecks, containers, smoke). The free corners: a
+  paddock (trucks, containers, a fuel station, the rocket launcher) and a mud
+  pit (two kickers over a pool with the flamethrower in it, the shotgun).
+  Props are models (new: containers, tyre walls and stacks, flood light
+  masts, concrete barriers, guard rails, fuel pumps, bridge railings;
+  models/mapobjects/q3r_figure8, tools/maptools/make_figure8_models.py) with
+  clip boxes. Spawns all round the outside, along the track, none at the
+  middle. Flood light masts in the corners, less haze, no more blown-out
+  field (autoExposureMinMax; the mp_us sky, used only here, gives less area
+  light). New AAS. Now also for Derby. Generator tools/maptools/make_figure8.py,
+  docs/maps/figure8/.
+
 - q3r_david5 (Underground Battle Arena) rebuilt with the same concept: an
   octagonal car arena underground, the crowd all round, the rocket launcher
   for everybody on spawn and the plasma gun to fight over. The empty flat

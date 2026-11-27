@@ -47,3 +47,4 @@ q3r_quarry
 startlight
 q3r_weapons
 q3r_drag
+q3r_figure8

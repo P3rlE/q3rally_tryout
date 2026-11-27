@@ -400,7 +400,7 @@ levelshots/q3r_ctf_01.jpg,758110,Karte q3r_ctf_01,Karten,unbekannt,,F
 levelshots/q3r_ctf_04.jpg,116246,Karte q3r_ctf_04,Karten,unbekannt,,
 levelshots/q3r_david4.jpg,290672,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_david5.jpg,191841,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
-levelshots/q3r_dd_02.jpg,480995,Karte q3r_dd_02,Karten,unbekannt,,F
+levelshots/q3r_dd_02.jpg,157061,Karte q3r_dd_02,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_demobowl.jpg,857397,Karte q3r_demobowl,Karten,unbekannt,,F
 levelshots/q3r_dirtyfun.jpg,815155,Karte q3r_dirtyfun,Karten,unbekannt,,F
 levelshots/q3r_dm02.jpg,878244,Karte q3r_dm02,Karten,unbekannt,,F
@@ -470,9 +470,9 @@ maps/q3r_david4_index.pcx,5151,Karte q3r_david4,Karten,eigen (generiert),tools/m
 maps/q3r_david5.aas,154332,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
 maps/q3r_david5.bsp,1017996,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
 maps/q3r_david5.map,134678,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
-maps/q3r_dd_02.aas,241556,Karte q3r_dd_02,Karten,unbekannt,,F
-maps/q3r_dd_02.bsp,2470012,Karte q3r_dd_02,Karten,unbekannt,,F
-maps/q3r_dd_02.map,837437,Karte q3r_dd_02,Karten,unbekannt,,F
+maps/q3r_dd_02.aas,640328,Karte q3r_dd_02,Karten,eigen (generiert),tools/maptools,F
+maps/q3r_dd_02.bsp,5821808,Karte q3r_dd_02,Karten,eigen (generiert),tools/maptools,F
+maps/q3r_dd_02.map,1073662,Karte q3r_dd_02,Karten,eigen (generiert),tools/maptools,F
 maps/q3r_demobowl.aas,72608,Karte q3r_demobowl,Karten,unbekannt,,F
 maps/q3r_demobowl.bsp,1544444,Karte q3r_demobowl,Karten,unbekannt,,F
 maps/q3r_demobowl.map,198760,Karte q3r_demobowl,Karten,unbekannt,,F
@@ -1105,6 +1105,44 @@ models/mapobjects/pylons/pylon04.jpg,7551,Modelle mapobjects/pylons,Modelle,unbe
 models/mapobjects/pylons/pylon04.md3,724,Modelle mapobjects/pylons,Modelle,unbekannt,,F
 models/mapobjects/pylons/pylon04.script,195,Modelle mapobjects/pylons,Modelle,unbekannt,,F
 models/mapobjects/pylons/pylon_movable.script,316,Modelle mapobjects/pylons,Modelle,unbekannt,,F
+models/mapobjects/q3r_figure8/armco.jpg,2687,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/armco.md3,4644,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/armco_post.jpg,3745,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/barrier.md3,1444,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/barrier_concrete.jpg,7741,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_door_blue.jpg,17710,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_door_green.jpg,16438,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_door_orange.jpg,19842,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_door_red.jpg,18123,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_end_blue.jpg,8698,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_end_green.jpg,8310,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_end_orange.jpg,11238,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_end_red.jpg,9308,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_frame.jpg,1724,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_side_blue.jpg,28619,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_side_green.jpg,27209,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_side_orange.jpg,33787,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/cont_side_red.jpg,29884,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/container20_blue.md3,11868,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/container20_green.md3,11868,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/container20_orange.md3,11868,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/container20_red.md3,11868,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/container40_blue.md3,11868,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/container40_red.md3,11868,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/floodmast.md3,90036,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/fuelpump.md3,3948,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/mast_housing.jpg,2748,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/mast_lamp.jpg,2246,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/mast_steel.jpg,3788,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/pump_front.jpg,23692,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/pump_side.jpg,3668,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/rail_yellow.jpg,2511,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/railing.md3,3508,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/tyre_black.jpg,6163,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/tyre_stack3.md3,8756,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/tyre_stack5.md3,14148,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/tyre_wall.md3,66836,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
+models/mapobjects/q3r_figure8/tyre_white.jpg,12047,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_figure8_models.py,F
 models/mapobjects/q3r_lanterns/flame.tga,12306,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/mapobjects,F
 models/mapobjects/q3r_lanterns/floodlens.tga,36882,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/mapobjects,F
 models/mapobjects/q3r_lanterns/floodlens_blue.tga,36882,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/mapobjects,F
@@ -3277,7 +3315,7 @@ scripts/q3r_ctf_bot_test.arena,502,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 scripts/q3r_david4.arena,512,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_david4.shader,20670,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_david5.arena,587,Karte q3r_david5,Karten,eigen (generiert),tools/maptools,F
-scripts/q3r_dd_02.arena,195,Karte q3r_dd_02,Karten,unbekannt,,F
+scripts/q3r_dd_02.arena,226,Karte q3r_dd_02,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_demobowl.arena,518,Karte q3r_demobowl,Karten,unbekannt,,F
 scripts/q3r_dirtyfun.arena,614,Karte q3r_dirtyfun,Karten,unbekannt,,F
 scripts/q3r_dm02.arena,514,Karte q3r_dm02,Karten,unbekannt,,F
@@ -3286,6 +3324,7 @@ scripts/q3r_drag.shader,4203,"Skripte, Shader, Konfiguration",Text/Code,eigen (g
 scripts/q3r_drag_airfield.arena,242,Karte q3r_drag_airfield,Karten,eigen (generiert),tools/maptools,
 scripts/q3r_drag_night.arena,236,Karte q3r_drag_night,Karten,eigen (generiert),tools/maptools,
 scripts/q3r_dragstrip.arena,239,Karte q3r_dragstrip,Karten,eigen (generiert),tools/maptools,
+scripts/q3r_figure8.shader,302,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/maptools/make_figure8_models.py,F
 scripts/q3r_fx.shader,872,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/q3r_koth.shader,1635,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/q3r_lanterns.shader,2613,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
@@ -3316,8 +3355,8 @@ scripts/q3r_trophy.shader,588,"Skripte, Shader, Konfiguration",Text/Code,eigen (
 scripts/q3r_valley.arena,627,Karte q3r_valley,Karten,unbekannt,,F
 scripts/q3r_weapons.shader,6093,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/carbuild/weapons,F
 scripts/q3r_webstyle.shader,899,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/ui_webstyle,
-scripts/shaderlist.txt,524,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
-scripts/skies.shader,8074,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
+scripts/shaderlist.txt,536,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
+scripts/skies.shader,8156,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/sprites.shader,1869,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/startlight.shader,1246,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/telestecki.shader,3952,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
